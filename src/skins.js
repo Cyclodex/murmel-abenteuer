@@ -1,12 +1,14 @@
 // Murmel-Designs. need = so viele Sterne braucht man insgesamt zum Freischalten ('alle' = alle Sterne).
 // Jedes Design malt eine Kugel-Textur (Längen-/Breitengrad-Bild, 256 x 128).
+// ball = Sprungkraft (Anteil der Aufprallgeschwindigkeit, der zurückkommt) an Wand und Boden.
 export const SKINS = [
-  { id: 'standard', emoji: '🔵', need: 0, paint: standard },
-  { id: 'fussball', emoji: '⚽', need: 5, paint: pixels(fussball) },
-  { id: 'melone', emoji: '🍉', need: 10, paint: pixels(melone) },
-  { id: 'planet', emoji: '🪐', need: 15, paint: pixels(planet), ring: true },
-  { id: 'regenbogen', emoji: '🌈', need: 20, paint: pixels(regenbogen) },
-  { id: 'gold', emoji: '🏅', need: 'alle', paint: pixels(gold), shiny: true }
+  { id: 'standard', emoji: '🔵', need: 0, paint: standard, ball: { wand: 0.5, boden: 0.25 } },
+  { id: 'fussball', emoji: '⚽', need: 5, paint: pixels(fussball), ball: { wand: 0.75, boden: 0.5 } },
+  { id: 'flummi', emoji: '🔴', need: 8, paint: pixels(flummi), ball: { wand: 0.9, boden: 0.75 } },
+  { id: 'melone', emoji: '🍉', need: 10, paint: pixels(melone), ball: { wand: 0.2, boden: 0.1 } },
+  { id: 'planet', emoji: '🪐', need: 15, paint: pixels(planet), ring: true, ball: { wand: 0.5, boden: 0.25 } },
+  { id: 'regenbogen', emoji: '🌈', need: 20, paint: pixels(regenbogen), ball: { wand: 0.5, boden: 0.25 } },
+  { id: 'gold', emoji: '🏅', need: 'alle', paint: pixels(gold), shiny: true, ball: { wand: 0.35, boden: 0.15 } }
 ];
 
 function standard(ctx, w, h) {
@@ -47,6 +49,11 @@ function fussball(x, y, z) {
   }
   if (d1 - d2 < 0.012) return [90, 90, 90];
   return penta ? [30, 30, 30] : [250, 250, 250];
+}
+function flummi(x, y, z, lat, lon) {
+  // roter Gummiball mit gelbem Wirbelstreifen
+  const s = Math.sin(lon * 2 + lat * 5);
+  return s > 0.8 ? [255, 214, 0] : [230, 30, 60];
 }
 function melone(x, y, z, lat, lon) {
   const s = Math.sin(lon * 14 + Math.sin(lat * 9) * 0.7);
