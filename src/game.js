@@ -6,6 +6,7 @@ export const R = 0.5;
 export const G = 9.82;
 export const MAX_TILT = 25 * Math.PI / 180;
 export const H = 1 / 60; // fester Physikschritt
+const HIT_MIN = 1.5;      // ab dieser Geschwindigkeitsänderung (m/s) klackt es
 
 // Oberflächen: friction/restitution für die Physik,
 // grip = wie stark die Steuerung wirkt, drag = Abbremsen pro Sekunde (negativ = gleitet länger).
@@ -36,7 +37,7 @@ export function createGame(CANNON, level) {
   const g = {
     C: CANNON, world, level, matFor, els: [], solids: [], checkpoints: [], switches: {},
     st: { stars: 0, starTotal: 0, cp: -1, won: false },
-    groundBody: null, touchBody: null, surface: SURFACES.normal,
+    groundBody: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT,
     track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
   };
 
@@ -73,7 +74,7 @@ export function createGame(CANNON, level) {
   };
   g.reset = () => {
     Object.assign(g.st, { stars: 0, cp: -1, won: false });
-    g.switches = {}; acc = 0; g.time = 0;
+    g.switches = {}; acc = 0; g.time = 0; g.hitCool = 0.5; g.hitStrength = 0;
     g.track.yaw = (level.startYaw || 0) * Math.PI / 180;
     for (const el of g.els) TYPES[el.type].reset?.(el, g);
     g.spawn(spawnPoint());
@@ -101,9 +102,14 @@ export function createGame(CANNON, level) {
 
   function substep(ix, iz, ev) {
     const grip = g.surface.grip;
-    world.gravity.set(Math.sin(MAX_TILT) * G * ix * grip, -G, Math.sin(MAX_TILT) * G * iz * grip);
+    world.gravity.set(Math.sin(g.tilt) * G * ix * grip, -G, Math.sin(g.tilt) * G * iz * grip);
     for (const el of g.els) TYPES[el.type].pre?.(el, g, H);
+    const v = ball.velocity, vx = v.x, vy = v.y, vz = v.z, gr = world.gravity;
     world.step(H);
+    // Aufprall: Geschwindigkeitsänderung, die nicht von der Schwerkraft kommt
+    const hit = Math.hypot(v.x - vx - gr.x * H, v.y - vy - gr.y * H, v.z - vz - gr.z * H);
+    g.hitCool -= H;
+    if (hit > HIT_MIN && g.hitCool <= 0) { g.hitStrength = (hit - HIT_MIN) / 4; g.hitCool = 0.12; ev.push('hit'); }
     g.time += H;
     contacts();
     if (g.surface.drag) { const f = Math.exp(-g.surface.drag * H); ball.velocity.x *= f; ball.velocity.z *= f; }

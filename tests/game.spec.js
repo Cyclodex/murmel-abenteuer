@@ -119,20 +119,28 @@ test('Ohne localStorage läuft das Spiel trotzdem', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('Alle Level sind schaffbar, alle Sterne erreichbar (Autopilot)', async ({ page }) => {
-  test.setTimeout(120_000);
+test('Alle Level sind mit jeder Stärke schaffbar, alle Sterne erreichbar (Autopilot)', async ({ page }) => {
+  test.setTimeout(180_000);
   const errors = watchErrors(page);
   await page.goto('/');
   const res = await page.evaluate(async () => {
     const { createGame } = await import('/src/game.js');
     const { LEVELS } = await import('/src/levels/index.js');
     const { autopilot, ROUTES } = await import('/tests/autopilot.js');
-    return LEVELS.map(L => { const r = autopilot(createGame(CANNON, L), ROUTES[L.id], 120); return { id: L.id, won: r.won, stars: r.stars, total: r.starTotal, falls: r.falls }; });
+    const { POWERS } = await import('/src/input.js');
+    const out = [];
+    for (const P of POWERS) for (const L of LEVELS) {
+      const g = createGame(CANNON, L); g.tilt = P.tilt * Math.PI / 180;
+      const r = autopilot(g, ROUTES[L.id], 120);
+      out.push({ id: L.id + ' ' + P.emoji, won: r.won, stars: r.stars, total: r.starTotal, falls: r.falls });
+    }
+    return out;
   });
+  expect(res.length).toBe(15);
   for (const r of res) {
     expect(r.won, r.id).toBe(true);
     expect(r.falls, r.id).toBe(0);
-    if (r.id !== 'ausflug') expect(r.stars, r.id).toBe(r.total);
+    if (!r.id.startsWith('ausflug')) expect(r.stars, r.id).toBe(r.total);
   }
   expect(errors).toEqual([]);
 });
@@ -153,4 +161,75 @@ test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
   expect(r.fell).toBe(true);
   expect(r.cp).toBe(0);
   expect(r.pos).toEqual([0, 2.5, -28]);
+});
+
+test('Kippen: Kennlinie der drei Stärken', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { POWERS, tiltToInput } = await import('/src/input.js');
+    return POWERS.map(p => ({ id: p.id, v: [0.5, 1, 5, 10, p.full, 30, -10].map(d => +tiltToInput(d, p).toFixed(3)) }));
+  });
+  // [0.5°, 1°, 5°, 10°, voll, 30°, -10°]
+  expect(r).toEqual([
+    { id: 'sanft', v: [0, 0, 0.167, 0.444, 1, 1, -0.444] },
+    { id: 'normal', v: [0, 0, 0.267, 0.6, 1, 1, -0.6] },
+    { id: 'extrem', v: [0, 0, 0.364, 0.818, 1, 1, -0.818] }
+  ]);
+});
+
+test('Stärke und Ton umschalten, wird gespeichert', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.click('#startJoy');
+  await expect(page.locator('#btnPower')).toHaveText('🐇');
+  await page.click('#btnPower');
+  await expect(page.locator('#btnPower')).toHaveText('🚀');
+  await page.click('.lvl[data-level="sz1"]');
+  expect(await page.evaluate(() => +(window.murmel.game.tilt * 180 / Math.PI).toFixed(1))).toBe(55);
+  await page.click('#btnHome');
+  await expect(page.locator('#btnSound')).toHaveText('🔊');
+  await page.click('#btnSound');
+  await expect(page.locator('#btnSound')).toHaveText('🎵❌');
+  await page.click('#btnSound');
+  await expect(page.locator('#btnSound')).toHaveText('🔇');
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v1')));
+  expect(saved.power).toBe('extrem');
+  expect(saved.sound).toBe('aus');
+  await page.reload();
+  await page.click('#startJoy');
+  await expect(page.locator('#btnPower')).toHaveText('🚀');
+  await expect(page.locator('#btnSound')).toHaveText('🔇');
+  expect(errors).toEqual([]);
+});
+
+test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createAudio } = await import('/src/audio.js');
+    const peak = buf => { let m = 0; const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) m = Math.max(m, Math.abs(d[i])); return m; };
+    const render = async (fn, secs = 2.5) => {
+      const ctx = new OfflineAudioContext(1, 44100 * secs, 44100), a = createAudio({ ctx });
+      fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
+    };
+    const out = {};
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock']) out[n] = await render(a => a.sfx(n));
+    out.hitLeise = await render(a => a.sfx('hit', 0.1));
+    out.hitStark = await render(a => a.sfx('hit', 1));
+    out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
+    out.rollenEis = await render(a => a.roll(6, true, 'eis'), 1);
+    out.rollenLuft = await render(a => a.roll(6, false, 'normal'), 1);
+    out.aus = await render(a => { a.setMode('aus'); a.sfx('win'); });
+    for (const song of ['karte', 'standard', 'spielzimmer']) out['musik_' + song] = await render(a => a.music(song), 1);
+    out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
+    return out;
+  });
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'hitStark', 'rollen', 'rollenEis', 'musik_karte', 'musik_standard', 'musik_spielzimmer']) {
+    expect(r[n], n).toBeGreaterThan(0.02);
+    expect(r[n], n).toBeLessThan(1);
+  }
+  expect(r.hitLeise).toBeLessThan(r.hitStark);
+  expect(r.rollenLuft).toBeLessThan(0.01);
+  expect(r.aus).toBeLessThan(0.01);
+  expect(r.musikOhne).toBeLessThan(0.01);
 });

@@ -19,7 +19,8 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/elements.js` | Alle Bauteil-Typen: Klötze, Logik und Grafik je Typ |
 | `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm) |
 | `src/view.js` | three.js-Szene, Themen (Spielzimmer), Kamera |
-| `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen), Pfeiltasten |
+| `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen), Pfeiltasten, Stärken 🐢/🐇/🚀 (`POWERS`) |
+| `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
 | `src/skins.js` | Murmel-Designs und ab wie vielen Sternen sie frei sind |
 | `src/progress.js` | Spielstand in localStorage |
 | `src/main.js` | Start, Karte, Menüs, Spielschleife |

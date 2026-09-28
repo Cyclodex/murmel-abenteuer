@@ -161,7 +161,7 @@ export const TYPES = {
     reset(el) { el.got = false; },
     step(el, g, h, ev) {
       const p = g.ball.position, s = el.at;
-      if (!el.got && Math.hypot(p.x - s[0], p.y - s[1], p.z - s[2]) < 1.1) { el.got = true; g.st.stars++; ev.push('star'); }
+      if (!el.got && Math.hypot(p.x - s[0], p.y - s[1], p.z - s[2]) < 1.1) { el.got = true; g.st.stars++; ev.push(el.bonus ? 'bonus' : 'star'); }
     },
     view(el, v) {
       const m = new v.THREE.Mesh(v.starGeo, el.bonus ? v.mats.bonusStar : v.mats.star);
