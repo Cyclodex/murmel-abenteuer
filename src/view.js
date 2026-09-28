@@ -96,6 +96,9 @@ export function createView(THREE, renderer, game) {
     if (kind === 'lego' || kind === 'klotz') {
       m = new THREE.MeshPhongMaterial({ color: COLORS[col] ?? 0xE53935, shininess: kind === 'lego' ? 60 : 10 });
       if (kind === 'lego') m.userData.lego = COLORS[col] ? col : 'rot';
+      // Überlappende Steine haben deckungsgleiche Flächen: feste Rangfolge je Farbe statt Z-Fighting
+      const rank = Object.keys(COLORS).indexOf(col);
+      Object.assign(m, { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: -(rank < 0 ? 0 : rank) - (kind === 'lego' ? 0 : 6) });
     }
     else if (look === 'floor') m = wood ? lambert(0xffffff, { map: wood }) : lambert(theme.floor);
     else if (look === 'ramp' || look === 'bridge') m = woodLight ? lambert(0xffffff, { map: woodLight }) : lambert(theme.ramp ?? 0xF0C382);
@@ -144,8 +147,9 @@ export function createView(THREE, renderer, game) {
   v.starGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.15, bevelEnabled: false });
 
   // ---------- Feste Klötze ----------
-  const studs = {}; // Farbe -> Liste von Matrizen
-  const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpP = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+  const studs = {}, studPos = []; // Farbe -> Liste von Matrizen; alle Noppen-Positionen
+  const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpP = new THREE.Vector3(), tmpS = new THREE.Vector3();
+  const STUD_R = 0.3, STUD_H = 0.2125; // relativ zum Rastermass (Original: 4.8 mm bzw. 1.7 mm bei 8 mm Raster)
   const pillars = [], blockers = [];
   for (const s of game.solids) {
     const m0 = s.look === 'abc' ? abcMat(s.text) : mat(s.look);
@@ -153,20 +157,25 @@ export function createView(THREE, renderer, game) {
     mesh.position.set(...s.pos); mesh.quaternion.set(...s.quat); mesh.receiveShadow = true;
     scene.add(mesh);
     if (!s.deko) blockers.push(mesh);
-    // Legonoppen oben drauf
+    // Legonoppen oben drauf. Rastermass = Breite des Steins (dünne Wand = 1er-Stein, breiter Klotz = 2er-Stein),
+    // Noppen wie beim Original: Durchmesser 0.6, Höhe 0.2125 des Rastermasses
     const col = m0.userData.lego;
     if (col) {
-      const [hx, hy, hz] = s.half, nx = Math.max(1, Math.round(hx * 2 / 0.8)), nz = Math.max(1, Math.round(hz * 2 / 0.8));
-      tmpQ.set(...s.quat);
+      const [hx, hy, hz] = s.half, short = Math.min(hx, hz) * 2, pitch = short > 1 ? short / 2 : short;
+      const nx = Math.max(1, Math.round(hx * 2 / pitch)), nz = Math.max(1, Math.round(hz * 2 / pitch));
+      tmpQ.set(...s.quat); tmpS.setScalar(pitch);
       for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
-        tmpP.set(-hx + (i + 0.5) * hx * 2 / nx, hy + 0.08, -hz + (j + 0.5) * hz * 2 / nz).applyQuaternion(tmpQ).add(mesh.position);
-        (studs[col] = studs[col] || []).push(tmpM.clone().compose(tmpP, tmpQ, one));
+        tmpP.set(-hx + (i + 0.5) * hx * 2 / nx, hy + STUD_H * pitch / 2, -hz + (j + 0.5) * hz * 2 / nz).applyQuaternion(tmpQ).add(mesh.position);
+        // wo Steine überlappen, nur eine Noppe setzen (sonst stecken zwei ineinander und flimmern)
+        if (studPos.some(p => p.distanceToSquared(tmpP) < (2 * STUD_R * pitch) ** 2)) continue;
+        studPos.push(tmpP.clone());
+        (studs[col] = studs[col] || []).push(tmpM.clone().compose(tmpP, tmpQ, tmpS));
       }
     }
     // Säulen unter flachen Bahnstücken (nur Optik)
     if (theme.carpet && s.track && !s.deko && Math.abs(s.quat[0]) < 1e-3 && Math.abs(s.quat[2]) < 1e-3 && s.half[2] >= 2) pillars.push(s);
   }
-  const studGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.16, 12);
+  const studGeo = new THREE.CylinderGeometry(STUD_R, STUD_R, STUD_H, 16);
   for (const [col, list] of Object.entries(studs)) {
     const im = new THREE.InstancedMesh(studGeo, cache['lego-' + col], list.length);
     list.forEach((mm, i) => im.setMatrixAt(i, mm));
