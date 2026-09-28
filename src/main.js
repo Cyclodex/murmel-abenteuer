@@ -25,7 +25,7 @@ const power = () => POWERS.find(p => p.id === progress.data.power) || POWERS[1];
 const ALL_STARS = LEVELS.reduce((n, l) => n + l.parts.filter(p => p.type === 'stern').length, 0);
 const skinNeed = s => (s.need === 'alle' ? ALL_STARS : s.need);
 const skinOpen = s => progress.totalStars() >= skinNeed(s);
-const currentSkin = () => { const s = SKINS.find(k => k.id === progress.data.skin); return s && skinOpen(s) ? s : SKINS[0]; };
+const currentSkin = () => { const s = SKINS.find(k => k.id === progress.skin); return s && skinOpen(s) ? s : SKINS[0]; };
 
 const input = createInput({
   area: $('c'), joy: $('joy'), knob: $('knob'), onToast: toast,
@@ -56,7 +56,7 @@ function loadLevel(i) {
 
 function startLevel(i) {
   loadLevel(i);
-  ['mapOv', 'winOv', 'skinOv', 'startOv'].forEach(id => show(id, false));
+  ['mapOv', 'winOv', 'skinOv', 'startOv', 'playerOv'].forEach(id => show(id, false));
   show('hud'); show('joy', input.mode === 'joy');
   if (input.mode === 'tilt') input.calibrate(true);
   running = true;
@@ -73,8 +73,9 @@ function restart() {
 function starRow(have, total) { return '⭐'.repeat(have) + '☆'.repeat(Math.max(0, total - have)); }
 function showMap() {
   running = false;
-  ['hud', 'joy', 'winOv', 'skinOv', 'startOv'].forEach(id => show(id, false));
+  ['hud', 'joy', 'winOv', 'skinOv', 'startOv', 'playerOv'].forEach(id => show(id, false));
   $('mapStars').textContent = `⭐ ${progress.totalStars()}`;
+  $('btnPlayer').textContent = `👤 ${progress.player().name}`;
   $('btnPower').textContent = power().emoji;
   $('btnSound').textContent = (SOUND_MODES.find(m => m.id === audio.mode) || SOUND_MODES[0]).emoji;
   audio.music('karte');
@@ -97,6 +98,30 @@ function showMap() {
   show('mapOv');
 }
 
+// ---------- Spieler ----------
+const MEDALS = ['🥇', '🥈', '🥉'];
+// Rangliste als Text: "🥇 Anna ⭐12" (Namen nie als HTML einsetzen)
+const rankText = (r, i) => `${MEDALS[i] || `${i + 1}.`} ${r.name} ⭐${r.stars}`;
+
+function showPlayers() {
+  ['mapOv', 'startOv'].forEach(id => show(id, false));
+  const list = $('playerList'); list.textContent = '';
+  progress.ranking().forEach((r, i) => {
+    const b = document.createElement('button');
+    b.className = 'player' + (progress.player()?.id === r.id ? ' sel' : '');
+    b.dataset.player = r.id; b.textContent = rankText(r, i);
+    b.onclick = () => { audio.sfx('tap'); progress.selectPlayer(r.id); showMap(); };
+    list.appendChild(b);
+  });
+  $('playerName').value = '';
+  show('playerOv');
+}
+$('playerForm').onsubmit = e => {
+  e.preventDefault();
+  if (!progress.addPlayer($('playerName').value)) { $('playerName').focus(); return; }
+  $('playerName').blur(); audio.sfx('tap'); showMap();
+};
+
 // ---------- Murmel-Auswahl ----------
 function showSkins() {
   const grid = $('skinGrid'); grid.textContent = '';
@@ -117,7 +142,7 @@ async function start(wantTilt) {
   progress.setControl(wantTilt ? 'tilt' : 'joy');
   if (wantTilt) await input.useTilt(); else input.useJoy();
   show('startOv', false);
-  showMap();
+  if (progress.player()) showMap(); else showPlayers();
 }
 
 $('startTilt').onclick = () => start(true);
@@ -141,6 +166,7 @@ $('btnSound').onclick = () => {
   progress.setSound(m.id); audio.setMode(m.id); $('btnSound').textContent = m.emoji; audio.sfx('tap');
 };
 $('skinBack').onclick = showMap;
+$('btnPlayer').onclick = () => { audio.sfx('tap'); showPlayers(); };
 addEventListener('resize', () => view && view.resize());
 
 function onWin() {
@@ -153,6 +179,10 @@ function onWin() {
   $('winUnlock').textContent = fresh.length ? '🎨 ' + fresh.map(s => s.emoji).join(' ') + ' 🆕' : '';
   if (fresh.length) setTimeout(() => audio.sfx('unlock'), 1500);
   show('winUnlock', fresh.length > 0);
+  // Vergleich mit den anderen Spielern (beste Sterne in diesem Level)
+  const rank = progress.ranking(LEVELS[levelIdx].id).filter(r => r.stars > 0);
+  $('winRank').textContent = rank.map(rankText).join('\n');
+  show('winRank', rank.length > 1);
   show('nextBtn', levelIdx + 1 < LEVELS.length && isOpen(levelIdx + 1));
   view.burst(view.goal ? view.goal.position : view.ballMesh.position, 60, [0xFF5A8A, 0xFFC928, 0x3BB273, 0x2F6FEB]);
   setTimeout(() => { show('winOv'); show('joy', false); }, 900);
