@@ -264,7 +264,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'jubel']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
@@ -275,7 +275,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'hitStark', 'rollen', 'rollenEis', 'musik_karte', 'musik_standard', 'musik_spielzimmer']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'jubel', 'hitStark', 'rollen', 'rollenEis', 'musik_karte', 'musik_standard', 'musik_spielzimmer']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }
@@ -315,4 +315,136 @@ test('Kippen: Welt kippt sichtbar mit, keine Bremshilfe', async ({ page }) => {
   expect(await page.evaluate(() => window.murmel.input.mode)).toBe('tilt');
   expect(await camRoll(page)).toBeGreaterThan(3);   // rechts gekippt = sichtbare Schräglage
   expect(await page.evaluate(() => window.murmel.game.brake)).toBe(0);
+});
+
+// ---------- Belohnungen: Sticker, Spuren, Jubel ----------
+const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v1')));
+// Level gewinnen: Sterne setzen (optional Bonusstern), dann ins Ziel
+async function winLevel(page, stars, bonus = false) {
+  await page.evaluate(([n, b]) => {
+    const g = window.murmel.game; g.st.stars = n;
+    if (b) g.els.find(e => e.type === 'stern' && e.bonus).got = true;
+    const goal = g.els.find(e => e.type === 'ziel');
+    g.spawn([goal.at[0], goal.at[1] + 1, goal.at[2]]);
+  }, [stars, bonus]);
+  await expect(page.locator('#winOv')).toBeVisible();
+}
+
+test('Sticker werden vergeben, gespeichert und im Album gezeigt; Jubel erscheint', async ({ page }) => {
+  const errors = watchErrors(page);
+  await play(page, 'ausflug');
+  await winLevel(page, 5);
+  await expect(page.locator('#cheerOv')).toBeVisible();
+  await expect(page.locator('#cheerOv .items')).toContainText('⚽');  // neue Murmel
+  await expect(page.locator('#cheerOv .items')).toContainText('🏆');  // Welt komplett
+  const st = (await saved(page)).stickers;
+  expect(Object.keys(st).sort()).toEqual(['lvl:ausflug', 'sterne:ausflug', 'welt:uebung', 'x:murmel', 'x:spur'].sort());
+  await page.click('#cheerOv');                                        // Antippen schliesst
+  await expect(page.locator('#cheerOv')).toBeHidden();
+
+  // Level im Spielzimmer mit Bonusstern, aber nicht allen Sternen
+  await page.click('#mapBtn');
+  await page.click('.lvl[data-level="sz1"]');
+  await winLevel(page, 3, true);
+  const st2 = (await saved(page)).stickers;
+  expect(st2['bonus:sz1']).toBe(true);
+  expect(st2['sterne:sz1']).toBeUndefined();
+  expect(st2['welt:spielzimmer']).toBeUndefined();
+
+  // nach Neuladen im Album sichtbar
+  await page.reload();
+  await page.click('#startJoy');
+  await page.click('#btnAlbum');
+  await expect(page.locator('#albumOv')).toBeVisible();
+  const total = await page.evaluate(() => window.murmel.ALBUM.all.length);
+  await expect(page.locator('#albumCount')).toHaveText(`📒 7/${total}`);
+  await expect(page.locator('.sticker[data-sticker="lvl:ausflug"]')).toHaveClass(/got/);
+  await expect(page.locator('.sticker[data-sticker="welt:uebung"]')).toHaveClass(/got/);
+  await page.click('.tab[data-page="spielzimmer"]');
+  await expect(page.locator('.sticker[data-sticker="bonus:sz1"]')).toHaveClass(/got/);
+  await expect(page.locator('.sticker[data-sticker="sterne:sz1"]')).not.toHaveClass(/got/);
+  await expect(page.locator('.sticker[data-sticker="sterne:sz1"]')).toContainText('🔒');
+  await page.click('#albumBack');
+  await expect(page.locator('#mapOv')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('Alter Spielstand ohne Sticker: verdiente Sticker werden nachgetragen', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('init')) {
+      sessionStorage.setItem('init', 1);
+      localStorage.setItem('murmel-abenteuer-v1', JSON.stringify({ done: { ausflug: true, sz1: true }, best: { ausflug: 2, sz1: 6 }, skin: 'standard' }));
+    }
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  const st = (await saved(page)).stickers;
+  expect(Object.keys(st).sort()).toEqual(['bonus:sz1', 'lvl:ausflug', 'lvl:sz1', 'sterne:sz1', 'welt:uebung', 'x:murmel', 'x:spur'].sort());
+  expect((await saved(page)).skin).toBe('standard');
+  await expect(page.locator('#cheerOv')).toBeHidden(); // kein Jubel beim Nachtragen
+});
+
+test('Spur auswählbar, gespeichert und sichtbar hinter der Murmel', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('init')) {
+      sessionStorage.setItem('init', 1);
+      localStorage.setItem('murmel-abenteuer-v1', JSON.stringify({ done: { ausflug: true }, best: { ausflug: 5 } }));
+    }
+  });
+  await page.goto('/');
+  await page.click('#startJoy');
+  await page.click('#btnSkins');
+  await expect(page.locator('.skin[data-trail="keine"]')).toHaveClass(/sel/);
+  await expect(page.locator('.skin[data-trail="funken"]')).toBeEnabled();   // 3 Sterne
+  await expect(page.locator('.skin[data-trail="blasen"]')).toBeEnabled();   // 3 Sticker
+  await expect(page.locator('.skin[data-trail="sterne"]')).toBeDisabled();  // 12 Sterne
+  await expect(page.locator('.skin[data-trail="sterne"]')).toContainText('12⭐');
+  await page.click('.skin[data-trail="funken"]');
+  await expect(page.locator('.skin[data-trail="funken"]')).toHaveClass(/sel/);
+  expect((await saved(page)).trail).toBe('funken');
+  await page.reload();
+  await page.click('#startJoy');
+  await page.click('.lvl[data-level="ausflug"]');
+  await page.keyboard.down('ArrowUp');
+  await page.waitForTimeout(1200);
+  const n = await page.evaluate(() => window.murmel.view.trailFx.count);
+  await page.keyboard.up('ArrowUp');
+  expect(n).toBeGreaterThan(3);
+  // Spur-Teilchen sind ein einziges InstancedMesh (keine neuen Meshes pro Bild)
+  const meshes = await page.evaluate(() => { let k = 0; window.murmel.view.scene.traverse(() => k++); return k; });
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => { let k = 0; window.murmel.view.scene.traverse(() => k++); return k; })).toBe(meshes);
+  expect(errors).toEqual([]);
+});
+
+test('Alle Spuren laufen ohne Fehler', async ({ page }) => {
+  const errors = watchErrors(page);
+  await play(page, 'ausflug');
+  for (const id of ['funken', 'blasen', 'sterne', 'regenbogen', 'herzen', 'feuer', 'keine']) {
+    await page.evaluate(id => window.murmel.view.setTrail(window.murmel.TRAILS.find(t => t.id === id)), id);
+    await page.evaluate(() => { const b = window.murmel.game.ball; b.velocity.set(0, 0, -6); });
+    await page.waitForTimeout(250);
+  }
+  expect(await page.evaluate(() => window.murmel.view.trailFx.count)).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test('Ohne localStorage: gewinnen, Sticker, Album und Spur funktionieren', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'localStorage', { get() { throw new Error('gesperrt'); } });
+  });
+  await play(page, 'ausflug');
+  await winLevel(page, 5);
+  await expect(page.locator('#cheerOv')).toBeVisible();
+  await page.click('#cheerOv');
+  await page.click('#mapBtn');
+  await page.click('#btnAlbum');
+  await expect(page.locator('.sticker[data-sticker="lvl:ausflug"]')).toHaveClass(/got/);
+  await page.click('#albumBack');
+  await page.click('#btnSkins');
+  await page.click('.skin[data-trail="funken"]');
+  await expect(page.locator('.skin[data-trail="funken"]')).toHaveClass(/sel/);
+  expect(errors).toEqual([]);
 });

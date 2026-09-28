@@ -115,7 +115,15 @@ export function createAudio(opts = {}) {
       [60, 64, 67, 72].forEach(n => tone(midi(n + 12), t + 0.75, 0.9, 0.09, 'triangle', null, sfxBus, 0.02));
       [96, 100, 103, 108].forEach((n, i) => bell(midi(n), t + 0.8 + i * 0.07, 0.12, 0.6));
     },
-    unlock: t => { for (let i = 0; i < 10; i++) bell(midi(79 + i * 2), t + i * 0.05, 0.12, 0.5); hiss(t, 0.8, 0.05, 'highpass', 5000); }
+    unlock: t => { for (let i = 0; i < 10; i++) bell(midi(79 + i * 2), t + i * 0.05, 0.12, 0.5); hiss(t, 0.8, 0.05, 'highpass', 5000); },
+    // Jubel beim Freischalten: Trommelwirbel, Fanfare, Glitzer
+    jubel: t => {
+      for (let i = 0; i < 8; i++) hiss(t + i * 0.04, 0.05, 0.25, 'bandpass', 1800, null, 1);
+      [67, 72, 76, 79].forEach((n, i) => tone(midi(n), t + 0.35 + i * 0.1, 0.16, 0.18, 'square'));
+      [72, 76, 79, 84].forEach(n => tone(midi(n), t + 0.8, 0.8, 0.07, 'triangle', null, sfxBus, 0.02));
+      for (let i = 0; i < 8; i++) bell(midi(96 + (i % 4) * 3), t + 0.85 + i * 0.06, 0.1, 0.4);
+      tone(90, t + 0.8, 0.3, 0.5, 'sine', 45);
+    }
   };
 
   function sfx(name, strength) {
