@@ -50,7 +50,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
   const g = {
     C: CANNON, world, level, matFor, els: [], solids: [], checkpoints: [], switches: {},
     st: { stars: 0, starTotal: 0, cp: -1, won: false },
-    groundBody: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT,
+    groundBody: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0,
     ballProps, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
   };
 
@@ -157,6 +157,8 @@ export function createGame(CANNON, level, ballProps = BALL) {
     g.time += H;
     contacts();
     if (g.surface.drag) { const f = Math.exp(-g.surface.drag * H); ball.velocity.x *= f; ball.velocity.z *= f; }
+    // Bremshilfe (Joystick): ohne Eingabe am Boden sanft abbremsen
+    if (g.brake && g.groundBody && Math.hypot(ix, iz) < 0.1 && Math.hypot(ball.velocity.x, ball.velocity.z) < 7) { const f = Math.exp(-g.brake * H); ball.velocity.x *= f; ball.velocity.z *= f; }
     for (const el of g.els) TYPES[el.type].step?.(el, g, H, ev);
     if (ball.position.y < killY) { g.spawn(spawnPoint()); ev.push('fall'); }
   }

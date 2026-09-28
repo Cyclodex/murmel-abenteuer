@@ -175,11 +175,12 @@ function loop(now) {
   // Kamera dreht weich mit der Bahn; Eingabe wirkt relativ zur Kamera
   camYaw += angleDiff(camYaw, game.track.yaw) * Math.min(1, dt * 3);
   const c = Math.cos(camYaw), s = Math.sin(camYaw);
+  game.brake = input.mode === 'tilt' ? 0 : 1.5; // Joystick: Bremshilfe beim Loslassen
   if (running) for (const e of game.step(sx * c + sz * s, -sx * s + sz * c, dt)) onEvent(e);
   const bv = game.ball.velocity;
   audio.roll(running ? Math.hypot(bv.x, bv.y, bv.z) : 0, !!game.groundBody, game.groundBody?.userData?.surface || 'normal');
   $('stars').textContent = `⭐ ${game.st.stars}/${game.st.starTotal}`;
-  view.render(dt, sx, sz, camYaw, power().tilt);
+  view.render(dt, sx, sz, camYaw, power().tilt, input.mode === 'tilt' ? 1 : 0);
   requestAnimationFrame(loop);
 }
 
@@ -189,5 +190,5 @@ requestAnimationFrame(loop);
 // Für Tests und zum Ausprobieren in der Konsole
 window.murmel = {
   get game() { return game; }, get running() { return running; }, get camYaw() { return camYaw; },
-  LEVELS, WORLDS, SKINS, progress, startLevel, showMap, audio
+  LEVELS, WORLDS, SKINS, progress, startLevel, showMap, audio, input, get view() { return view; }
 };

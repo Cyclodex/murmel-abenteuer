@@ -284,3 +284,35 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
   expect(r.aus).toBeLessThan(0.01);
   expect(r.musikOhne).toBeLessThan(0.01);
 });
+
+// Rollwinkel der Kamera (0 = Horizont gerade)
+const camRoll = page => page.evaluate(() => {
+  const c = window.murmel.view.camera, x = new THREE.Vector3(1, 0, 0).applyQuaternion(c.quaternion);
+  return Math.asin(Math.max(-1, Math.min(1, x.y))) * 180 / Math.PI;
+});
+
+test('Joystick: Welt bleibt gerade, Kugel bremst beim Loslassen', async ({ page }) => {
+  await play(page, 'sz1');
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(600);
+  expect(Math.abs(await camRoll(page))).toBeLessThan(0.5);
+  await page.keyboard.up('ArrowRight');
+  expect(await page.evaluate(() => window.murmel.game.brake)).toBe(1.5);
+});
+
+test('Kippen: Welt kippt sichtbar mit, keine Bremshilfe', async ({ page }) => {
+  await play(page, 'sz1');
+  await page.evaluate(() => {
+    const inp = window.murmel.input; inp.useJoy();
+    // Kipp-Modus simulieren: Sensorwerte senden
+    window.dispatchEvent(Object.assign(new Event('deviceorientation'), { beta: 0, gamma: 0 }));
+  });
+  await page.evaluate(() => window.murmel.input.useTilt());
+  const ori = (beta, gamma) => page.evaluate(([b, g]) => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { beta: b, gamma: g })), [beta, gamma]);
+  await ori(0, 0);   // erster Wert = Nulllage (Kalibrierung)
+  await ori(0, 12);  // 12° nach rechts
+  await page.waitForTimeout(600);
+  expect(await page.evaluate(() => window.murmel.input.mode)).toBe('tilt');
+  expect(await camRoll(page)).toBeGreaterThan(3);   // rechts gekippt = sichtbare Schräglage
+  expect(await page.evaluate(() => window.murmel.game.brake)).toBe(0);
+});
