@@ -7,16 +7,20 @@ export const G = 9.82;
 export const MAX_TILT = 25 * Math.PI / 180;
 export const H = 1 / 60; // fester Physikschritt
 const HIT_MIN = 1.5;      // ab dieser Geschwindigkeitsänderung (m/s) klackt es
+const BOUNCE_MIN = 0.8;   // ab dieser Aufprallgeschwindigkeit (m/s) prallt die Murmel ab
 
-// Oberflächen: friction/restitution für die Physik,
+// Oberflächen: friction für die Physik, bounce = wie stark sie den Abprall zurückgibt (Faktor),
 // grip = wie stark die Steuerung wirkt, drag = Abbremsen pro Sekunde (negativ = gleitet länger).
 export const SURFACES = {
-  normal: { friction: 0.4, restitution: 0.15, grip: 1, drag: 0 },
-  eis: { friction: 0.02, restitution: 0.1, grip: 0.45, drag: -0.1 },
-  schlamm: { friction: 0.9, restitution: 0, grip: 1, drag: 2.2 }
+  normal: { friction: 0.4, bounce: 1, grip: 1, drag: 0 },
+  eis: { friction: 0.02, bounce: 1, grip: 0.45, drag: -0.1 },
+  schlamm: { friction: 0.9, bounce: 0.2, grip: 1, drag: 2.2 }
 };
 
-export function createGame(CANNON, level) {
+// Sprungkraft der Murmel: Anteil der Aufprallgeschwindigkeit, der zurückkommt (Wand / Boden)
+export const BALL = { wand: 0.5, boden: 0.25 };
+
+export function createGame(CANNON, level, ballProps = BALL) {
   const world = new CANNON.World();
   world.gravity.set(0, -G, 0);
   world.broadphase = new CANNON.NaiveBroadphase();
@@ -29,16 +33,25 @@ export function createGame(CANNON, level) {
     if (!surfaceMat[key]) {
       const s = SURFACES[key];
       surfaceMat[key] = new CANNON.Material(key);
-      world.addContactMaterial(new CANNON.ContactMaterial(surfaceMat[key], mBall, { friction: s.friction, restitution: s.restitution }));
+      world.addContactMaterial(new CANNON.ContactMaterial(surfaceMat[key], mBall, { friction: s.friction, restitution: 0 }));
     }
     return surfaceMat[key];
+  };
+
+  // Wände ohne Reibung: cannon.js begrenzt Reibung nicht pro Zeitschritt (viel zu stark), die Murmel
+  // würde nach dem Aufprall zwischen Wand- und Bodenreibung festklemmen.
+  const np = world.narrowphase, makeFriction = np.createFrictionEquationsFromContact;
+  np.createFrictionEquationsFromContact = function (c, out) {
+    const made = makeFriction.call(this, c, out);
+    if (made && Math.abs(c.ni.y) < 0.7) for (const f of out.slice(-2)) f.minForce = f.maxForce = 0;
+    return made;
   };
 
   const g = {
     C: CANNON, world, level, matFor, els: [], solids: [], checkpoints: [], switches: {},
     st: { stars: 0, starTotal: 0, cp: -1, won: false },
     groundBody: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0,
-    track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
+    ballProps, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
   };
 
   level.parts.forEach((d, i) => {
@@ -100,12 +113,43 @@ export function createGame(CANNON, level) {
     g.surface = SURFACES[ground && ground.userData && ground.userData.surface] || SURFACES.normal;
   }
 
+  // Abprall selbst rechnen: cannon.js schluckt fast den ganzen Rückprall (Restitution 0.8 -> ~0.3).
+  // Nur bei deutlichem Aufprall (schnell genug und steil genug), damit Rollen, Kurven- und
+  // Looping-Segmente oder Rampenübergänge nicht hüpfen.
+  const tmpV = new CANNON.Vec3(), tmpP = new CANNON.Vec3();
+  function bounce(vx, vy, vz) {
+    const v = ball.velocity;
+    let floorN = null, wallHit = false;
+    for (const c of world.contacts) {
+      let other = null, s = 1;
+      if (c.bi === ball) { other = c.bj; s = -1; } else if (c.bj === ball) other = c.bi;
+      if (!other) continue;
+      const nx = c.ni.x * s, ny = c.ni.y * s, nz = c.ni.z * s; // zeigt von der Wand zur Murmel
+      tmpP.set(ball.position.x - nx * R, ball.position.y - ny * R, ball.position.z - nz * R);
+      const ov = other.type === CANNON.Body.KINEMATIC ? other.getVelocityAtWorldPoint(tmpP, tmpV) : null;
+      const rx = vx - (ov ? ov.x : 0), ry = vy - (ov ? ov.y : 0), rz = vz - (ov ? ov.z : 0);
+      const vn0 = rx * nx + ry * ny + rz * nz, floor = ny > 0.7;
+      if (floor) floorN = [nx, ny, nz];
+      if (-vn0 < BOUNCE_MIN || -vn0 < (floor ? 0.5 : 0.35) * Math.hypot(rx, ry, rz)) continue;
+      const e = (floor ? g.ballProps.boden : g.ballProps.wand) * (SURFACES[other.material && other.material.name] || SURFACES.normal).bounce;
+      const vn1 = (v.x - (ov ? ov.x : 0)) * nx + (v.y - (ov ? ov.y : 0)) * ny + (v.z - (ov ? ov.z : 0)) * nz;
+      const dv = -e * vn0 - vn1;
+      if (dv > 0) { v.x += nx * dv; v.y += ny * dv; v.z += nz * dv; wallHit ||= !floor; }
+    }
+    // Nach dem Wandabprall rollt die Murmel in die neue Richtung (sonst bremst der alte Drall sie sofort)
+    if (wallHit && floorN) {
+      const [ux, uy, uz] = floorN, w = ball.angularVelocity, wu = w.x * ux + w.y * uy + w.z * uz;
+      w.set((uy * v.z - uz * v.y) / R + ux * wu, (uz * v.x - ux * v.z) / R + uy * wu, (ux * v.y - uy * v.x) / R + uz * wu);
+    }
+  }
+
   function substep(ix, iz, ev) {
     const grip = g.surface.grip;
     world.gravity.set(Math.sin(g.tilt) * G * ix * grip, -G, Math.sin(g.tilt) * G * iz * grip);
     for (const el of g.els) TYPES[el.type].pre?.(el, g, H);
     const v = ball.velocity, vx = v.x, vy = v.y, vz = v.z, gr = world.gravity;
     world.step(H);
+    bounce(vx, vy, vz);
     // Aufprall: Geschwindigkeitsänderung, die nicht von der Schwerkraft kommt
     const hit = Math.hypot(v.x - vx - gr.x * H, v.y - vy - gr.y * H, v.z - vz - gr.z * H);
     g.hitCool -= H;

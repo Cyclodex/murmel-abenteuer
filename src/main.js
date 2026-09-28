@@ -45,7 +45,7 @@ function isOpen(i) {
 function loadLevel(i) {
   if (view) view.dispose();
   levelIdx = i;
-  game = createGame(CANNON, LEVELS[i]);
+  game = createGame(CANNON, LEVELS[i], currentSkin().ball);
   game.tilt = power().tilt * Math.PI / 180;
   view = createView(THREE, renderer, game);
   view.setSkin(currentSkin());

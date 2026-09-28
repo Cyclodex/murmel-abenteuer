@@ -145,6 +145,57 @@ test('Alle Level sind mit jeder Stärke schaffbar, alle Sterne erreichbar (Autop
   expect(errors).toEqual([]);
 });
 
+test('Jede Murmel schafft alle Level (Autopilot, Stärke normal)', async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto('/');
+  const res = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { LEVELS } = await import('/src/levels/index.js');
+    const { autopilot, ROUTES } = await import('/tests/autopilot.js');
+    const { SKINS } = await import('/src/skins.js');
+    const out = [];
+    for (const S of SKINS) for (const L of LEVELS) {
+      const r = autopilot(createGame(CANNON, L, S.ball), ROUTES[L.id], 120);
+      out.push({ id: L.id + ' ' + S.id, won: r.won, stars: r.stars, total: r.starTotal, falls: r.falls });
+    }
+    return out;
+  });
+  for (const r of res) {
+    expect(r.won, r.id).toBe(true);
+    expect(r.falls, r.id).toBe(0);
+    if (!r.id.startsWith('ausflug')) expect(r.stars, r.id).toBe(r.total);
+  }
+});
+
+test('Murmeln prallen je nach Art verschieden stark von der Wand ab', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { SKINS } = await import('/src/skins.js');
+    const lv = { id: 't', start: [0, 0, 0], parts: [{ type: 'weg', from: [0, 0, 5], to: [0, 0, -5], width: 6, walls: 1 }] };
+    const out = {};
+    for (const S of SKINS) {
+      const g = createGame(CANNON, lv, S.ball); g.reset();
+      for (let i = 0; i < 60; i++) g.step(0, 0, 1 / 60);
+      g.ball.velocity.set(5, 0, 0); g.ball.angularVelocity.set(0, 0, -10); // rollt nach rechts auf die Wand zu
+      let vin = 0, back = 0;
+      for (let i = 0; i < 90; i++) {
+        const v0 = g.ball.velocity.x; g.step(0, 0, 1 / 60);
+        if (v0 > 0 && g.ball.velocity.x < 0) vin = v0;
+        back = Math.min(back, g.ball.velocity.x);
+      }
+      // eine halbe Sekunde nach dem Aufprall rollt sie noch zurück (klebt nicht an der Wand)
+      out[S.id] = { e: +(-back / vin).toFixed(2), vx: g.ball.velocity.x, x: g.ball.position.x };
+    }
+    return out;
+  });
+  expect(r.standard.e).toBe(0.5);
+  expect(r.fussball.e).toBe(0.75);
+  expect(r.flummi.e).toBe(0.9);
+  expect(r.melone.e).toBe(0.2);
+  for (const id of ['standard', 'fussball', 'flummi']) expect(r[id].x, id).toBeLessThan(1);
+});
+
 test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {
