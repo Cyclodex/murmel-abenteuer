@@ -9,39 +9,71 @@ export function createRenderer(THREE, canvas) {
   return renderer;
 }
 
-function makeMats(THREE) {
-  return {
-    floor: new THREE.MeshLambertMaterial({ color: 0xE2B26F }),
-    ramp: new THREE.MeshLambertMaterial({ color: 0xF0C382 }),
-    wall: new THREE.MeshLambertMaterial({ color: 0xA8743A }),
-    pad: new THREE.MeshLambertMaterial({ color: 0xFF5A8A }),
-    star: new THREE.MeshLambertMaterial({ color: 0xFFC928, emissive: 0x6a4a00 }),
-    goal: new THREE.MeshLambertMaterial({ color: 0x3BB273, emissive: 0x1a5a30 }),
-    goalFlag: new THREE.MeshLambertMaterial({ color: 0x3BB273 })
-  };
+// ---------- Texturen (alle im Code gezeichnet, keine Bilddateien) ----------
+function canvasTex(THREE, w, h, draw, repeat = true) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
 }
+function rnd(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 
-function makeStarGeo(THREE) {
-  const shape = new THREE.Shape();
-  for (let i = 0; i < 10; i++) {
-    const r = i % 2 ? 0.22 : 0.5, a = i * Math.PI / 5 + Math.PI / 2, x = Math.cos(a) * r, y = Math.sin(a) * r;
-    i ? shape.lineTo(x, y) : shape.moveTo(x, y);
+const woodTex = (THREE, base, dark) => canvasTex(THREE, 256, 256, (x, w, h) => {
+  x.fillStyle = base; x.fillRect(0, 0, w, h);
+  const r = rnd(7);
+  for (let i = 0; i < 60; i++) { // Maserung entlang der Bahn
+    x.strokeStyle = dark; x.globalAlpha = 0.08 + r() * 0.18; x.lineWidth = 1 + r() * 2;
+    const x0 = r() * w; x.beginPath(); x.moveTo(x0, 0);
+    for (let y = 0; y <= h; y += 16) x.lineTo(x0 + Math.sin(y / 30 + i) * 4, y);
+    x.stroke();
   }
-  return new THREE.ExtrudeGeometry(shape, { depth: 0.15, bevelEnabled: false });
-}
+  x.globalAlpha = 0.35; x.fillStyle = dark; x.fillRect(0, 0, w, 2); x.fillRect(0, 0, 2, h); // Brettfugen
+});
+const carpetTex = THREE => canvasTex(THREE, 256, 256, (x, w, h) => {
+  x.fillStyle = '#7FB7E6'; x.fillRect(0, 0, w, h);
+  x.fillStyle = '#9CCBF0';
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.beginPath(); x.arc(i * 64 + 32, j * 64 + 32, 18, 0, 7); x.fill(); }
+});
+const mudTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  x.fillStyle = '#6B4A2B'; x.fillRect(0, 0, w, h);
+  const r = rnd(3);
+  for (let i = 0; i < 40; i++) { x.fillStyle = r() > 0.5 ? '#7D5A36' : '#57391F'; x.beginPath(); x.arc(r() * w, r() * h, 3 + r() * 8, 0, 7); x.fill(); }
+});
+const arrowTex = THREE => canvasTex(THREE, 64, 64, (x, w, h) => {
+  x.fillStyle = '#FF7A00'; x.fillRect(0, 0, w, h);
+  x.fillStyle = '#FFE14D'; x.beginPath();
+  x.moveTo(8, 44); x.lineTo(32, 16); x.lineTo(56, 44); x.lineTo(46, 50); x.lineTo(32, 34); x.lineTo(18, 50); x.closePath(); x.fill();
+});
+const letterTex = (THREE, ch, bg) => canvasTex(THREE, 128, 128, (x, w, h) => {
+  x.fillStyle = bg; x.fillRect(0, 0, w, h);
+  x.strokeStyle = '#FFFFFF'; x.lineWidth = 8; x.strokeRect(10, 10, w - 20, h - 20);
+  x.fillStyle = '#FFFFFF'; x.font = 'bold 84px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(ch, w / 2, h / 2 + 4);
+}, false);
 
-function ballTexture(THREE) {
-  const c = document.createElement('canvas'); c.width = c.height = 64;
-  const x = c.getContext('2d');
-  x.fillStyle = '#2F6FEB'; x.fillRect(0, 0, 64, 64); x.fillStyle = '#FFFFFF'; x.fillRect(0, 26, 64, 12);
-  return new THREE.CanvasTexture(c);
+const COLORS = { rot: 0xE53935, blau: 0x1E88E5, gelb: 0xFDD835, gruen: 0x43A047, orange: 0xFB8C00, lila: 0x8E24AA };
+const LEGO_CYCLE = ['rot', 'blau', 'gelb', 'gruen'];
+
+const THEMES = {
+  standard: { sky: 0x9ED8F5, fog: [40, 90], floor: 0xE2B26F, ramp: 0xF0C382, wall: 0xA8743A, lego: false, carpet: false },
+  spielzimmer: { sky: 0xFFE7C2, fog: [50, 120], wood: true, lego: true, carpet: true }
+};
+
+// Box mit UVs in Weltgrösse (Textur wiederholt sich pro `tile` Meter statt zu strecken)
+function boxGeo(THREE, sx, sy, sz, tile = 2) {
+  const geo = new THREE.BoxGeometry(sx, sy, sz), uv = geo.attributes.uv;
+  const dims = [[sz, sy], [sz, sy], [sx, sz], [sx, sz], [sx, sy], [sx, sy]];
+  for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) {
+    const i = f * 4 + k; uv.setXY(i, uv.getX(i) * dims[f][0] / tile, uv.getY(i) * dims[f][1] / tile);
+  }
+  return geo;
 }
 
 export function createView(THREE, renderer, game) {
+  const theme = THEMES[game.level.theme] || THEMES.standard;
   const scene = new THREE.Scene();
-  const sky = game.level.sky ?? 0x9ED8F5;
-  scene.background = new THREE.Color(sky);
-  scene.fog = new THREE.Fog(sky, 40, 90);
+  scene.background = new THREE.Color(theme.sky);
+  scene.fog = new THREE.Fog(theme.sky, theme.fog[0], theme.fog[1]);
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8a6a3a, 0.75));
   const sun = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -49,22 +81,131 @@ export function createView(THREE, renderer, game) {
   Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 60 });
   scene.add(sun, sun.target);
 
-  const v = { THREE, scene, mats: makeMats(THREE), starGeo: makeStarGeo(THREE), goal: null };
-
-  for (const s of game.solids) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(s.half[0] * 2, s.half[1] * 2, s.half[2] * 2), v.mats[s.look] || v.mats.floor);
-    m.position.set(...s.pos); m.quaternion.set(...s.quat); m.receiveShadow = true;
-    scene.add(m);
+  // ---------- Materialien je "look" ----------
+  const lambert = (color, extra) => new THREE.MeshLambertMaterial({ color, ...extra });
+  const cache = {};
+  let legoIdx = 0;
+  const wood = theme.wood ? woodTex(THREE, '#D9A066', '#7A4A1E') : null;
+  const woodLight = theme.wood ? woodTex(THREE, '#EBC08A', '#8A5A2A') : null;
+  function mat(look) {
+    // Wände im Spielzimmer = Legosteine in wechselnden Farben
+    if (look === 'wall' && theme.lego) look = 'lego-' + LEGO_CYCLE[legoIdx++ % LEGO_CYCLE.length];
+    if (cache[look]) return cache[look];
+    let m;
+    const [kind, col] = look.split('-');
+    if (kind === 'lego' || kind === 'klotz') {
+      m = new THREE.MeshPhongMaterial({ color: COLORS[col] ?? 0xE53935, shininess: kind === 'lego' ? 60 : 10 });
+      if (kind === 'lego') m.userData.lego = COLORS[col] ? col : 'rot';
+    }
+    else if (look === 'floor') m = wood ? lambert(0xffffff, { map: wood }) : lambert(theme.floor);
+    else if (look === 'ramp' || look === 'bridge') m = woodLight ? lambert(0xffffff, { map: woodLight }) : lambert(theme.ramp ?? 0xF0C382);
+    else if (look === 'eis') m = new THREE.MeshPhongMaterial({ color: 0x8ED3F2, shininess: 60, specular: 0x88aacc });
+    else if (look === 'schlamm') m = lambert(0xffffff, { map: mudTex(THREE) });
+    else if (look === 'platform') m = new THREE.MeshPhongMaterial({ color: COLORS.gelb, shininess: 40 });
+    else if (look === 'seesaw') m = new THREE.MeshPhongMaterial({ color: COLORS.orange, shininess: 40 });
+    else m = lambert(theme.wall ?? 0xA8743A);
+    return (cache[look] = m);
   }
+  const letterMats = {};
+  function abcMat(ch) {
+    ch = (ch || 'A').slice(0, 1).toUpperCase();
+    if (!letterMats[ch]) {
+      const bg = '#' + Object.values(COLORS)[ch.charCodeAt(0) % 6].toString(16).padStart(6, '0');
+      letterMats[ch] = new THREE.MeshLambertMaterial({ map: letterTex(THREE, ch, bg) });
+    }
+    return letterMats[ch];
+  }
+
+  const v = {
+    THREE, scene, goal: null,
+    mats: {
+      pad: lambert(0xFF5A8A), star: lambert(0xFFC928, { emissive: 0x6a4a00 }), bonusStar: lambert(0xC77DFF, { emissive: 0x3a1060 }),
+      goal: lambert(0x3BB273, { emissive: 0x1a5a30 }), goalFlag: lambert(0x3BB273), pole: lambert(0x8A8A8A), wall: lambert(0xA8743A)
+    },
+    starGeo: null,
+    arrowTexture: () => arrowTex(THREE),
+    // Meshes für einen beweglichen Körper, die ihm jedes Bild folgen
+    bodyGroup(body) {
+      const grp = new THREE.Group();
+      body.shapes.forEach((sh, i) => {
+        const he = sh.halfExtents, o = body.shapeOffsets[i];
+        const m = new THREE.Mesh(boxGeo(THREE, he.x * 2, he.y * 2, he.z * 2), mat(body.looks[i]));
+        m.position.set(o.x, o.y, o.z); m.receiveShadow = true; m.castShadow = true; grp.add(m);
+      });
+      scene.add(grp);
+      return { tick() { grp.position.copy(body.position); grp.quaternion.copy(body.quaternion); } };
+    }
+  };
+  const shape = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 ? 0.22 : 0.5, a = i * Math.PI / 5 + Math.PI / 2, x = Math.cos(a) * r, y = Math.sin(a) * r;
+    i ? shape.lineTo(x, y) : shape.moveTo(x, y);
+  }
+  v.starGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.15, bevelEnabled: false });
+
+  // ---------- Feste Klötze ----------
+  const studs = {}; // Farbe -> Liste von Matrizen
+  const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpP = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+  const pillars = [], blockers = [];
+  for (const s of game.solids) {
+    const m0 = s.look === 'abc' ? abcMat(s.text) : mat(s.look);
+    const mesh = new THREE.Mesh(s.look === 'abc' ? new THREE.BoxGeometry(s.half[0] * 2, s.half[1] * 2, s.half[2] * 2) : boxGeo(THREE, s.half[0] * 2, s.half[1] * 2, s.half[2] * 2), m0);
+    mesh.position.set(...s.pos); mesh.quaternion.set(...s.quat); mesh.receiveShadow = true;
+    scene.add(mesh);
+    if (!s.deko) blockers.push(mesh);
+    // Legonoppen oben drauf
+    const col = m0.userData.lego;
+    if (col) {
+      const [hx, hy, hz] = s.half, nx = Math.max(1, Math.round(hx * 2 / 0.8)), nz = Math.max(1, Math.round(hz * 2 / 0.8));
+      tmpQ.set(...s.quat);
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+        tmpP.set(-hx + (i + 0.5) * hx * 2 / nx, hy + 0.08, -hz + (j + 0.5) * hz * 2 / nz).applyQuaternion(tmpQ).add(mesh.position);
+        (studs[col] = studs[col] || []).push(tmpM.clone().compose(tmpP, tmpQ, one));
+      }
+    }
+    // Säulen unter flachen Bahnstücken (nur Optik)
+    if (theme.carpet && s.track && !s.deko && Math.abs(s.quat[0]) < 1e-3 && Math.abs(s.quat[2]) < 1e-3 && s.half[2] >= 2) pillars.push(s);
+  }
+  const studGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.16, 12);
+  for (const [col, list] of Object.entries(studs)) {
+    const im = new THREE.InstancedMesh(studGeo, cache['lego-' + col], list.length);
+    list.forEach((mm, i) => im.setMatrixAt(i, mm));
+    scene.add(im);
+  }
+  const floorY = (game.level.killY ?? -8) - 1;
+  if (theme.carpet) {
+    const ct = carpetTex(THREE); ct.repeat.set(60, 60);
+    const carpet = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), lambert(0xffffff, { map: ct }));
+    carpet.rotation.x = -Math.PI / 2; carpet.position.y = floorY; scene.add(carpet);
+    pillars.forEach((s, i) => {
+      const top = s.pos[1] - s.half[1], hgt = top - floorY;
+      if (hgt < 0.5) return;
+      const p = new THREE.Mesh(boxGeo(THREE, 1.2, hgt, 1.2), mat('klotz-' + LEGO_CYCLE[i % 4]));
+      p.position.set(s.pos[0], floorY + hgt / 2, s.pos[2]); scene.add(p);
+    });
+  }
+
   const ticks = [];
   for (const el of game.els) {
     const r = TYPES[el.type].view?.(el, v);
     if (r && r.tick) ticks.push(r.tick);
   }
 
-  const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 20), new THREE.MeshPhongMaterial({ map: ballTexture(THREE), shininess: 90 }));
+  // ---------- Murmel ----------
+  const skinCanvas = document.createElement('canvas'); skinCanvas.width = 256; skinCanvas.height = 128;
+  const skinTex = new THREE.CanvasTexture(skinCanvas);
+  const ballMat = new THREE.MeshPhongMaterial({ map: skinTex, shininess: 90 });
+  const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 20), ballMat);
   ballMesh.castShadow = true; scene.add(ballMesh);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.85, 40), new THREE.MeshLambertMaterial({ color: 0xE8D5A8, side: THREE.DoubleSide }));
+  ring.rotation.x = Math.PI / 2.4; ballMesh.add(ring);
+  function setSkin(skin) {
+    skin.paint(skinCanvas.getContext('2d'), 256, 128); skinTex.needsUpdate = true;
+    ring.visible = !!skin.ring;
+    ballMat.shininess = skin.shiny ? 200 : 90; ballMat.specular.setHex(skin.shiny ? 0xFFF2B0 : 0x111111);
+  }
 
+  // ---------- Konfetti ----------
   const confetti = [];
   function burst(pos, n, colors) {
     for (let i = 0; i < n; i++) {
@@ -74,13 +215,15 @@ export function createView(THREE, renderer, game) {
     }
   }
 
-  const camPos = new THREE.Vector3(0, 8, 12), tmp = new THREE.Vector3();
+  // ---------- Kamera ----------
+  const camPos = new THREE.Vector3(), tmp = new THREE.Vector3(), ray = new THREE.Raycaster(), dir = new THREE.Vector3();
+  let camInit = false;
   function resize() {
     const w = innerWidth, h = innerHeight;
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   }
 
-  function render(dt, inX, inZ) {
+  function render(dt, inX, inZ, camYaw) {
     const b = game.ball;
     ballMesh.position.set(b.position.x, b.position.y, b.position.z);
     ballMesh.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
@@ -90,13 +233,30 @@ export function createView(THREE, renderer, game) {
       c.v.y -= 9.8 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += dt * 6; c.life -= dt;
       if (c.life <= 0) { scene.remove(c.m); c.m.geometry.dispose(); c.m.material.dispose(); confetti.splice(i, 1); }
     }
-    // Kamera folgt, kippt leicht mit der Eingabe
-    const target = ballMesh.position;
-    camPos.lerp(tmp.set(target.x * 0.6 - inX * 1.5, target.y + 7, target.z + 10 + inZ * 1.5), 0.08);
-    camera.position.copy(camPos); camera.lookAt(target.x, target.y, target.z - 3);
+    // Kamera hinter der Murmel, dreht mit der Bahn, kippt leicht mit der Eingabe
+    const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
+    const target = ballMesh.position, lat = Math.max(-4, Math.min(4, game.track.lateral || 0)) * 0.4;
+    const back = 10 + inZ * 1.5, side = -inX * 1.5 - lat;
+    tmp.set(target.x - fx * back + rx * side, target.y + 7, target.z - fz * back + rz * side);
+    // Ist etwas zwischen Murmel und Kamera (z. B. Looping), rückt die Kamera näher heran
+    dir.subVectors(tmp, target); const dist = dir.length(); dir.divideScalar(dist);
+    ray.set(target, dir); ray.far = dist;
+    const hit = ray.intersectObjects(blockers, false)[0];
+    let k = 0.08;
+    if (hit && hit.distance > 0.8) { tmp.copy(target).addScaledVector(dir, Math.max(2.5, hit.distance - 0.6)); k = 0.3; }
+    if (!camInit) { camPos.copy(tmp); camInit = true; } else camPos.lerp(tmp, k);
+    camera.position.copy(camPos); camera.lookAt(target.x + fx * 3, target.y, target.z + fz * 3);
     sun.position.set(target.x + 6, target.y + 14, target.z + 6); sun.target.position.copy(target);
     renderer.render(scene, camera);
   }
 
-  return { scene, camera, ballMesh, burst, render, resize, get goal() { return v.goal; } };
+  function dispose() {
+    scene.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      const ms = o.material ? [].concat(o.material) : [];
+      for (const m of ms) { if (m.map) m.map.dispose(); m.dispose(); }
+    });
+  }
+
+  return { scene, camera, ballMesh, burst, render, resize, setSkin, dispose, get goal() { return v.goal; } };
 }

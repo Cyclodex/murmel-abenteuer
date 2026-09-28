@@ -15,25 +15,39 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 
 | Datei | Inhalt |
 |---|---|
-| `src/levels/*.js` | Level als Daten (ein Objekt pro Level), Reihenfolge in `src/levels/index.js` |
+| `src/levels/*.js` | Level als Daten (ein Objekt pro Level), Welten und Reihenfolge in `src/levels/index.js` |
 | `src/elements.js` | Alle Bauteil-Typen: Klötze, Logik und Grafik je Typ |
-| `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar) |
-| `src/view.js` | three.js-Szene, Kamera |
-| `src/input.js` | Kippen, Joystick, Pfeiltasten |
-| `src/main.js` | Start, Bedienung, Spielschleife |
+| `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm) |
+| `src/view.js` | three.js-Szene, Themen (Spielzimmer), Kamera |
+| `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen), Pfeiltasten |
+| `src/skins.js` | Murmel-Designs und ab wie vielen Sternen sie frei sind |
+| `src/progress.js` | Spielstand in localStorage |
+| `src/main.js` | Start, Karte, Menüs, Spielschleife |
+| `tests/` | Playwright-Tests, Autopilot mit Route pro Level |
 
 ## Level bauen
 
-Koordinaten in Metern: `x` = rechts, `y` = oben, `-z` = vorwärts. Die Murmel hat Radius 0.5. Winkel (`yaw`) in Grad.
+Koordinaten in Metern: `x` = rechts, `y` = oben, `-z` = vorwärts. Murmel-Radius 0.5.
+Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rechts (+x).
+`theme: 'spielzimmer'` gibt Holzbahn, Legowände und Teppich.
 
 | Bauteil | Felder |
 |---|---|
-| `weg` | `from`, `to` (Oberkante, Höhenunterschied = Rampe), `width`, `walls` (Randhöhe), `caps` (`'start'`/`'end'`/`'both'`) |
-| `wand` | `from`, `to` (Unterkante), `height` |
-| `klotz` | `at` (Mitte), `size: [breit, hoch, tief]`, `yaw` |
-| `stern` | `at` |
-| `checkpoint` | `at` (Punkt auf dem Boden, dort geht es weiter), `size: [b, h, t]` Auslöse-Zone |
+| `weg` | `from`, `to` (Oberkante; Höhenunterschied = Rampe), `width`, `walls`, `caps` (`'start'`/`'end'`/`'both'`), `thick`, `surface` (`'eis'`/`'schlamm'`) |
+| `kurve` | `at` (Start, Mitte), `yaw` (Startrichtung), `turn` (+ rechts / - links), `radius`, `width`, `walls` |
+| `looping` | `at` (Einfahrt unten), `yaw`, `radius`, `width`, `shift` (Ausfahrt seitlich versetzt). Braucht `turbo` davor |
+| `wand` | `from`, `to` (Unterkante), `height`, `look` |
+| `klotz` | `at` (Mitte), `size: [b, h, t]`, `yaw`, `look` (`'lego-rot'`, `'klotz-blau'`, `'abc'` + `text`), `deko: true` = ohne Physik |
+| `nische` | `at` (Mitte der Öffnung am Wegrand), `yaw` (nach aussen), `width`, `depth` – Wand dort mit Lücke bauen |
+| `stern` | `at`, `bonus: true` (lila, versteckt) |
+| `checkpoint` | `at` (Boden, dort geht es weiter), `size: [b, h, t]`, `yaw` |
 | `trampolin` | `at`, `size: [b, t]`, `jump`, `push`, `yaw` |
+| `turbo` | `at`, `size: [b, t]`, `yaw`, `speed` |
+| `plattform` | `from`, `to` (Mitte Oberkante), `size: [b, t]`, `yaw`, `time`, `pause`, `rim` |
+| `wippe` | `at` (Drehpunkt, Oberkante), `size: [b, länge]`, `yaw`, `angle` |
+| `schalter` | `at`, `id` |
+| `bruecke` | `from`, `to`, `width`, `walls`, `id` (wie Schalter), `drop` |
 | `ziel` | `at`, `r` |
 
-Neues Hindernis erfinden: in `src/elements.js` einen Typ ergänzen (`solids`, `reset`, `step`, `view`), danach kann es in jedem Level verwendet werden.
+Neues Hindernis erfinden: in `src/elements.js` einen Typ ergänzen (`solids`, `init`, `reset`, `pre`, `step`, `view`), danach kann es in jedem Level verwendet werden.
+Neues Level testen: in `tests/autopilot.js` eine Route (Wegpunkte) ergänzen, dann `npm test`.

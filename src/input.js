@@ -1,25 +1,42 @@
-// Eingabe: Kippen (DeviceOrientation), Joystick (Touch/Maus) und Pfeiltasten.
+// Eingabe: Kippen (DeviceOrientation), schwebender Joystick (überall drücken + ziehen) und Pfeiltasten.
 // read() liefert [x, z] relativ zum Bildschirm: x = rechts, z = nach unten/hinten (-1..1).
-export function createInput({ joy, knob, onToast, onCalButton }) {
+const JOY_RADIUS = 50; // Pixel bis zum vollen Ausschlag
+
+export function createInput({ area, joy, knob, onToast, onCalButton }) {
   let mode = 'joy', joyX = 0, joyZ = 0, tiltX = 0, tiltZ = 0, inX = 0, inZ = 0;
   let cal = null, lastOri = null, gotOri = false;
+  let pointerId = null, ox = 0, oy = 0;
   const keys = {};
 
   const setKnob = (x, z) => { knob.style.transform = `translate(${x * 40}px,${z * 40}px)`; };
-  function joyMove(e) {
-    const r = joy.getBoundingClientRect(), t = e.touches ? e.touches[0] : e;
-    let x = (t.clientX - (r.left + r.width / 2)) / 50, z = (t.clientY - (r.top + r.height / 2)) / 50;
+
+  // Schwebender Joystick: dort, wo gedrückt wird, erscheint er
+  function placeJoy(x, y) {
+    joy.style.left = x - joy.offsetWidth / 2 + 'px';
+    joy.style.top = y - joy.offsetHeight / 2 + 'px';
+    joy.classList.add('active');
+  }
+  function homeJoy() { joy.style.left = ''; joy.style.top = ''; joy.classList.remove('active'); }
+
+  area.addEventListener('pointerdown', e => {
+    if (pointerId !== null) return;
+    pointerId = e.pointerId; ox = e.clientX; oy = e.clientY;
+    try { area.setPointerCapture(e.pointerId); } catch (err) { /* egal */ }
+    if (mode === 'joy') placeJoy(ox, oy);
+    joyX = 0; joyZ = 0; e.preventDefault();
+  });
+  area.addEventListener('pointermove', e => {
+    if (e.pointerId !== pointerId) return;
+    let x = (e.clientX - ox) / JOY_RADIUS, z = (e.clientY - oy) / JOY_RADIUS;
     const l = Math.hypot(x, z); if (l > 1) { x /= l; z /= l; }
     joyX = x; joyZ = z; e.preventDefault();
-  }
-  const joyEnd = () => { joyX = 0; joyZ = 0; };
-  joy.addEventListener('touchstart', joyMove, { passive: false });
-  joy.addEventListener('touchmove', joyMove, { passive: false });
-  joy.addEventListener('touchend', joyEnd); joy.addEventListener('touchcancel', joyEnd);
-  let mouseDown = false;
-  joy.addEventListener('mousedown', e => { mouseDown = true; joyMove(e); });
-  window.addEventListener('mousemove', e => { if (mouseDown) joyMove(e); });
-  window.addEventListener('mouseup', () => { if (mouseDown) { mouseDown = false; joyEnd(); } });
+  });
+  const end = e => {
+    if (e.pointerId !== pointerId) return;
+    pointerId = null; joyX = 0; joyZ = 0; homeJoy();
+  };
+  area.addEventListener('pointerup', end);
+  area.addEventListener('pointercancel', end);
   window.addEventListener('keydown', e => { keys[e.key] = true; });
   window.addEventListener('keyup', e => { keys[e.key] = false; });
 
@@ -45,18 +62,20 @@ export function createInput({ joy, knob, onToast, onCalButton }) {
     tiltX = f(x); tiltZ = f(z);
   });
 
-  function calibrate(silent) { if (lastOri) cal = lastOri.slice(); if (!silent) onToast('🎯 Ausgerichtet'); }
+  function calibrate(silent) { if (lastOri) cal = lastOri.slice(); if (!silent) onToast('🎯'); }
   window.addEventListener('orientationchange', () => setTimeout(() => { if (mode === 'tilt') calibrate(); }, 400));
 
+  function setMode(m) { mode = m; joy.classList.toggle('hidden', m === 'tilt'); onCalButton(m === 'tilt'); }
+
   async function useTilt() {
-    mode = 'joy';
+    setMode('joy');
     try {
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         const r = await DeviceOrientationEvent.requestPermission(); if (r !== 'granted') throw 0;
       }
-      mode = 'tilt'; cal = null; onCalButton(true);
-      setTimeout(() => { if (!gotOri) { mode = 'joy'; onCalButton(false); onToast('Kippen geht hier nicht – Joystick benutzen'); } }, 1500);
-    } catch (e) { onToast('Kippen nicht erlaubt – Joystick benutzen'); }
+      setMode('tilt'); cal = null;
+      setTimeout(() => { if (!gotOri) { setMode('joy'); onToast('📱❌ → 🕹️'); } }, 1500);
+    } catch (e) { onToast('📱❌ → 🕹️'); }
   }
 
   function read() {
@@ -69,7 +88,7 @@ export function createInput({ joy, knob, onToast, onCalButton }) {
 
   return {
     read, useTilt, calibrate,
-    useJoy() { mode = 'joy'; onCalButton(false); },
+    useJoy() { setMode('joy'); },
     get mode() { return mode; }
   };
 }
