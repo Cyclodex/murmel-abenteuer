@@ -11,14 +11,15 @@
 <body>
 <script>window.addEventListener('error',function(e){var h=document.querySelector('#startOv h1');if(h&&!window.__errShown){window.__errShown=1;var p=document.createElement('div');p.className='pill';p.style.fontSize='16px';p.textContent='Fehler: '+(e.message||'unbekannt');h.after(p);}});</script>
 <canvas id="c"></canvas>
-<div class="hud">
+<div class="hud hidden" id="hud">
   <div class="pill" id="stars">⭐ 0/5</div>
   <div class="btns">
     <button id="btnCal" class="hidden" aria-label="Neigung neu ausrichten">🎯</button>
     <button id="btnReset" aria-label="Nochmal von vorne">🔄</button>
+    <button id="btnHome" aria-label="Zur Karte">🏠</button>
   </div>
 </div>
-<div id="joy" aria-hidden="true"><div id="knob"></div></div>
+<div id="joy" class="hidden" aria-hidden="true"><div id="knob"></div></div>
 <div id="toast" class="hidden"></div>
 
 <div class="overlay" id="startOv">
@@ -28,10 +29,27 @@
     <button class="big" id="startJoy">🕹️<small>Joystick</small></button>
   </div>
 </div>
+<div class="overlay hidden" id="mapOv">
+  <div class="row">
+    <div class="pill" id="mapStars">⭐ 0</div>
+    <button id="btnSkins" aria-label="Murmel aussuchen">🎨</button>
+  </div>
+  <div id="worlds"></div>
+</div>
+<div class="overlay hidden" id="skinOv">
+  <h1>🎨</h1>
+  <div class="grid" id="skinGrid"></div>
+  <button class="big" id="skinBack" aria-label="Fertig">✔️</button>
+</div>
 <div class="overlay hidden" id="winOv">
   <h1>🏆 Geschafft!</h1>
   <div class="pill" id="winStars">⭐⭐⭐⭐⭐</div>
-  <button class="big" id="againBtn">🔄<small>Nochmal</small></button>
+  <div class="pill hidden" id="winUnlock"></div>
+  <div class="row">
+    <button class="big" id="againBtn" aria-label="Nochmal">🔄</button>
+    <button class="big" id="nextBtn" aria-label="Nächstes Level">▶️</button>
+    <button class="big" id="mapBtn" aria-label="Zur Karte">🏠</button>
+  </div>
 </div>
 
 <script src="vendor/three.min.js"></script>
