@@ -147,7 +147,15 @@ export function createAudio(opts = {}) {
     magnet: t => { tone(220, t, 0.4, 0.2, 'sawtooth', 440); tone(880, t + 0.05, 0.3, 0.1, 'sine', 1760); },
     laden: t => { for (let i = 0; i < 4; i++) tone(midi(60 + i * 4), t + i * 0.18, 0.1, 0.25, 'square'); },
     boom: t => { hiss(t, 0.5, 1.0, 'lowpass', 900, 150, 0.7); tone(90, t, 0.4, 0.9, 'sine', 35); bell(midi(96), t + 0.1, 0.1, 0.4); },
-    tock: (t, i = 0) => { tone(midi(72 + Math.min(i, 12) * 2), t, 0.07, 0.5, 'triangle'); hiss(t, 0.02, 0.3, 'highpass', 3000); }
+    tock: (t, i = 0) => { tone(midi(72 + Math.min(i, 12) * 2), t, 0.07, 0.5, 'triangle'); hiss(t, 0.02, 0.3, 'highpass', 3000); },
+    // Jubel beim Freischalten: Trommelwirbel, Fanfare, Glitzer
+    jubel: t => {
+      for (let i = 0; i < 8; i++) hiss(t + i * 0.04, 0.05, 0.25, 'bandpass', 1800, null, 1);
+      [67, 72, 76, 79].forEach((n, i) => tone(midi(n), t + 0.35 + i * 0.1, 0.16, 0.18, 'square'));
+      [72, 76, 79, 84].forEach(n => tone(midi(n), t + 0.8, 0.8, 0.07, 'triangle', null, sfxBus, 0.02));
+      for (let i = 0; i < 8; i++) bell(midi(96 + (i % 4) * 3), t + 0.85 + i * 0.06, 0.1, 0.4);
+      tone(90, t + 0.8, 0.3, 0.5, 'sine', 45);
+    }
   };
 
   function sfx(name, strength) {

@@ -14,12 +14,20 @@ function watchErrors(page) {
   return errors;
 }
 
-// Start -> Joystick -> Karte -> Level wählen
+// Neuen Spieler anlegen (Spieler-Auswahl muss offen sein)
+async function newPlayer(page, name) {
+  await expect(page.locator('#playerOv')).toBeVisible();
+  await page.fill('#playerName', name);
+  await page.click('#playerForm button');
+  await expect(page.locator('#mapOv')).toBeVisible();
+}
+
+// Start -> Joystick -> Spieler -> Karte -> Level wählen
 async function play(page, levelId = 'ausflug') {
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
   await page.click('#startJoy');
-  await expect(page.locator('#mapOv')).toBeVisible();
+  await newPlayer(page, 'Test');
   await page.click(`.lvl[data-level="${levelId}"]`);
   await expect(page.locator('#hud')).toBeVisible();
   expect(await page.evaluate(() => window.murmel.running)).toBe(true);
@@ -106,7 +114,65 @@ test('Level schaffen speichert Fortschritt und schaltet frei', async ({ page }) 
   await expect(page.locator('.skin[data-skin="fussball"]')).toBeEnabled();
   await expect(page.locator('.skin[data-skin="melone"]')).toBeDisabled();
   await page.click('.skin[data-skin="fussball"]');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v1')).skin)).toBe('fussball');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v2')).players[0].skin)).toBe('fussball');
+  expect(errors).toEqual([]);
+});
+
+test('Mehrere Spieler: eigener Spielstand, Rangliste nach Sternen', async ({ page }) => {
+  const errors = watchErrors(page);
+  const win = async (id, stars, spot) => {
+    await page.click(`.lvl[data-level="${id}"]`);
+    await page.evaluate(([n, p]) => { const g = window.murmel.game; g.st.stars = n; g.spawn(p); }, [stars, spot]);
+    await expect(page.locator('#winOv')).toBeVisible();
+  };
+  await page.goto('/');
+  await page.click('#startJoy');
+  await page.click('#playerForm button');               // leerer Name: nichts passiert
+  await expect(page.locator('#playerOv')).toBeVisible();
+  await newPlayer(page, '  Anna  ');
+  await expect(page.locator('#btnPlayer')).toHaveText('👤 Anna');
+  await win('ausflug', 3, [0, 5, -69]);
+  await expect(page.locator('#winRank')).toBeHidden();  // nur ein Spieler
+  await page.click('#mapBtn');
+  // zweiter Spieler startet bei null
+  await page.click('#btnPlayer');
+  await newPlayer(page, '<b>Ben</b>');
+  await expect(page.locator('#btnPlayer')).toHaveText('👤 <b>Ben</b>'); // Name als Text, nicht als HTML
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 0');
+  await expect(page.locator('.lvl[data-level="ausflug"]')).not.toHaveClass(/done/);
+  await win('ausflug', 5, [0, 5, -69]);
+  await expect(page.locator('#winRank')).toHaveText('🥇 <b>Ben</b> ⭐5\n🥈 Anna ⭐3');
+  // nach Neuladen: Ben ist noch dran, Rangliste in der Auswahl
+  await page.reload();
+  await page.click('#startJoy');
+  await expect(page.locator('#btnPlayer')).toHaveText('👤 <b>Ben</b>');
+  await page.click('#btnPlayer');
+  await expect(page.locator('.player')).toHaveText(['🥇 <b>Ben</b> ⭐5', '🥈 Anna ⭐3']);
+  await expect(page.locator('.player.sel')).toHaveText(/Ben/);
+  await page.click('.player:has-text("Anna")');
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
+  // gleicher Name nochmal (andere Schreibweise) = kein neuer Spieler
+  await page.click('#btnPlayer');
+  await newPlayer(page, 'anna');
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v2')).players.length)).toBe(2);
+  expect(errors).toEqual([]);
+});
+
+test('Alter Spielstand geht an den ersten neuen Spieler', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('murmel-abenteuer-v2')) localStorage.setItem('murmel-abenteuer-v1', JSON.stringify(
+      { done: { ausflug: true }, best: { ausflug: 4 }, skin: 'fussball', control: 'joy', power: 'extrem', sound: 'aus' }));
+  });
+  await page.goto('/');
+  await page.click('#startJoy');
+  await newPlayer(page, 'Mia');
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 4');
+  await expect(page.locator('#btnPower')).toHaveText('🚀');
+  await page.click('#btnPlayer');
+  await newPlayer(page, 'Leo');
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 0');
   expect(errors).toEqual([]);
 });
 
@@ -189,9 +255,53 @@ test('Murmeln prallen je nach Art verschieden stark von der Wand ab', async ({ p
   });
   expect(r.standard.e).toBe(0.5);
   expect(r.fussball.e).toBe(0.75);
-  expect(r.flummi.e).toBe(0.9);
+  expect(r.flummi.e).toBe(0.97);
+  expect(r.basketball.e).toBe(0.8);
+  expect(r.bowling.e).toBe(0.1);
   expect(r.melone.e).toBe(0.2);
-  for (const id of ['standard', 'fussball', 'flummi']) expect(r[id].x, id).toBeLessThan(1);
+  for (const id of ['standard', 'fussball', 'flummi', 'tennis', 'basketball']) expect(r[id].x, id).toBeLessThan(1);
+});
+
+test('Treppe: alle Murmeln kommen unten an, der Flummi springt am höchsten', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createTreppe } = await import('/src/treppe.js');
+    const { SKINS } = await import('/src/skins.js');
+    const t = createTreppe(CANNON, SKINS);
+    const up = SKINS.map(() => 0);
+    for (let i = 0; i < 60 * 9; i++) { t.step(1 / 60); t.games.forEach((g, k) => { up[k] = Math.max(up[k], g.ball.velocity.y); }); }
+    return SKINS.map((s, k) => ({ id: s.id, z: t.games[k].ball.position.z, up: up[k] }));
+  });
+  const by = Object.fromEntries(r.map(x => [x.id, x]));
+  for (const x of r) expect(x.z, x.id).toBeGreaterThan(0); // unten im Auslauf
+  for (const x of r) if (x.id !== 'flummi') expect(by.flummi.up, x.id).toBeGreaterThan(x.up);
+  expect(by.basketball.up).toBeGreaterThan(by.standard.up);
+});
+
+test('Menüs zeigen die Treppe im Hintergrund, Knopf 🪜 zeigt sie im Vollbild', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.backdrop);
+  await page.click('#startJoy');
+  await newPlayer(page, 'Test');
+  await page.click('#btnTreppe');
+  await expect(page.locator('#mapOv')).toBeHidden();
+  await page.waitForFunction(() => window.murmel.treppe.treppe.time > 0.5);
+  await page.click('#treppeBack');
+  await page.click('.lvl[data-level="ausflug"]');
+  expect(await page.evaluate(() => window.murmel.backdrop)).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+test('Zuschau-Modus ?autopilot fährt das Level sichtbar bis ins Ziel', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?autopilot');
+  await page.click('#startJoy');
+  await newPlayer(page, 'Robo');
+  await page.click('.lvl[data-level="ausflug"]');
+  await expect(page.locator('#pilotInfo')).toContainText('🤖 Ziel');
+  await expect(page.locator('#winOv')).toBeVisible({ timeout: 50_000 });
+  expect(errors).toEqual([]);
 });
 
 test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
@@ -230,6 +340,7 @@ test('Stärke und Ton umschalten, wird gespeichert', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/');
   await page.click('#startJoy');
+  await newPlayer(page, 'Test');
   await expect(page.locator('#btnPower')).toHaveText('🐇');
   await page.click('#btnPower');
   await expect(page.locator('#btnPower')).toHaveText('🚀');
@@ -241,7 +352,7 @@ test('Stärke und Ton umschalten, wird gespeichert', async ({ page }) => {
   await expect(page.locator('#btnSound')).toHaveText('🎵❌');
   await page.click('#btnSound');
   await expect(page.locator('#btnSound')).toHaveText('🔇');
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v1')));
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v2')));
   expect(saved.power).toBe('extrem');
   expect(saved.sound).toBe('aus');
   await page.reload();
@@ -262,7 +373,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
@@ -273,7 +384,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'hitStark', 'rollen', 'rollenEis', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'hitStark', 'rollen', 'rollenEis', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }
@@ -319,7 +430,144 @@ test('Karte im Querformat: oberste Knöpfe und letzte Welt erreichbar', async ({
   await page.setViewportSize({ width: 844, height: 390 });
   await page.goto('/');
   await page.click('#startJoy');
+  await newPlayer(page, 'Quer');
   await expect(page.locator('#btnSound')).toBeInViewport();
   await page.click('.lvl[data-level="u1"]'); // erste Level jeder Welt sind offen
   await expect(page.locator('#hud')).toBeVisible();
+});
+
+// ---------- Belohnungen: Sticker, Spuren, Jubel ----------
+// Spielstand des aktuellen Spielers
+const saved = page => page.evaluate(() => { const d = JSON.parse(localStorage.getItem('murmel-abenteuer-v2')); return d.players.find(p => p.id === d.current); });
+// Level gewinnen: Sterne setzen (optional Bonusstern), dann ins Ziel
+async function winLevel(page, stars, bonus = false) {
+  await page.evaluate(([n, b]) => {
+    const g = window.murmel.game; g.st.stars = n;
+    if (b) g.els.find(e => e.type === 'stern' && e.bonus).got = true;
+    const goal = g.els.find(e => e.type === 'ziel');
+    g.spawn([goal.at[0], goal.at[1] + 1, goal.at[2]]);
+  }, [stars, bonus]);
+  await expect(page.locator('#winOv')).toBeVisible();
+}
+
+test('Sticker werden vergeben, gespeichert und im Album gezeigt; Jubel erscheint', async ({ page }) => {
+  const errors = watchErrors(page);
+  await play(page, 'ausflug');
+  await winLevel(page, 5);
+  await expect(page.locator('#cheerOv')).toBeVisible();
+  await expect(page.locator('#cheerOv .items')).toContainText('⚽');  // neue Murmel
+  await expect(page.locator('#cheerOv .items')).toContainText('🏆');  // Welt komplett
+  const st = (await saved(page)).stickers;
+  expect(Object.keys(st).sort()).toEqual(['lvl:ausflug', 'sterne:ausflug', 'welt:uebung', 'x:murmel', 'x:spur'].sort());
+  await page.click('#cheerOv');                                        // Antippen schliesst
+  await expect(page.locator('#cheerOv')).toBeHidden();
+
+  // Level im Spielzimmer mit Bonusstern, aber nicht allen Sternen
+  await page.click('#mapBtn');
+  await page.click('.lvl[data-level="sz1"]');
+  await winLevel(page, 3, true);
+  const st2 = (await saved(page)).stickers;
+  expect(st2['bonus:sz1']).toBe(true);
+  expect(st2['sterne:sz1']).toBeUndefined();
+  expect(st2['welt:spielzimmer']).toBeUndefined();
+
+  // nach Neuladen im Album sichtbar
+  await page.reload();
+  await page.click('#startJoy');
+  await page.click('#btnAlbum');
+  await expect(page.locator('#albumOv')).toBeVisible();
+  const total = await page.evaluate(() => window.murmel.ALBUM.all.length);
+  await expect(page.locator('#albumCount')).toHaveText(`📒 7/${total}`);
+  await expect(page.locator('.sticker[data-sticker="lvl:ausflug"]')).toHaveClass(/got/);
+  await expect(page.locator('.sticker[data-sticker="welt:uebung"]')).toHaveClass(/got/);
+  await page.click('.tab[data-page="spielzimmer"]');
+  await expect(page.locator('.sticker[data-sticker="bonus:sz1"]')).toHaveClass(/got/);
+  await expect(page.locator('.sticker[data-sticker="sterne:sz1"]')).not.toHaveClass(/got/);
+  await expect(page.locator('.sticker[data-sticker="sterne:sz1"]')).toContainText('🔒');
+  await page.click('#albumBack');
+  await expect(page.locator('#mapOv')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('Alter Spielstand ohne Sticker: verdiente Sticker werden nachgetragen, Sticker pro Spieler', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('murmel-abenteuer-v2'))
+      localStorage.setItem('murmel-abenteuer-v1', JSON.stringify({ done: { ausflug: true, sz1: true }, best: { ausflug: 2, sz1: 6 }, skin: 'standard' }));
+  });
+  await page.goto('/');
+  await page.click('#startJoy');
+  await newPlayer(page, 'Alt');
+  const st = (await saved(page)).stickers;
+  expect(Object.keys(st).sort()).toEqual(['bonus:sz1', 'lvl:ausflug', 'lvl:sz1', 'sterne:sz1', 'welt:uebung', 'x:murmel', 'x:spur'].sort());
+  await expect(page.locator('#cheerOv')).toBeHidden(); // kein Jubel beim Nachtragen
+  // zweiter Spieler hat ein leeres Album
+  await page.click('#btnPlayer');
+  await newPlayer(page, 'Neu');
+  expect((await saved(page)).stickers).toEqual({});
+  await page.click('#btnAlbum');
+  await expect(page.locator('.sticker.got')).toHaveCount(0);
+});
+
+test('Spur auswählbar, gespeichert und sichtbar hinter der Murmel', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('murmel-abenteuer-v2'))
+      localStorage.setItem('murmel-abenteuer-v1', JSON.stringify({ done: { ausflug: true }, best: { ausflug: 5 } }));
+  });
+  await page.goto('/');
+  await page.click('#startJoy');
+  await newPlayer(page, 'Spur');
+  await page.click('#btnSkins');
+  await expect(page.locator('.skin[data-trail="keine"]')).toHaveClass(/sel/);
+  await expect(page.locator('.skin[data-trail="funken"]')).toBeEnabled();   // 3 Sterne
+  await expect(page.locator('.skin[data-trail="blasen"]')).toBeEnabled();   // 3 Sticker
+  await expect(page.locator('.skin[data-trail="sterne"]')).toBeDisabled();  // 12 Sterne
+  await expect(page.locator('.skin[data-trail="sterne"]')).toContainText('12⭐');
+  await page.click('.skin[data-trail="funken"]');
+  await expect(page.locator('.skin[data-trail="funken"]')).toHaveClass(/sel/);
+  expect((await saved(page)).trail).toBe('funken');
+  await page.reload();
+  await page.click('#startJoy');
+  await page.click('.lvl[data-level="ausflug"]');
+  await page.keyboard.down('ArrowUp');
+  await page.waitForTimeout(1200);
+  const n = await page.evaluate(() => window.murmel.view.trailFx.count);
+  await page.keyboard.up('ArrowUp');
+  expect(n).toBeGreaterThan(3);
+  // Spur-Teilchen sind ein einziges InstancedMesh (keine neuen Meshes pro Bild)
+  const meshes = await page.evaluate(() => { let k = 0; window.murmel.view.scene.traverse(() => k++); return k; });
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => { let k = 0; window.murmel.view.scene.traverse(() => k++); return k; })).toBe(meshes);
+  expect(errors).toEqual([]);
+});
+
+test('Alle Spuren laufen ohne Fehler', async ({ page }) => {
+  const errors = watchErrors(page);
+  await play(page, 'ausflug');
+  for (const id of ['funken', 'blasen', 'sterne', 'regenbogen', 'herzen', 'feuer', 'keine']) {
+    await page.evaluate(id => window.murmel.view.setTrail(window.murmel.TRAILS.find(t => t.id === id)), id);
+    await page.evaluate(() => { const b = window.murmel.game.ball; b.velocity.set(0, 0, -6); });
+    await page.waitForTimeout(250);
+  }
+  expect(await page.evaluate(() => window.murmel.view.trailFx.count)).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test('Ohne localStorage: gewinnen, Sticker, Album und Spur funktionieren', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'localStorage', { get() { throw new Error('gesperrt'); } });
+  });
+  await play(page, 'ausflug');
+  await winLevel(page, 5);
+  await expect(page.locator('#cheerOv')).toBeVisible();
+  await page.click('#cheerOv');
+  await page.click('#mapBtn');
+  await page.click('#btnAlbum');
+  await expect(page.locator('.sticker[data-sticker="lvl:ausflug"]')).toHaveClass(/got/);
+  await page.click('#albumBack');
+  await page.click('#btnSkins');
+  await page.click('.skin[data-trail="funken"]');
+  await expect(page.locator('.skin[data-trail="funken"]')).toHaveClass(/sel/);
+  expect(errors).toEqual([]);
 });

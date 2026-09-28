@@ -22,6 +22,8 @@ background:rgba(255,255,255,.35);border:3px solid rgba(255,255,255,.8);touch-act
 .big{width:auto;height:auto;padding:14px 26px;font-size:34px;border-radius:24px}
 .big small{display:block;font-size:18px}
 .hidden{display:none!important}
+#pilotInfo{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);background:var(--panel);padding:4px 12px;border-radius:12px;font-size:15px;white-space:nowrap;pointer-events:none}
+#treppeBack{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%)}
 #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 190px);transform:translateX(-50%);background:var(--panel);padding:6px 16px;border-radius:14px;font-size:18px}
 /* Schwebender Joystick: erscheint dort, wo man drückt */
 #joy{pointer-events:none;opacity:.35;transition:opacity .15s}
@@ -41,7 +43,49 @@ background:rgba(255,255,255,.35);border:3px solid rgba(255,255,255,.8);touch-act
 .skin small{font-size:15px}
 .skin.sel{outline:5px solid var(--go)}
 .skin:disabled{opacity:.5;cursor:default}
-/* Karte kann höher als der Bildschirm sein: oben beginnen (scrollbar), zentriert nur wenn Platz ist */
-#mapOv{justify-content:flex-start}
-#mapOv>:first-child{margin-top:auto}
-#mapOv>:last-child{margin-bottom:auto}
+/* Spieler-Auswahl */
+#playerList{display:flex;flex-direction:column;gap:10px;width:min(100%,320px)}
+.player{width:100%;height:auto;padding:8px 16px;font-size:24px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player.sel{outline:5px solid var(--go)}
+#playerForm{width:min(100%,320px);gap:10px}
+#playerName{flex:1;min-width:0;font:inherit;font-size:24px;padding:6px 14px;border:0;border-radius:18px;background:var(--panel);color:var(--ink);
+-webkit-user-select:text;user-select:text;box-shadow:inset 0 2px 0 rgba(0,0,0,.12)}
+#btnPlayer{width:auto;height:auto;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank{background:var(--panel);border-radius:18px;padding:6px 16px;font-size:20px;white-space:pre-line;text-align:left}
+/* Spuren-Auswahl, Sticker-Album */
+.tabs{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.tab{background:#fff}
+.tab.sel{outline:5px solid var(--go)}
+.grid.stickers{grid-template-columns:repeat(4,78px)}
+.sticker{position:relative;width:78px;height:78px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:44px;
+box-shadow:0 3px 0 rgba(0,0,0,.18);border:4px dashed rgba(0,0,0,.15);box-sizing:border-box}
+.sticker.got{border:4px solid #fff;background:radial-gradient(circle at 35% 30%,#FFF8D6,#FFE08A);transform:rotate(-6deg)}
+.sticker.got:nth-child(2n){transform:rotate(5deg)}
+.sticker:not(.got) span{filter:grayscale(1) brightness(0);opacity:.18}
+.sticker b{position:absolute;right:-4px;bottom:-4px;font-size:24px}
+/* Jubel beim Freischalten */
+#cheerOv{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.35);overflow:hidden}
+#cheerOv .items{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:90vw;line-height:1.1;filter:drop-shadow(0 6px 0 rgba(0,0,0,.15))}
+#cheerOv .items span{display:inline-block;animation:hop .9s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes hop{0%{transform:translateY(100vh) scale(.3) rotate(-30deg)}70%{transform:translateY(-6%) scale(1.15) rotate(8deg)}100%{transform:none}}
+#cheerOv .rain{position:absolute;inset:0;pointer-events:none}
+#cheerOv .rain i{position:absolute;top:-20px;width:12px;height:18px;border-radius:3px;opacity:0}
+#cheerOv .rain.go i{animation-name:fall;animation-timing-function:linear;animation-fill-mode:both}
+@keyframes fall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:1}}
+@media (prefers-reduced-motion:reduce){#cheerOv .items span{animation-duration:.01s}#cheerOv .rain{display:none}}
+/* lange Menüs: oben nicht abschneiden, trotzdem mittig wenn Platz */
+.overlay{justify-content:flex-start}
+.overlay>:first-child{margin-top:auto}
+.overlay>:last-child{margin-bottom:auto}
+#skinOv .grid{grid-template-columns:repeat(4,76px)}
+#skinOv .skin{width:76px;height:76px;font-size:38px}
+@media (orientation:landscape) and (max-height:500px){
+  .overlay{gap:10px}
+  .overlay h1{font-size:30px}
+  #skinOv .grid{grid-template-columns:repeat(9,56px);gap:8px}
+  #skinOv .skin{width:56px;height:56px;font-size:28px}
+  #skinOv .skin small{font-size:12px}
+  .grid.stickers{grid-template-columns:repeat(8,60px)}
+  .sticker{width:60px;height:60px;font-size:32px}
+}
+#mapOv .row{flex-wrap:wrap;justify-content:center;gap:12px}

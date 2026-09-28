@@ -1,4 +1,4 @@
-// Autopilot für Tests: fährt eine Liste von Wegpunkten ab und prüft so, ob ein Level schaffbar ist.
+// Autopilot für Tests (und zum Zuschauen: Spiel mit ?autopilot öffnen): fährt eine Liste von Wegpunkten ab und prüft so, ob ein Level schaffbar ist.
 // Wegpunkt: {x, z, speed?, r?, free?, wait?}
 //   speed = Wunschtempo (m/s), r = Radius "erreicht", free = nicht lenken (z. B. im Looping),
 //   wait = Name einer Bedingung aus WAITS, vorher wird angehalten.
@@ -8,6 +8,7 @@ const WAITS = {
   platAtTo: (g, n = 0) => { const e = g.els.filter(x => x.type === 'plattform')[n]; return dist3(e.body.position, e.to) < 0.05 && speed(e.body.velocity) < 0.01; },
   bridgeUp: g => g.els.filter(x => x.type === 'bruecke').every(e => e.k >= 1),
   hoehe: (g, y) => g.ball.position.y > y,
+  amBoden: g => !!g.groundBody && Math.abs(g.ball.velocity.y) < 0.3,
   // der drehende Balken ist gerade am Punkt [x, z] vorbei (10°..80° danach), bis er zurückkommt bleibt Zeit
   balkenWeg: (g, [x, z]) => g.els.filter(e => e.type === 'balken').every(e => {
     const dx = x - e.at[0], dz = z - e.at[2];
@@ -21,51 +22,69 @@ const dist3 = (p, a) => Math.hypot(p.x - a[0], p.y - a[1], p.z - a[2]);
 const speed = v => Math.hypot(v.x, v.y, v.z);
 const clamp = v => Math.max(-1, Math.min(1, v));
 
-export function autopilot(g, wps, maxTime = 180, delay = 0) {
-  const H = 1 / 60, log = [];
-  let i = 0, falls = 0, t = 0;
+// Steuerung für einen Schritt: liefert die Eingabe [ix, iz] in Welt-Richtung.
+// Wird von autopilot() (Tests) und vom Zuschau-Modus im Spiel (?autopilot) benutzt.
+export function createPilot(g, wps) {
   const ok = new Set(); // Wegpunkte, deren Wartebedingung schon erfüllt war (einrasten)
+  const pilot = {
+    i: 0, waiting: null,
+    drive() {
+      const w = wps[Math.min(pilot.i, wps.length - 1)], p = g.ball.position, v = g.ball.velocity;
+      let ix = 0, iz = 0;
+      const [wName, wArg] = w.wait ? [].concat(w.wait) : [];
+      const waiting = wName && !ok.has(pilot.i) && !WAITS[wName](g, wArg);
+      if (wName && !waiting) ok.add(pilot.i);
+      pilot.waiting = waiting ? wName : null;
+      // Beim Warten den vorherigen Wegpunkt halten
+      const tgt = waiting ? wps[Math.max(0, pilot.i - 1)] : w;
+      const dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1e-6;
+      const onKin = g.groundBody && g.groundBody.type === g.C.Body.KINEMATIC;
+      if (w.follow && !waiting) { // der Bahn folgen (Spirale), bis die Murmel tief genug ist
+        const y = g.track.yaw, fx = -Math.sin(y), fz = -Math.cos(y), rx = Math.cos(y), rz = -Math.sin(y), sp = w.speed ?? 4;
+        const lat = -(g.track.lateral || 0) * 1.5;
+        ix = clamp((fx * sp - v.x) * 0.8 + rx * lat); iz = clamp((fz * sp - v.z) * 0.8 + rz * lat);
+        if (p.y < w.bisY) pilot.i++;
+      } else if (waiting && onKin) { // mitfahren: relativ zur Plattform stillhalten
+        const pv = g.groundBody.velocity;
+        ix = clamp(-(v.x - pv.x) * 0.5); iz = clamp(-(v.z - pv.z) * 0.5);
+      } else if (!tgt.free || waiting) {
+        const sp = waiting ? Math.min(2, d * 2) : Math.min(w.speed ?? 4, d * 1.5 + 1);
+        ix = clamp((dx / d * sp - v.x) * 1.2); iz = clamp((dz / d * sp - v.z) * 1.2);
+        const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
+      }
+      if (!waiting && !w.follow && d < (w.r ?? 1.2)) pilot.i++;
+      return [ix, iz];
+    },
+    // nach dem Runterfallen beim nächstgelegenen Wegpunkt weitermachen
+    fell() {
+      ok.clear();
+      let best = 0, bd = 1e9;
+      wps.forEach((q, k) => { if (q.x === undefined) return; const dd = Math.hypot(q.x - g.ball.position.x, q.z - g.ball.position.z); if (dd < bd) { bd = dd; best = k; } });
+      pilot.i = best;
+    }
+  };
+  return pilot;
+}
+
+// ROUTES[id] kann eine Liste von Routen sein (z. B. Umweg zum Bonusstern): die erste ist die Hauptroute.
+export const mainRoute = r => (r && Array.isArray(r[0]) ? r[0] : r);
+
+export function autopilot(g, wps, maxTime = 180, delay = 0) {
+  const H = 1 / 60, log = [], pilot = createPilot(g, wps);
+  let falls = 0, t = 0;
   g.reset();
   while (t < maxTime && !g.st.won) {
-    const w = wps[Math.min(i, wps.length - 1)], p = g.ball.position, v = g.ball.velocity;
-    let ix = 0, iz = 0;
-    const [wName, wArg] = w.wait ? [].concat(w.wait) : [];
-    const waiting = wName && !ok.has(i) && !WAITS[wName](g, wArg);
-    if (wName && !waiting) ok.add(i);
-    // Beim Warten den vorherigen Wegpunkt halten
-    const tgt = waiting ? wps[Math.max(0, i - 1)] : w;
-    const dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1e-6;
-    const onKin = g.groundBody && g.groundBody.type === g.C.Body.KINEMATIC;
-    if (w.follow && !waiting) { // der Bahn folgen (Spirale), bis die Murmel tief genug ist
-      const y = g.track.yaw, fx = -Math.sin(y), fz = -Math.cos(y), rx = Math.cos(y), rz = -Math.sin(y), sp = w.speed ?? 4;
-      const lat = -(g.track.lateral || 0) * 1.5;
-      ix = clamp((fx * sp - v.x) * 0.8 + rx * lat); iz = clamp((fz * sp - v.z) * 0.8 + rz * lat);
-      if (p.y < w.bisY) i++;
-    } else if (waiting && onKin) { // mitfahren: relativ zur Plattform stillhalten
-      const pv = g.groundBody.velocity;
-      ix = clamp(-(v.x - pv.x) * 0.5); iz = clamp(-(v.z - pv.z) * 0.5);
-    } else if (!tgt.free || waiting) {
-      const sp = waiting ? Math.min(2, d * 2) : Math.min(w.speed ?? 4, d * 1.5 + 1);
-      ix = clamp((dx / d * sp - v.x) * 1.2); iz = clamp((dz / d * sp - v.z) * 1.2);
-      const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
-    }
-    if (!waiting && !w.follow && d < (w.r ?? 1.2)) i++;
+    let [ix, iz] = pilot.drive();
     if (t < delay) { ix = 0; iz = 0; } // Startverzögerung: andere Phase für Balken/Plattformen
     const ev = g.step(ix, iz, H);
     t += H;
     for (const e of ev) {
       log.push(`${e}@${t.toFixed(1)}`);
-      if (e === 'fall') {
-        falls++; ok.clear();
-        // beim nächstgelegenen Wegpunkt weitermachen
-        let best = 0, bd = 1e9;
-        wps.forEach((q, k) => { const dd = Math.hypot(q.x - g.ball.position.x, q.z - g.ball.position.z); if (dd < bd) { bd = dd; best = k; } });
-        i = best;
-      }
+      if (e === 'fall') { falls++; pilot.fell(); }
     }
   }
   const got = g.els.filter(e => e.type === 'stern').map(e => !!e.got);
-  return { won: g.st.won, stars: g.st.stars, starTotal: g.st.starTotal, falls, time: +t.toFixed(1), wp: i, log, got };
+  return { won: g.st.won, stars: g.st.stars, starTotal: g.st.starTotal, falls, time: +t.toFixed(1), wp: pilot.i, log, got };
 }
 
 // Level mit allen Routen prüfen: die erste Route muss gewinnen, alle zusammen sammeln die Sterne.
@@ -102,20 +121,20 @@ export const ROUTES = {
     { x: -26, z: -16, speed: 2, wait: 'platAtFrom' }, { x: -33, z: -16, speed: 2, wait: 'platAtTo' }, { x: -36.25, z: -15, speed: 2 }, { x: -36.25, z: -10.5, speed: 2 }, { x: -36.25, z: -15, speed: 2 }, { x: -40, z: -16 }
   ],
   g1: [
-    { x: 0, z: -8, speed: 3 }, { x: 0, z: -29 }, { x: -1, z: -30.25, speed: 2 }, { x: -5, z: -30.25, speed: 2 }, { x: 0, z: -30.25, speed: 2 },
+    { x: 0, z: -8, speed: 3 }, { x: 0, z: -29 }, { x: -1, z: -30.25, speed: 2 }, { x: -5, z: -30.25, speed: 2, r: 0.5 }, { x: 0, z: -30.25, speed: 2 },
     { x: 0, z: -35 }, { x: 1.46, z: -39.54 }, { x: 5, z: -41 }, { x: 12, z: -41, speed: 3 }, { x: 16, z: -41, speed: 2 }, { x: 31, z: -41 }
   ],
   g2: [
     { x: 0, z: -7 }, { x: 0, z: -9, speed: 3 }, { x: 0, z: -24, speed: 3 }, { x: 0, z: -30 }, { x: 0, z: -34, speed: 2 },
-    { x: 0, z: -39, wait: ['hoehe', 7] }, { x: 0, z: -41.25, speed: 2 }, { x: -5, z: -41.25, speed: 2 }, { x: 0, z: -41.25, speed: 2 }, { x: 0, z: -46 }
+    { x: 0, z: -39, wait: ['hoehe', 7] }, { x: 0, z: -41.25, speed: 2 }, { x: -5, z: -41.25, speed: 2, r: 0.5, wait: 'amBoden' }, { x: 0, z: -41.25, speed: 2 }, { x: 0, z: -46 }
   ],
   g3: [
     { x: 0, z: -3 }, { follow: true, bisY: 2.6, speed: 4 }, { x: 0, z: -8 }, { x: 0, z: -26, speed: 4 }, { x: 0, z: -30 },
-    { x: -5, z: -31.75, speed: 2 }, { x: 0, z: -31.75, speed: 3 }, { x: 0, z: -36 }
+    { x: -5, z: -31.75, speed: 2, r: 0.5 }, { x: 0, z: -31.75, speed: 3 }, { x: 0, z: -36 }
   ],
   k1: [
     { x: 0, z: -6 }, { x: 0, z: -20, speed: 5 }, { x: -1.46, z: -25.54 }, { x: -5, z: -27 }, { x: -19, z: -27, speed: 4 }, { x: -27, z: -27 },
-    { x: -37, z: -27, speed: 4 }, { x: -41.25, z: -26 }, { x: -41.25, z: -21.5, speed: 2 }, { x: -41.25, z: -26, speed: 2 }, { x: -44.5, z: -27 }
+    { x: -37, z: -27, speed: 4 }, { x: -41.25, z: -26 }, { x: -41.25, z: -21.5, speed: 2, r: 0.5 }, { x: -41.25, z: -26, speed: 2 }, { x: -44.5, z: -27 }
   ],
   k2: [
     { x: 0, z: -5 }, { x: 5, z: -7, speed: 2, r: 0.5 }, { x: 4, z: -8, speed: 2 },
@@ -123,7 +142,7 @@ export const ROUTES = {
   ],
   k3: [
     { x: 0, z: -8, speed: 4 }, { x: 0, z: -18 }, { x: 0, z: -22, speed: 3 }, { x: 10, z: -30 }, { x: 13.75, z: -31, speed: 2 },
-    { x: 13.75, z: -35, speed: 2 }, { x: 13.75, z: -30, speed: 2 }, { x: 18, z: -30 }, { x: 36, z: -30 }
+    { x: 13.75, z: -35, speed: 2, r: 0.5 }, { x: 13.75, z: -30, speed: 2 }, { x: 18, z: -30 }, { x: 36, z: -30 }
   ],
   w1: [
     [{ x: 0, z: -6, speed: 3 }, { x: 0, z: -22, speed: 5 }, { x: 0, z: -26, speed: 3 }, { x: 0, z: -40, speed: 5 }, { x: 0, z: -45 }],
@@ -138,15 +157,15 @@ export const ROUTES = {
   ],
   u1: [
     { x: 0, z: -8 }, { x: 1.76, z: -14.24 }, { x: 6, z: -16 }, { x: 22, z: -16, speed: 3 }, { x: 25.54, z: -17.46 }, { x: 27, z: -21 },
-    { x: 26, z: -25.75 }, { x: 21.5, z: -25.75, speed: 2 }, { x: 26, z: -25.75, speed: 2 }, { x: 27, z: -30 }
+    { x: 26, z: -25.75 }, { x: 21.5, z: -25.75, speed: 2, r: 0.5 }, { x: 26, z: -25.75, speed: 2 }, { x: 27, z: -30 }
   ],
   u2: [
-    { x: 0, z: -8 }, { x: 0, z: -10, speed: 1.5 }, { x: 0, z: -15, wait: ['hoehe', 6] }, { x: -5, z: -18, speed: 2 }, { x: 0, z: -18, speed: 2 },
+    { x: 0, z: -8 }, { x: 0, z: -10, speed: 1.5 }, { x: 0, z: -15, wait: ['hoehe', 6] }, { x: -5, z: -18, speed: 2, r: 0.5 }, { x: 0, z: -18, speed: 2 },
     { x: 0, z: -24 }, { x: 0, z: -26, speed: 1.5 }, { x: 0, z: -31, wait: ['hoehe', 11] }, { x: 0, z: -35 }, { follow: true, bisY: 1.6, speed: 4 },
     { x: 10, z: -31 }, { x: 10, z: -27 }
   ],
   u3: [
     { x: 0, z: -6 }, { x: 0, z: -17, speed: 4 }, { x: 3, z: -24, speed: 4, r: 0.6, wait: ['balkenWeg', [2, -20.5]] }, { x: 0, z: -30, speed: 4 }, { x: 0, z: -44 }, { x: 0, z: -46, speed: 2 }, { x: 0, z: -62 },
-    { x: -3, z: -62.25, speed: 2 }, { x: -5.5, z: -62.25, speed: 2 }, { x: 0, z: -62.25, speed: 3 }, { x: 0, z: -66 }
+    { x: -3, z: -62.25, speed: 2 }, { x: -5.5, z: -62.25, speed: 2, r: 0.5 }, { x: 0, z: -62.25, speed: 3 }, { x: 0, z: -66 }
   ]
 };

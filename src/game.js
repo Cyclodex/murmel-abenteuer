@@ -17,8 +17,9 @@ export const SURFACES = {
   schlamm: { friction: 0.9, bounce: 0.2, grip: 1, drag: 2.2 }
 };
 
-// Sprungkraft der Murmel: Anteil der Aufprallgeschwindigkeit, der zurückkommt (Wand / Boden)
-export const BALL = { wand: 0.5, boden: 0.25 };
+// Sprungkraft der Murmel: Anteil der Aufprallgeschwindigkeit, der zurückkommt (Wand / Boden),
+// schwere = Faktor für die Schwerkraft nach unten (Mond < 1)
+export const BALL = { wand: 0.5, boden: 0.25, schwere: 1 };
 
 // Kollisionsgruppen: feste/bewegte Teile, Murmel, lose Teile (z. B. Dominos)
 export const GRP = { fest: 1, murmel: 2, lose: 4 };
@@ -58,7 +59,8 @@ export function createGame(CANNON, level, ballProps = BALL) {
     C: CANNON, world, level, matFor, els: [], solids: [], checkpoints: [], switches: {},
     st: { stars: 0, starTotal: 0, cp: -1, won: false },
     groundBody: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0,
-    ballProps, G: gy, lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
+    // Leichte Murmel (schwere < 1) nur in Welten mit normaler Schwerkraft; im Weltraum gilt die Level-Schwerkraft
+    ballProps, G: phys.schwerkraft ? gy : gy * (ballProps.schwere ?? 1), lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
   };
 
   level.parts.forEach((d, i) => {
@@ -137,7 +139,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
       const rx = vx - (ov ? ov.x : 0), ry = vy - (ov ? ov.y : 0), rz = vz - (ov ? ov.z : 0);
       const vn0 = rx * nx + ry * ny + rz * nz, floor = ny > 0.7;
       if (floor) floorN = [nx, ny, nz];
-      if (-vn0 < BOUNCE_MIN || -vn0 < (floor ? 0.5 : 0.35) * Math.hypot(rx, ry, rz)) continue;
+      if (-vn0 < BOUNCE_MIN || -vn0 < 0.35 * Math.hypot(rx, ry, rz)) continue;
       const e = (floor ? g.ballProps.boden : g.ballProps.wand) * (SURFACES[other.material && other.material.name] || SURFACES.normal).bounce * bounceF;
       const vn1 = (v.x - (ov ? ov.x : 0)) * nx + (v.y - (ov ? ov.y : 0)) * ny + (v.z - (ov ? ov.z : 0)) * nz;
       const dv = -e * vn0 - vn1;
@@ -152,7 +154,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
 
   function substep(ix, iz, ev) {
     const grip = g.lock ? 0 : g.surface.grip; // lock: Röhre/Kanone steuern die Murmel
-    world.gravity.set(Math.sin(g.tilt) * G * ix * grip, -gy, Math.sin(g.tilt) * G * iz * grip);
+    world.gravity.set(Math.sin(g.tilt) * G * ix * grip, -g.G, Math.sin(g.tilt) * G * iz * grip);
     for (const el of g.els) TYPES[el.type].pre?.(el, g, H);
     const v = ball.velocity, vx = v.x, vy = v.y, vz = v.z, gr = world.gravity;
     world.step(H);

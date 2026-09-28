@@ -2,6 +2,7 @@
 import { TYPES } from './bauteile.js';
 import { R } from './game.js';
 import { THEMES, COLORS, canvasTex } from './themes.js';
+import { createTrailFx } from './trails.js';
 
 export function createRenderer(THREE, canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -36,6 +37,23 @@ function boxGeo(THREE, sx, sy, sz, tile = 2) {
     const i = f * 4 + k; uv.setXY(i, uv.getX(i) * dims[f][0] / tile, uv.getY(i) * dims[f][1] / tile);
   }
   return geo;
+}
+
+// Murmel-Kugel mit Design (Textur, Planetenring, Glanz)
+export function createBallMesh(THREE) {
+  const skinCanvas = document.createElement('canvas'); skinCanvas.width = 256; skinCanvas.height = 128;
+  const skinTex = new THREE.CanvasTexture(skinCanvas);
+  const ballMat = new THREE.MeshPhongMaterial({ map: skinTex, shininess: 90 });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 20), ballMat);
+  mesh.castShadow = true;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.85, 40), new THREE.MeshLambertMaterial({ color: 0xE8D5A8, side: THREE.DoubleSide }));
+  ring.rotation.x = Math.PI / 2.4; mesh.add(ring);
+  function setSkin(skin) {
+    skin.paint(skinCanvas.getContext('2d'), 256, 128); skinTex.needsUpdate = true;
+    ring.visible = !!skin.ring;
+    ballMat.shininess = skin.shiny ? 200 : 90; ballMat.specular.setHex(skin.shiny ? 0xFFF2B0 : 0x111111);
+  }
+  return { mesh, setSkin };
 }
 
 export function createView(THREE, renderer, game) {
@@ -178,18 +196,10 @@ export function createView(THREE, renderer, game) {
   }
 
   // ---------- Murmel ----------
-  const skinCanvas = document.createElement('canvas'); skinCanvas.width = 256; skinCanvas.height = 128;
-  const skinTex = new THREE.CanvasTexture(skinCanvas);
-  const ballMat = new THREE.MeshPhongMaterial({ map: skinTex, shininess: 90 });
-  const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 20), ballMat);
-  ballMesh.castShadow = true; scene.add(ballMesh);
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.85, 40), new THREE.MeshLambertMaterial({ color: 0xE8D5A8, side: THREE.DoubleSide }));
-  ring.rotation.x = Math.PI / 2.4; ballMesh.add(ring);
-  function setSkin(skin) {
-    skin.paint(skinCanvas.getContext('2d'), 256, 128); skinTex.needsUpdate = true;
-    ring.visible = !!skin.ring;
-    ballMat.shininess = skin.shiny ? 200 : 90; ballMat.specular.setHex(skin.shiny ? 0xFFF2B0 : 0x111111);
-  }
+  const ball = createBallMesh(THREE), ballMesh = ball.mesh, setSkin = ball.setSkin;
+  scene.add(ballMesh);
+
+  const trailFx = createTrailFx(THREE, scene); // Spur hinter der Murmel (src/trails.js)
 
   // ---------- Konfetti ----------
   const confetti = [];
@@ -216,10 +226,17 @@ export function createView(THREE, renderer, game) {
     ballMesh.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
     for (const t of ticks) t(dt, game);
     if (groundFx && groundFx.tick) groundFx.tick(dt, camera);
+    trailFx.update(dt, ballMesh.position);
     for (let i = confetti.length - 1; i >= 0; i--) {
       const c = confetti[i];
       c.v.y -= 9.8 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += dt * 6; c.life -= dt;
       if (c.life <= 0) { scene.remove(c.m); c.m.geometry.dispose(); c.m.material.dispose(); confetti.splice(i, 1); }
+    }
+    if (view.fixedCam) { // feste Kamera (z. B. Treppe): fixedCam(camera) stellt sie und liefert den Blickpunkt
+      const look = view.fixedCam(camera);
+      sun.position.set(look.x + 6, look.y + 14, look.z + 6); sun.target.position.copy(look);
+      renderer.render(scene, camera);
+      return;
     }
     // Kamera hinter der Murmel, dreht mit der Bahn, kippt leicht mit der Eingabe
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
@@ -249,5 +266,6 @@ export function createView(THREE, renderer, game) {
     });
   }
 
-  return { scene, camera, ballMesh, burst, render, resize, setSkin, dispose, get goal() { return v.goal; } };
+  const view = { scene, camera, ballMesh, burst, render, resize, setSkin, setTrail: trailFx.set, trailFx, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
+  return view;
 }
