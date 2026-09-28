@@ -148,7 +148,8 @@ export function createView(THREE, renderer, game) {
 
   // ---------- Feste Klötze ----------
   const studs = {}, studPos = []; // Farbe -> Liste von Matrizen; alle Noppen-Positionen
-  const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpP = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+  const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpP = new THREE.Vector3(), tmpS = new THREE.Vector3();
+  const STUD_R = 0.3, STUD_H = 0.2125; // relativ zum Rastermass (Original: 4.8 mm bzw. 1.7 mm bei 8 mm Raster)
   const pillars = [], blockers = [];
   for (const s of game.solids) {
     const m0 = s.look === 'abc' ? abcMat(s.text) : mat(s.look);
@@ -156,23 +157,25 @@ export function createView(THREE, renderer, game) {
     mesh.position.set(...s.pos); mesh.quaternion.set(...s.quat); mesh.receiveShadow = true;
     scene.add(mesh);
     if (!s.deko) blockers.push(mesh);
-    // Legonoppen oben drauf
+    // Legonoppen oben drauf. Rastermass = Breite des Steins (dünne Wand = 1er-Stein, breiter Klotz = 2er-Stein),
+    // Noppen wie beim Original: Durchmesser 0.6, Höhe 0.2125 des Rastermasses
     const col = m0.userData.lego;
     if (col) {
-      const [hx, hy, hz] = s.half, nx = Math.max(1, Math.round(hx * 2 / 0.8)), nz = Math.max(1, Math.round(hz * 2 / 0.8));
-      tmpQ.set(...s.quat);
+      const [hx, hy, hz] = s.half, short = Math.min(hx, hz) * 2, pitch = short > 1 ? short / 2 : short;
+      const nx = Math.max(1, Math.round(hx * 2 / pitch)), nz = Math.max(1, Math.round(hz * 2 / pitch));
+      tmpQ.set(...s.quat); tmpS.setScalar(pitch);
       for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
-        tmpP.set(-hx + (i + 0.5) * hx * 2 / nx, hy + 0.08, -hz + (j + 0.5) * hz * 2 / nz).applyQuaternion(tmpQ).add(mesh.position);
+        tmpP.set(-hx + (i + 0.5) * hx * 2 / nx, hy + STUD_H * pitch / 2, -hz + (j + 0.5) * hz * 2 / nz).applyQuaternion(tmpQ).add(mesh.position);
         // wo Steine überlappen, nur eine Noppe setzen (sonst stecken zwei ineinander und flimmern)
-        if (studPos.some(p => p.distanceToSquared(tmpP) < 0.3 * 0.3)) continue;
+        if (studPos.some(p => p.distanceToSquared(tmpP) < (2 * STUD_R * pitch) ** 2)) continue;
         studPos.push(tmpP.clone());
-        (studs[col] = studs[col] || []).push(tmpM.clone().compose(tmpP, tmpQ, one));
+        (studs[col] = studs[col] || []).push(tmpM.clone().compose(tmpP, tmpQ, tmpS));
       }
     }
     // Säulen unter flachen Bahnstücken (nur Optik)
     if (theme.carpet && s.track && !s.deko && Math.abs(s.quat[0]) < 1e-3 && Math.abs(s.quat[2]) < 1e-3 && s.half[2] >= 2) pillars.push(s);
   }
-  const studGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.16, 12);
+  const studGeo = new THREE.CylinderGeometry(STUD_R, STUD_R, STUD_H, 16);
   for (const [col, list] of Object.entries(studs)) {
     const im = new THREE.InstancedMesh(studGeo, cache['lego-' + col], list.length);
     list.forEach((mm, i) => im.setMatrixAt(i, mm));
