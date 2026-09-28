@@ -1,12 +1,13 @@
 // Spielstand im Browser speichern (localStorage). Ohne Speicher läuft alles weiter, nur ohne Merken.
-// Einstellungen (Steuerung, Stärke, Ton) gelten für alle, Sterne und Murmel pro Spieler.
+// Einstellungen (Steuerung, Stärke, Ton) gelten für alle, Sterne, Murmel, Spur und Sticker pro Spieler.
 const KEY = 'murmel-abenteuer-v2';
 const OLD_KEY = 'murmel-abenteuer-v1'; // alter Spielstand ohne Spieler
 export const NAME_MAX = 16;
 
 const newPlayer = (name, from = {}) => ({
   id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-  name, done: from.done || {}, best: from.best || {}, skin: from.skin || 'standard'
+  name, done: from.done || {}, best: from.best || {}, skin: from.skin || 'standard',
+  stickers: from.stickers || {}, trail: from.trail || 'keine'
 });
 
 function load(key) {
@@ -24,7 +25,7 @@ function read() {
   }
   // Alter Spielstand: Einstellungen übernehmen, Sterne bekommt der erste neue Spieler
   const o = load(OLD_KEY) || {};
-  const legacy = o.done && Object.keys(o.done).length ? { done: o.done, best: o.best || {}, skin: o.skin } : null;
+  const legacy = o.done && Object.keys(o.done).length ? { done: o.done, best: o.best || {}, skin: o.skin, stickers: o.stickers, trail: o.trail } : null;
   return { players: [], current: null, control: o.control || null, power: o.power || 'normal', sound: o.sound || 'alle', legacy };
 }
 
@@ -61,9 +62,16 @@ export function createProgress() {
     // Level geschafft: merkt die beste Sternzahl
     finish(id, n) { const p = me(); p.done[id] = true; p.best[id] = Math.max(p.best[id] || 0, n); save(); },
     setSkin(id) { me().skin = id; save(); },
+    get trail() { return me().trail; },
+    setTrail(id) { me().trail = id; save(); },
+    hasSticker: id => !!me().stickers[id],
+    stickerCount: () => Object.keys(me().stickers).length,
+    // Sticker ins Album kleben (ohne Speichern; danach save() aufrufen)
+    addSticker(id) { me().stickers[id] = true; },
+    save,
     setControl(c) { data.control = c; save(); },
     setPower(p) { data.power = p; save(); },
     setSound(m) { data.sound = m; save(); },
-    clear() { const p = me(); p.done = {}; p.best = {}; p.skin = 'standard'; save(); }
+    clear() { const p = me(); p.done = {}; p.best = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; save(); }
   };
 }

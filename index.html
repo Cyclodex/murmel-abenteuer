@@ -41,6 +41,7 @@
   <button class="pill" id="btnPlayer" aria-label="Spieler wechseln">👤</button>
   <div class="row">
     <div class="pill" id="mapStars">⭐ 0</div>
+    <button id="btnAlbum" aria-label="Sticker-Album">📒</button>
     <button id="btnSkins" aria-label="Murmel aussuchen">🎨</button>
     <button id="btnPower" aria-label="Stärke der Steuerung">🐇</button>
     <button id="btnSound" aria-label="Ton">🔊</button>
@@ -50,7 +51,15 @@
 <div class="overlay hidden" id="skinOv">
   <h1>🎨</h1>
   <div class="grid" id="skinGrid"></div>
+  <div class="pill">💫</div>
+  <div class="grid" id="trailGrid"></div>
   <button class="big" id="skinBack" aria-label="Fertig">✔️</button>
+</div>
+<div class="overlay hidden" id="albumOv">
+  <h1 id="albumCount">📒</h1>
+  <div class="tabs" id="albumTabs"></div>
+  <div class="grid stickers" id="albumGrid"></div>
+  <button class="big" id="albumBack" aria-label="Fertig">✔️</button>
 </div>
 <div class="overlay hidden" id="winOv">
   <h1>🏆 Geschafft!</h1>
@@ -63,6 +72,7 @@
     <button class="big" id="mapBtn" aria-label="Zur Karte">🏠</button>
   </div>
 </div>
+<div class="hidden" id="cheerOv" aria-live="polite"><div class="rain"></div><div class="items"></div></div>
 
 <script src="vendor/three.min.js"></script>
 <script src="vendor/cannon.min.js"></script>

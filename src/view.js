@@ -1,6 +1,7 @@
 // Grafik mit three.js: baut die Szene aus den Spieldaten und zeichnet jedes Bild.
 import { TYPES } from './elements.js';
 import { R } from './game.js';
+import { createTrailFx } from './trails.js';
 
 export function createRenderer(THREE, canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -214,6 +215,8 @@ export function createView(THREE, renderer, game) {
     ballMat.shininess = skin.shiny ? 200 : 90; ballMat.specular.setHex(skin.shiny ? 0xFFF2B0 : 0x111111);
   }
 
+  const trailFx = createTrailFx(THREE, scene); // Spur hinter der Murmel (src/trails.js)
+
   // ---------- Konfetti ----------
   const confetti = [];
   function burst(pos, n, colors) {
@@ -238,6 +241,7 @@ export function createView(THREE, renderer, game) {
     ballMesh.position.set(b.position.x, b.position.y, b.position.z);
     ballMesh.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
     for (const t of ticks) t(dt, game);
+    trailFx.update(dt, ballMesh.position);
     for (let i = confetti.length - 1; i >= 0; i--) {
       const c = confetti[i];
       c.v.y -= 9.8 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += dt * 6; c.life -= dt;
@@ -271,5 +275,5 @@ export function createView(THREE, renderer, game) {
     });
   }
 
-  return { scene, camera, ballMesh, burst, render, resize, setSkin, dispose, get goal() { return v.goal; } };
+  return { scene, camera, ballMesh, burst, render, resize, setSkin, setTrail: trailFx.set, trailFx, dispose, get goal() { return v.goal; } };
 }
