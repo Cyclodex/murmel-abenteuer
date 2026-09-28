@@ -1,6 +1,7 @@
 // Grafik mit three.js: baut die Szene aus den Spieldaten und zeichnet jedes Bild.
-import { TYPES } from './elements.js';
+import { TYPES } from './bauteile.js';
 import { R } from './game.js';
+import { THEMES, COLORS, canvasTex } from './themes.js';
 import { createTrailFx } from './trails.js';
 
 export function createRenderer(THREE, canvas) {
@@ -11,31 +12,6 @@ export function createRenderer(THREE, canvas) {
 }
 
 // ---------- Texturen (alle im Code gezeichnet, keine Bilddateien) ----------
-function canvasTex(THREE, w, h, draw, repeat = true) {
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
-  draw(c.getContext('2d'), w, h);
-  const t = new THREE.CanvasTexture(c);
-  if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
-}
-function rnd(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
-
-const woodTex = (THREE, base, dark) => canvasTex(THREE, 256, 256, (x, w, h) => {
-  x.fillStyle = base; x.fillRect(0, 0, w, h);
-  const r = rnd(7);
-  for (let i = 0; i < 60; i++) { // Maserung entlang der Bahn
-    x.strokeStyle = dark; x.globalAlpha = 0.08 + r() * 0.18; x.lineWidth = 1 + r() * 2;
-    const x0 = r() * w; x.beginPath(); x.moveTo(x0, 0);
-    for (let y = 0; y <= h; y += 16) x.lineTo(x0 + Math.sin(y / 30 + i) * 4, y);
-    x.stroke();
-  }
-  x.globalAlpha = 0.35; x.fillStyle = dark; x.fillRect(0, 0, w, 2); x.fillRect(0, 0, 2, h); // Brettfugen
-});
-const carpetTex = THREE => canvasTex(THREE, 256, 256, (x, w, h) => {
-  x.fillStyle = '#7FB7E6'; x.fillRect(0, 0, w, h);
-  x.fillStyle = '#9CCBF0';
-  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.beginPath(); x.arc(i * 64 + 32, j * 64 + 32, 18, 0, 7); x.fill(); }
-});
 const mudTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
   x.fillStyle = '#6B4A2B'; x.fillRect(0, 0, w, h);
   const r = rnd(3);
@@ -52,13 +28,6 @@ const letterTex = (THREE, ch, bg) => canvasTex(THREE, 128, 128, (x, w, h) => {
   x.fillStyle = '#FFFFFF'; x.font = 'bold 84px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(ch, w / 2, h / 2 + 4);
 }, false);
 
-const COLORS = { rot: 0xE53935, blau: 0x1E88E5, gelb: 0xFDD835, gruen: 0x43A047, orange: 0xFB8C00, lila: 0x8E24AA };
-const LEGO_CYCLE = ['rot', 'blau', 'gelb', 'gruen'];
-
-const THEMES = {
-  standard: { sky: 0x9ED8F5, fog: [40, 90], floor: 0xE2B26F, ramp: 0xF0C382, wall: 0xA8743A, lego: false, carpet: false },
-  spielzimmer: { sky: 0xFFE7C2, fog: [50, 120], wood: true, lego: true, carpet: true }
-};
 
 // Box mit UVs in Weltgrösse (Textur wiederholt sich pro `tile` Meter statt zu strecken)
 function boxGeo(THREE, sx, sy, sz, tile = 2) {
@@ -93,8 +62,9 @@ export function createView(THREE, renderer, game) {
   scene.background = new THREE.Color(theme.sky);
   scene.fog = new THREE.Fog(theme.sky, theme.fog[0], theme.fog[1]);
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a6a3a, 0.75));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  const hemi = theme.hemi || [0xffffff, 0x8a6a3a, 0.75];
+  scene.add(new THREE.HemisphereLight(hemi[0], hemi[1], hemi[2]));
+  const sun = new THREE.DirectionalLight(0xffffff, theme.sun ?? 0.8);
   sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
   Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 60 });
   scene.add(sun, sun.target);
@@ -102,26 +72,34 @@ export function createView(THREE, renderer, game) {
   // ---------- Materialien je "look" ----------
   const lambert = (color, extra) => new THREE.MeshLambertMaterial({ color, ...extra });
   const cache = {};
-  let legoIdx = 0;
-  const wood = theme.wood ? woodTex(THREE, '#D9A066', '#7A4A1E') : null;
-  const woodLight = theme.wood ? woodTex(THREE, '#EBC08A', '#8A5A2A') : null;
+  let wallIdx = 0;
+  // Werkzeuge für die Welt-Themen (themes.js)
+  const tools = {
+    THREE, scene, lambert,
+    plane(tex, y) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), lambert(0xffffff, { map: tex }));
+      m.rotation.x = -Math.PI / 2; m.position.y = y; scene.add(m); return m;
+    }
+  };
   function mat(look) {
-    // Wände im Spielzimmer = Legosteine in wechselnden Farben
-    if (look === 'wall' && theme.lego) look = 'lego-' + LEGO_CYCLE[legoIdx++ % LEGO_CYCLE.length];
+    // Wände: Looks der Welt der Reihe nach (z. B. Legosteine in wechselnden Farben)
+    if (look === 'wall' && theme.walls) look = theme.walls[wallIdx++ % theme.walls.length];
     if (cache[look]) return cache[look];
-    let m;
+    let m = theme.look ? theme.look(tools, look) : null;
     const [kind, col] = look.split('-');
-    if (kind === 'lego' || kind === 'klotz') {
+    if (m) { /* eigener Look der Welt */ }
+    else if (kind === 'lego' || kind === 'klotz') {
       m = new THREE.MeshPhongMaterial({ color: COLORS[col] ?? 0xE53935, shininess: kind === 'lego' ? 60 : 10 });
       if (kind === 'lego') m.userData.lego = COLORS[col] ? col : 'rot';
       // Überlappende Steine haben deckungsgleiche Flächen: feste Rangfolge je Farbe statt Z-Fighting
       const rank = Object.keys(COLORS).indexOf(col);
       Object.assign(m, { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: -(rank < 0 ? 0 : rank) - (kind === 'lego' ? 0 : 6) });
     }
-    else if (look === 'floor') m = wood ? lambert(0xffffff, { map: wood }) : lambert(theme.floor);
-    else if (look === 'ramp' || look === 'bridge') m = woodLight ? lambert(0xffffff, { map: woodLight }) : lambert(theme.ramp ?? 0xF0C382);
+    else if (look === 'floor') m = theme.floor(tools);
+    else if (look === 'ramp' || look === 'bridge') m = (cache.ramp = cache.ramp || theme.ramp(tools));
     else if (look === 'eis') m = new THREE.MeshPhongMaterial({ color: 0x8ED3F2, shininess: 60, specular: 0x88aacc });
     else if (look === 'schlamm') m = lambert(0xffffff, { map: mudTex(THREE) });
+    else if (look === 'band') m = lambert(0x3A3F47);
     else if (look === 'platform') m = new THREE.MeshPhongMaterial({ color: COLORS.gelb, shininess: 40 });
     else if (look === 'seesaw') m = new THREE.MeshPhongMaterial({ color: COLORS.orange, shininess: 40 });
     else m = lambert(theme.wall ?? 0xA8743A);
@@ -145,6 +123,7 @@ export function createView(THREE, renderer, game) {
     },
     starGeo: null,
     arrowTexture: () => arrowTex(THREE),
+    canvasTex: (w, h, draw) => canvasTex(THREE, w, h, draw),
     // Meshes für einen beweglichen Körper, die ihm jedes Bild folgen
     bodyGroup(body) {
       const grp = new THREE.Group();
@@ -191,7 +170,7 @@ export function createView(THREE, renderer, game) {
       }
     }
     // Säulen unter flachen Bahnstücken (nur Optik)
-    if (theme.carpet && s.track && !s.deko && Math.abs(s.quat[0]) < 1e-3 && Math.abs(s.quat[2]) < 1e-3 && s.half[2] >= 2) pillars.push(s);
+    if (theme.pillars && s.track && !s.deko && Math.abs(s.quat[0]) < 1e-3 && Math.abs(s.quat[2]) < 1e-3 && s.half[2] >= 2) pillars.push(s);
   }
   const studGeo = new THREE.CylinderGeometry(STUD_R, STUD_R, STUD_H, 16);
   for (const [col, list] of Object.entries(studs)) {
@@ -200,14 +179,12 @@ export function createView(THREE, renderer, game) {
     scene.add(im);
   }
   const floorY = (game.level.killY ?? -8) - 1;
-  if (theme.carpet) {
-    const ct = carpetTex(THREE); ct.repeat.set(60, 60);
-    const carpet = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), lambert(0xffffff, { map: ct }));
-    carpet.rotation.x = -Math.PI / 2; carpet.position.y = floorY; scene.add(carpet);
+  const groundFx = theme.ground ? theme.ground(tools, floorY) : null;
+  if (theme.pillars) {
     pillars.forEach((s, i) => {
       const top = s.pos[1] - s.half[1], hgt = top - floorY;
       if (hgt < 0.5) return;
-      const p = new THREE.Mesh(boxGeo(THREE, 1.2, hgt, 1.2), mat('klotz-' + LEGO_CYCLE[i % 4]));
+      const p = new THREE.Mesh(boxGeo(THREE, 1.2, hgt, 1.2), mat(theme.pillars[i % theme.pillars.length]));
       p.position.set(s.pos[0], floorY + hgt / 2, s.pos[2]); scene.add(p);
     });
   }
@@ -248,6 +225,7 @@ export function createView(THREE, renderer, game) {
     ballMesh.position.set(b.position.x, b.position.y, b.position.z);
     ballMesh.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
     for (const t of ticks) t(dt, game);
+    if (groundFx && groundFx.tick) groundFx.tick(dt, camera);
     trailFx.update(dt, ballMesh.position);
     for (let i = confetti.length - 1; i >= 0; i--) {
       const c = confetti[i];

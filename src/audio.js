@@ -28,6 +28,30 @@ export const SONGS = {
       67, 69, 72, null, 76, 79, 81, null, 79, 76, 74, 76, 72, null, null, null],
     bass: [48, 55, 52, 55, 53, 57, 55, 59, 48, 55, 52, 55, 53, 55, 48, null]
   },
+  garten: { // fröhlich, gezupft
+    bpm: 108, lead: 'pluck', drums: true,
+    melody: [67, null, 71, 74, 76, null, 74, 71, 72, null, 76, 79, 77, 76, 74, null,
+      67, null, 71, 74, 79, 78, 76, 74, 72, 71, 69, 71, 67, null, null, null],
+    bass: [43, 50, 47, 50, 48, 55, 50, 55, 43, 50, 47, 50, 48, 50, 43, null]
+  },
+  kueche: { // flott, hüpfend
+    bpm: 124, lead: 'pluck', drums: true,
+    melody: [72, 72, 76, null, 79, null, 76, 72, 74, 74, 77, null, 81, null, 77, 74,
+      72, 76, 79, 84, 83, 79, 76, 74, 72, null, 67, null, 72, null, null, null],
+    bass: [48, 55, 48, 55, 50, 57, 50, 57, 48, 55, 52, 55, 53, 55, 48, null]
+  },
+  weltraum: { // schwebend, langsam, ohne Schlagzeug
+    bpm: 76, lead: 'box',
+    melody: [76, null, 83, null, 81, null, 76, null, 74, null, 79, null, 78, null, null, null,
+      76, null, 83, null, 86, null, 84, 83, 81, null, 79, null, 76, null, null, null],
+    bass: [40, null, 47, null, 45, null, 43, null, 40, null, 47, null, 45, null, 40, null]
+  },
+  unterwasser: { // ruhig, wiegend
+    bpm: 84, lead: 'box',
+    melody: [69, null, 72, 76, null, 74, 72, null, 71, null, 74, 77, null, 76, 74, null,
+      69, null, 72, 76, 81, null, 79, 76, 74, null, 72, 71, 69, null, null, null],
+    bass: [45, null, 52, null, 50, null, 52, null, 45, null, 52, null, 48, null, 45, null]
+  },
   spielzimmer: {
     bpm: 100, lead: 'box', drums: true,
     melody: [72, null, 76, 79, 81, 79, 76, null, 74, null, 77, 81, 79, 77, 74, null,
@@ -116,6 +140,14 @@ export function createAudio(opts = {}) {
       [96, 100, 103, 108].forEach((n, i) => bell(midi(n), t + 0.8 + i * 0.07, 0.12, 0.6));
     },
     unlock: t => { for (let i = 0; i < 10; i++) bell(midi(79 + i * 2), t + i * 0.05, 0.12, 0.5); hiss(t, 0.8, 0.05, 'highpass', 5000); },
+    // neue Bauteile
+    roehre: t => { tone(300, t, 0.5, 0.35, 'sine', 900); hiss(t, 0.6, 0.35, 'bandpass', 600, 2400, 2); },
+    plopp: t => { tone(500, t, 0.08, 0.5, 'sine', 1200); tone(midi(84), t + 0.08, 0.15, 0.2, 'triangle'); },
+    wind: t => hiss(t, 0.7, 0.4, 'bandpass', 500, 1500, 0.8),
+    magnet: t => { tone(220, t, 0.4, 0.2, 'sawtooth', 440); tone(880, t + 0.05, 0.3, 0.1, 'sine', 1760); },
+    laden: t => { for (let i = 0; i < 4; i++) tone(midi(60 + i * 4), t + i * 0.18, 0.1, 0.25, 'square'); },
+    boom: t => { hiss(t, 0.5, 1.0, 'lowpass', 900, 150, 0.7); tone(90, t, 0.4, 0.9, 'sine', 35); bell(midi(96), t + 0.1, 0.1, 0.4); },
+    tock: (t, i = 0) => { tone(midi(72 + Math.min(i, 12) * 2), t, 0.07, 0.5, 'triangle'); hiss(t, 0.02, 0.3, 'highpass', 3000); },
     // Jubel beim Freischalten: Trommelwirbel, Fanfare, Glitzer
     jubel: t => {
       for (let i = 0; i < 8; i++) hiss(t + i * 0.04, 0.05, 0.25, 'bandpass', 1800, null, 1);

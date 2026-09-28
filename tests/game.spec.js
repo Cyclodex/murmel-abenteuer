@@ -186,23 +186,21 @@ test('Ohne localStorage läuft das Spiel trotzdem', async ({ page }) => {
 });
 
 test('Alle Level sind mit jeder Stärke schaffbar, alle Sterne erreichbar (Autopilot)', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(600_000);
   const errors = watchErrors(page);
   await page.goto('/');
   const res = await page.evaluate(async () => {
     const { createGame } = await import('/src/game.js');
     const { LEVELS } = await import('/src/levels/index.js');
-    const { autopilot, ROUTES } = await import('/tests/autopilot.js');
+    const { checkLevel, ROUTES } = await import('/tests/autopilot.js');
     const { POWERS } = await import('/src/input.js');
     const out = [];
     for (const P of POWERS) for (const L of LEVELS) {
-      const g = createGame(CANNON, L); g.tilt = P.tilt * Math.PI / 180;
-      const r = autopilot(g, ROUTES[L.id], 120);
-      out.push({ id: L.id + ' ' + P.emoji, won: r.won, stars: r.stars, total: r.starTotal, falls: r.falls });
+      const r = checkLevel(() => { const g = createGame(CANNON, L); g.tilt = P.tilt * Math.PI / 180; return g; }, ROUTES[L.id]);
+      out.push({ id: L.id + ' ' + P.emoji, ...r });
     }
-    return out;
-  });
-  expect(res.length).toBe(15);
+    return { out, n: LEVELS.length * POWERS.length };
+  }).then(x => { expect(x.out.length).toBe(x.n); return x.out; });
   for (const r of res) {
     expect(r.won, r.id).toBe(true);
     expect(r.falls, r.id).toBe(0);
@@ -212,17 +210,17 @@ test('Alle Level sind mit jeder Stärke schaffbar, alle Sterne erreichbar (Autop
 });
 
 test('Jede Murmel schafft alle Level (Autopilot, Stärke normal)', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(600_000);
   await page.goto('/');
   const res = await page.evaluate(async () => {
     const { createGame } = await import('/src/game.js');
     const { LEVELS } = await import('/src/levels/index.js');
-    const { autopilot, ROUTES } = await import('/tests/autopilot.js');
+    const { checkLevel, ROUTES } = await import('/tests/autopilot.js');
     const { SKINS } = await import('/src/skins.js');
     const out = [];
     for (const S of SKINS) for (const L of LEVELS) {
-      const r = autopilot(createGame(CANNON, L, S.ball), ROUTES[L.id], 120);
-      out.push({ id: L.id + ' ' + S.id, won: r.won, stars: r.stars, total: r.starTotal, falls: r.falls });
+      const r = checkLevel(() => createGame(CANNON, L, S.ball), ROUTES[L.id]);
+      out.push({ id: L.id + ' ' + S.id, ...r });
     }
     return out;
   });
@@ -375,18 +373,18 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'jubel']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
     out.rollenEis = await render(a => a.roll(6, true, 'eis'), 1);
     out.rollenLuft = await render(a => a.roll(6, false, 'normal'), 1);
     out.aus = await render(a => { a.setMode('aus'); a.sfx('win'); });
-    for (const song of ['karte', 'standard', 'spielzimmer']) out['musik_' + song] = await render(a => a.music(song), 1);
+    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser']) out['musik_' + song] = await render(a => a.music(song), 1);
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'jubel', 'hitStark', 'rollen', 'rollenEis', 'musik_karte', 'musik_standard', 'musik_spielzimmer']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'hitStark', 'rollen', 'rollenEis', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }
@@ -426,6 +424,16 @@ test('Kippen: Welt kippt sichtbar mit, keine Bremshilfe', async ({ page }) => {
   expect(await page.evaluate(() => window.murmel.input.mode)).toBe('tilt');
   expect(await camRoll(page)).toBeGreaterThan(3);   // rechts gekippt = sichtbare Schräglage
   expect(await page.evaluate(() => window.murmel.game.brake)).toBe(0);
+});
+
+test('Karte im Querformat: oberste Knöpfe und letzte Welt erreichbar', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto('/');
+  await page.click('#startJoy');
+  await newPlayer(page, 'Quer');
+  await expect(page.locator('#btnSound')).toBeInViewport();
+  await page.click('.lvl[data-level="u1"]'); // erste Level jeder Welt sind offen
+  await expect(page.locator('#hud')).toBeVisible();
 });
 
 // ---------- Belohnungen: Sticker, Spuren, Jubel ----------

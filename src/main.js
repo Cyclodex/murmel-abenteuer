@@ -255,9 +255,10 @@ function onWin() {
   setTimeout(() => { show('winOv'); show('joy', false); cheer.show(cheers); }, 900);
 }
 
-const VIBRATE = { star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
+const VIBRATE = { boom: [80, 30, 40], roehre: 30, plopp: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
 function onEvent(e) {
   if (e === 'hit') { audio.sfx('hit', game.hitStrength); return; }
+  if (e === 'tock') { audio.sfx('tock', game.tockIdx); return; }
   audio.sfx(e);
   if (VIBRATE[e]) buzz(VIBRATE[e]);
   if (e === 'star') view.burst(view.ballMesh.position, 12, [0xFFC928, 0xFFFFFF]);
@@ -274,12 +275,13 @@ if (PILOT) import('../tests/autopilot.js').then(m => { pilotMod = m; if (game) s
 
 function setupPilot() {
   pilot = null; marks = [];
-  const wps = pilotMod && pilotMod.ROUTES[LEVELS[levelIdx].id];
+  const wps = pilotMod && pilotMod.mainRoute(pilotMod.ROUTES[LEVELS[levelIdx].id]);
   show('pilotInfo', !!wps);
   if (!wps) return;
   pilot = pilotMod.createPilot(game, wps);
   const ray = new CANNON.RaycastResult();
   marks = wps.map(w => {
+    if (w.x === undefined) return null; // „der Bahn folgen“ hat keinen Ort
     // Boden unter dem Wegpunkt suchen
     ray.reset();
     game.world.raycastClosest(new CANNON.Vec3(w.x, 40, w.z), new CANNON.Vec3(w.x, -20, w.z), { collisionFilterMask: 1, skipBackfaces: true }, ray);
@@ -292,8 +294,8 @@ function setupPilot() {
 }
 function updatePilot() {
   if (!pilot) return;
-  marks.forEach((m, k) => m.material.color.setHex(k < pilot.i ? 0x999999 : k > pilot.i ? 0xFFFFFF : pilot.waiting ? 0xC77DFF : 0xFF8A00));
-  const v = game.ball.velocity, WAIT = { platAtFrom: 'wartet auf Plattform', platAtTo: 'fährt mit Plattform', bridgeUp: 'wartet auf Brücke' };
+  marks.forEach((m, k) => m && m.material.color.setHex(k < pilot.i ? 0x999999 : k > pilot.i ? 0xFFFFFF : pilot.waiting ? 0xC77DFF : 0xFF8A00));
+  const v = game.ball.velocity, WAIT = { platAtFrom: 'wartet auf Plattform', platAtTo: 'fährt mit Plattform', bridgeUp: 'wartet auf Brücke', hoehe: 'steigt im Aufwind', balkenWeg: 'wartet auf den Balken', amBoden: 'wartet bis am Boden' };
   $('pilotInfo').textContent = `🤖 Ziel ${Math.min(pilot.i + 1, marks.length)}/${marks.length} · ${Math.hypot(v.x, v.z).toFixed(1)} m/s` + (pilot.waiting ? ` · ${WAIT[pilot.waiting] || pilot.waiting}` : '');
 }
 
