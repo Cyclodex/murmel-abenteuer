@@ -1,13 +1,20 @@
 // Murmel-Designs. need = so viele Sterne braucht man insgesamt zum Freischalten ('alle' = alle Sterne).
 // Jedes Design malt eine Kugel-Textur (Längen-/Breitengrad-Bild, 256 x 128).
-// ball = Sprungkraft (Anteil der Aufprallgeschwindigkeit, der zurückkommt) an Wand und Boden.
+// ball = Sprungkraft (Anteil der Aufprallgeschwindigkeit, der zurückkommt) an Wand und Boden,
+// schwere = Faktor für die Schwerkraft (Mond hüpft leichter).
 export const SKINS = [
   { id: 'standard', emoji: '🔵', need: 0, paint: standard, ball: { wand: 0.5, boden: 0.25 } },
+  { id: 'tennis', emoji: '🎾', need: 3, paint: pixels(tennis), ball: { wand: 0.75, boden: 0.7 } },
   { id: 'fussball', emoji: '⚽', need: 5, paint: pixels(fussball), ball: { wand: 0.75, boden: 0.5 } },
-  { id: 'flummi', emoji: '🔴', need: 8, paint: pixels(flummi), ball: { wand: 0.9, boden: 0.75 } },
+  { id: 'golf', emoji: '⛳', need: 7, paint: pixels(golf), ball: { wand: 0.8, boden: 0.75 } },
+  { id: 'flummi', emoji: '🔴', need: 8, paint: pixels(flummi), ball: { wand: 0.97, boden: 0.93 } },
   { id: 'melone', emoji: '🍉', need: 10, paint: pixels(melone), ball: { wand: 0.2, boden: 0.1 } },
+  { id: 'basketball', emoji: '🏀', need: 12, paint: pixels(basketball), ball: { wand: 0.8, boden: 0.8 } },
+  { id: 'billard', emoji: '🎱', need: 14, paint: billard, shiny: true, ball: { wand: 0.8, boden: 0.4 } },
   { id: 'planet', emoji: '🪐', need: 15, paint: pixels(planet), ring: true, ball: { wand: 0.5, boden: 0.25 } },
+  { id: 'bowling', emoji: '🎳', need: 18, paint: pixels(bowling), shiny: true, ball: { wand: 0.1, boden: 0.05 } },
   { id: 'regenbogen', emoji: '🌈', need: 20, paint: pixels(regenbogen), ball: { wand: 0.5, boden: 0.25 } },
+  { id: 'mond', emoji: '🌙', need: 24, paint: pixels(mond), ball: { wand: 0.6, boden: 0.6, schwere: 0.5 } },
   { id: 'gold', emoji: '🏅', need: 'alle', paint: pixels(gold), shiny: true, ball: { wand: 0.35, boden: 0.15 } }
 ];
 
@@ -54,6 +61,50 @@ function flummi(x, y, z, lat, lon) {
   // roter Gummiball mit gelbem Wirbelstreifen
   const s = Math.sin(lon * 2 + lat * 5);
   return s > 0.8 ? [255, 214, 0] : [230, 30, 60];
+}
+function tennis(x, y, z, lat, lon) {
+  // gelbgrüner Filz mit weisser Naht (Sattelkurve)
+  return Math.abs(lat - 0.6 * Math.sin(2 * lon)) < 0.06 ? [245, 245, 235] : [205, 230, 60];
+}
+// Punkte gleichmässig auf der Kugel (Fibonacci), für Golf-Dellen
+const DIMPLES = Array.from({ length: 160 }, (_, i) => {
+  const y = 1 - 2 * (i + 0.5) / 160, r = Math.sqrt(1 - y * y), a = i * Math.PI * (3 - Math.sqrt(5));
+  return [r * Math.cos(a), y, r * Math.sin(a)];
+});
+function golf(x, y, z) {
+  let d = -1;
+  for (const p of DIMPLES) d = Math.max(d, p[0] * x + p[1] * y + p[2] * z);
+  const c = d > 0.9975 ? 205 : d > 0.995 ? 225 : 250; // Delle innen dunkler
+  return [c, c, c - 5];
+}
+function basketball(x, y, z) {
+  const line = Math.abs(y) < 0.025 || Math.abs(z) < 0.025 || Math.abs(Math.abs(x) - 0.72) < 0.025;
+  return line ? [30, 20, 15] : [226, 106, 38];
+}
+function billard(ctx, w, h) {
+  // schwarze Acht: weisser Kreis mit 8 (Textur 2:1, Kreis bleibt auf der Kugel rund)
+  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, w, h);
+  for (const cx of [w * 0.25, w * 0.75]) {
+    ctx.fillStyle = '#FFF'; ctx.beginPath(); ctx.arc(cx, h / 2, h * 0.17, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.font = `bold ${h * 0.24}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('8', cx, h / 2 + h * 0.01);
+  }
+}
+const HOLES = [[0.2, 0.9, 0.12], [-0.05, 0.93, 0.25], [0.02, 0.97, -0.2]].map(norm);
+function bowling(x, y, z, lat, lon) {
+  for (const p of HOLES) if (p[0] * x + p[1] * y + p[2] * z > 0.994) return [10, 10, 20];
+  const s = Math.sin(lon * 3 + Math.sin(lat * 6 + lon) * 2); // marmoriert
+  return s > 0.6 ? [150, 60, 200] : [60, 30, 130];
+}
+const CRATERS = [[0.6, 0.3, 0.74, 0.35], [-0.5, 0.6, 0.62, 0.25], [0.1, -0.7, 0.7, 0.3], [-0.8, -0.2, -0.56, 0.4], [0.3, 0.2, -0.93, 0.2], [-0.2, 0.9, -0.38, 0.22]]
+  .map(([a, b, c, r]) => [...norm([a, b, c]), Math.cos(r)]);
+function mond(x, y, z) {
+  let c = 175 + 20 * Math.sin(x * 9 + y * 5) * Math.sin(z * 7);
+  for (const [a, b, d, cr] of CRATERS) {
+    const k = a * x + b * y + d * z;
+    if (k > cr) c = k > cr + (1 - cr) * 0.25 ? 120 : 215; // Kraterboden dunkel, Rand hell
+  }
+  return [c, c, c + 10];
 }
 function melone(x, y, z, lat, lon) {
   const s = Math.sin(lon * 14 + Math.sin(lat * 9) * 0.7);

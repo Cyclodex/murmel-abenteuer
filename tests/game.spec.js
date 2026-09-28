@@ -14,12 +14,20 @@ function watchErrors(page) {
   return errors;
 }
 
-// Start -> Joystick -> Karte -> Level wählen
+// Neuen Spieler anlegen (Spieler-Auswahl muss offen sein)
+async function newPlayer(page, name) {
+  await expect(page.locator('#playerOv')).toBeVisible();
+  await page.fill('#playerName', name);
+  await page.click('#playerForm button');
+  await expect(page.locator('#mapOv')).toBeVisible();
+}
+
+// Start -> Joystick -> Spieler -> Karte -> Level wählen
 async function play(page, levelId = 'ausflug') {
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
   await page.click('#startJoy');
-  await expect(page.locator('#mapOv')).toBeVisible();
+  await newPlayer(page, 'Test');
   await page.click(`.lvl[data-level="${levelId}"]`);
   await expect(page.locator('#hud')).toBeVisible();
   expect(await page.evaluate(() => window.murmel.running)).toBe(true);
@@ -106,7 +114,65 @@ test('Level schaffen speichert Fortschritt und schaltet frei', async ({ page }) 
   await expect(page.locator('.skin[data-skin="fussball"]')).toBeEnabled();
   await expect(page.locator('.skin[data-skin="melone"]')).toBeDisabled();
   await page.click('.skin[data-skin="fussball"]');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v1')).skin)).toBe('fussball');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v2')).players[0].skin)).toBe('fussball');
+  expect(errors).toEqual([]);
+});
+
+test('Mehrere Spieler: eigener Spielstand, Rangliste nach Sternen', async ({ page }) => {
+  const errors = watchErrors(page);
+  const win = async (id, stars, spot) => {
+    await page.click(`.lvl[data-level="${id}"]`);
+    await page.evaluate(([n, p]) => { const g = window.murmel.game; g.st.stars = n; g.spawn(p); }, [stars, spot]);
+    await expect(page.locator('#winOv')).toBeVisible();
+  };
+  await page.goto('/');
+  await page.click('#startJoy');
+  await page.click('#playerForm button');               // leerer Name: nichts passiert
+  await expect(page.locator('#playerOv')).toBeVisible();
+  await newPlayer(page, '  Anna  ');
+  await expect(page.locator('#btnPlayer')).toHaveText('👤 Anna');
+  await win('ausflug', 3, [0, 5, -69]);
+  await expect(page.locator('#winRank')).toBeHidden();  // nur ein Spieler
+  await page.click('#mapBtn');
+  // zweiter Spieler startet bei null
+  await page.click('#btnPlayer');
+  await newPlayer(page, '<b>Ben</b>');
+  await expect(page.locator('#btnPlayer')).toHaveText('👤 <b>Ben</b>'); // Name als Text, nicht als HTML
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 0');
+  await expect(page.locator('.lvl[data-level="ausflug"]')).not.toHaveClass(/done/);
+  await win('ausflug', 5, [0, 5, -69]);
+  await expect(page.locator('#winRank')).toHaveText('🥇 <b>Ben</b> ⭐5\n🥈 Anna ⭐3');
+  // nach Neuladen: Ben ist noch dran, Rangliste in der Auswahl
+  await page.reload();
+  await page.click('#startJoy');
+  await expect(page.locator('#btnPlayer')).toHaveText('👤 <b>Ben</b>');
+  await page.click('#btnPlayer');
+  await expect(page.locator('.player')).toHaveText(['🥇 <b>Ben</b> ⭐5', '🥈 Anna ⭐3']);
+  await expect(page.locator('.player.sel')).toHaveText(/Ben/);
+  await page.click('.player:has-text("Anna")');
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
+  // gleicher Name nochmal (andere Schreibweise) = kein neuer Spieler
+  await page.click('#btnPlayer');
+  await newPlayer(page, 'anna');
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v2')).players.length)).toBe(2);
+  expect(errors).toEqual([]);
+});
+
+test('Alter Spielstand geht an den ersten neuen Spieler', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('murmel-abenteuer-v2')) localStorage.setItem('murmel-abenteuer-v1', JSON.stringify(
+      { done: { ausflug: true }, best: { ausflug: 4 }, skin: 'fussball', control: 'joy', power: 'extrem', sound: 'aus' }));
+  });
+  await page.goto('/');
+  await page.click('#startJoy');
+  await newPlayer(page, 'Mia');
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 4');
+  await expect(page.locator('#btnPower')).toHaveText('🚀');
+  await page.click('#btnPlayer');
+  await newPlayer(page, 'Leo');
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 0');
   expect(errors).toEqual([]);
 });
 
@@ -191,9 +257,11 @@ test('Murmeln prallen je nach Art verschieden stark von der Wand ab', async ({ p
   });
   expect(r.standard.e).toBe(0.5);
   expect(r.fussball.e).toBe(0.75);
-  expect(r.flummi.e).toBe(0.9);
+  expect(r.flummi.e).toBe(0.97);
+  expect(r.basketball.e).toBe(0.8);
+  expect(r.bowling.e).toBe(0.1);
   expect(r.melone.e).toBe(0.2);
-  for (const id of ['standard', 'fussball', 'flummi']) expect(r[id].x, id).toBeLessThan(1);
+  for (const id of ['standard', 'fussball', 'flummi', 'tennis', 'basketball']) expect(r[id].x, id).toBeLessThan(1);
 });
 
 test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
@@ -232,6 +300,7 @@ test('Stärke und Ton umschalten, wird gespeichert', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/');
   await page.click('#startJoy');
+  await newPlayer(page, 'Test');
   await expect(page.locator('#btnPower')).toHaveText('🐇');
   await page.click('#btnPower');
   await expect(page.locator('#btnPower')).toHaveText('🚀');
@@ -243,7 +312,7 @@ test('Stärke und Ton umschalten, wird gespeichert', async ({ page }) => {
   await expect(page.locator('#btnSound')).toHaveText('🎵❌');
   await page.click('#btnSound');
   await expect(page.locator('#btnSound')).toHaveText('🔇');
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v1')));
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v2')));
   expect(saved.power).toBe('extrem');
   expect(saved.sound).toBe('aus');
   await page.reload();
@@ -318,7 +387,8 @@ test('Kippen: Welt kippt sichtbar mit, keine Bremshilfe', async ({ page }) => {
 });
 
 // ---------- Belohnungen: Sticker, Spuren, Jubel ----------
-const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v1')));
+// Spielstand des aktuellen Spielers
+const saved = page => page.evaluate(() => { const d = JSON.parse(localStorage.getItem('murmel-abenteuer-v2')); return d.players.find(p => p.id === d.current); });
 // Level gewinnen: Sterne setzen (optional Bonusstern), dann ins Ziel
 async function winLevel(page, stars, bonus = false) {
   await page.evaluate(([n, b]) => {
@@ -369,31 +439,34 @@ test('Sticker werden vergeben, gespeichert und im Album gezeigt; Jubel erscheint
   expect(errors).toEqual([]);
 });
 
-test('Alter Spielstand ohne Sticker: verdiente Sticker werden nachgetragen', async ({ page }) => {
+test('Alter Spielstand ohne Sticker: verdiente Sticker werden nachgetragen, Sticker pro Spieler', async ({ page }) => {
   await page.addInitScript(() => {
-    if (!sessionStorage.getItem('init')) {
-      sessionStorage.setItem('init', 1);
+    if (!localStorage.getItem('murmel-abenteuer-v2'))
       localStorage.setItem('murmel-abenteuer-v1', JSON.stringify({ done: { ausflug: true, sz1: true }, best: { ausflug: 2, sz1: 6 }, skin: 'standard' }));
-    }
   });
   await page.goto('/');
-  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  await page.click('#startJoy');
+  await newPlayer(page, 'Alt');
   const st = (await saved(page)).stickers;
   expect(Object.keys(st).sort()).toEqual(['bonus:sz1', 'lvl:ausflug', 'lvl:sz1', 'sterne:sz1', 'welt:uebung', 'x:murmel', 'x:spur'].sort());
-  expect((await saved(page)).skin).toBe('standard');
   await expect(page.locator('#cheerOv')).toBeHidden(); // kein Jubel beim Nachtragen
+  // zweiter Spieler hat ein leeres Album
+  await page.click('#btnPlayer');
+  await newPlayer(page, 'Neu');
+  expect((await saved(page)).stickers).toEqual({});
+  await page.click('#btnAlbum');
+  await expect(page.locator('.sticker.got')).toHaveCount(0);
 });
 
 test('Spur auswählbar, gespeichert und sichtbar hinter der Murmel', async ({ page }) => {
   const errors = watchErrors(page);
   await page.addInitScript(() => {
-    if (!sessionStorage.getItem('init')) {
-      sessionStorage.setItem('init', 1);
+    if (!localStorage.getItem('murmel-abenteuer-v2'))
       localStorage.setItem('murmel-abenteuer-v1', JSON.stringify({ done: { ausflug: true }, best: { ausflug: 5 } }));
-    }
   });
   await page.goto('/');
   await page.click('#startJoy');
+  await newPlayer(page, 'Spur');
   await page.click('#btnSkins');
   await expect(page.locator('.skin[data-trail="keine"]')).toHaveClass(/sel/);
   await expect(page.locator('.skin[data-trail="funken"]')).toBeEnabled();   // 3 Sterne

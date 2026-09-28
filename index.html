@@ -29,7 +29,16 @@
     <button class="big" id="startJoy">🕹️<small>Joystick</small></button>
   </div>
 </div>
+<div class="overlay hidden" id="playerOv">
+  <h1>👤 Wer spielt?</h1>
+  <div id="playerList"></div>
+  <form id="playerForm" class="row">
+    <input id="playerName" maxlength="16" placeholder="Name" autocomplete="off" enterkeyhint="done" aria-label="Neuer Spieler: Name">
+    <button type="submit" aria-label="Spieler anlegen">➕</button>
+  </form>
+</div>
 <div class="overlay hidden" id="mapOv">
+  <button class="pill" id="btnPlayer" aria-label="Spieler wechseln">👤</button>
   <div class="row">
     <div class="pill" id="mapStars">⭐ 0</div>
     <button id="btnAlbum" aria-label="Sticker-Album">📒</button>
@@ -56,6 +65,7 @@
   <h1>🏆 Geschafft!</h1>
   <div class="pill" id="winStars">⭐⭐⭐⭐⭐</div>
   <div class="pill hidden" id="winUnlock"></div>
+  <div class="rank hidden" id="winRank"></div>
   <div class="row">
     <button class="big" id="againBtn" aria-label="Nochmal">🔄</button>
     <button class="big" id="nextBtn" aria-label="Nächstes Level">▶️</button>
