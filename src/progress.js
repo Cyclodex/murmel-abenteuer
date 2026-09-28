@@ -5,9 +5,9 @@ function read() {
   try {
     const raw = localStorage.getItem(KEY);
     const d = raw ? JSON.parse(raw) : null;
-    if (d && typeof d === 'object') return { done: d.done || {}, best: d.best || {}, skin: d.skin || 'standard', control: d.control || null };
+    if (d && typeof d === 'object') return { done: d.done || {}, best: d.best || {}, skin: d.skin || 'standard', control: d.control || null, power: d.power || 'normal', sound: d.sound || 'alle' };
   } catch (e) { /* kein Speicher */ }
-  return { done: {}, best: {}, skin: 'standard', control: null };
+  return { done: {}, best: {}, skin: 'standard', control: null, power: 'normal', sound: 'alle' };
 }
 
 export function createProgress() {
@@ -22,6 +22,8 @@ export function createProgress() {
     finish(id, stars) { data.done[id] = true; data.best[id] = Math.max(data.best[id] || 0, stars); save(); },
     setSkin(id) { data.skin = id; save(); },
     setControl(c) { data.control = c; save(); },
+    setPower(p) { data.power = p; save(); },
+    setSound(m) { data.sound = m; save(); },
     clear() { data.done = {}; data.best = {}; data.skin = 'standard'; save(); }
   };
 }

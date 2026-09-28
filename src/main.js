@@ -2,8 +2,8 @@
 /* global THREE, CANNON */
 import { createGame } from './game.js';
 import { createRenderer, createView } from './view.js';
-import { createInput } from './input.js';
-import { SOUNDS, beep } from './audio.js';
+import { createInput, POWERS } from './input.js';
+import { createAudio, SOUND_MODES, buzz } from './audio.js';
 import { WORLDS, LEVELS } from './levels/index.js';
 import { SKINS } from './skins.js';
 import { createProgress } from './progress.js';
@@ -19,6 +19,9 @@ function toast(t) {
 }
 
 const progress = createProgress();
+const audio = createAudio();
+audio.setMode(progress.data.sound);
+const power = () => POWERS.find(p => p.id === progress.data.power) || POWERS[1];
 const ALL_STARS = LEVELS.reduce((n, l) => n + l.parts.filter(p => p.type === 'stern').length, 0);
 const skinNeed = s => (s.need === 'alle' ? ALL_STARS : s.need);
 const skinOpen = s => progress.totalStars() >= skinNeed(s);
@@ -29,6 +32,7 @@ const input = createInput({
   onCalButton: on => show('btnCal', on)
 });
 const renderer = createRenderer(THREE, $('c'));
+input.setPower(power());
 
 let game = null, view = null, running = false, levelIdx = 0, camYaw = 0;
 
@@ -42,6 +46,7 @@ function loadLevel(i) {
   if (view) view.dispose();
   levelIdx = i;
   game = createGame(CANNON, LEVELS[i]);
+  game.tilt = power().tilt * Math.PI / 180;
   view = createView(THREE, renderer, game);
   view.setSkin(currentSkin());
   view.resize();
@@ -56,6 +61,7 @@ function startLevel(i) {
   if (input.mode === 'tilt') input.calibrate(true);
   running = true;
   toast(`${LEVELS[i].emoji} ${LEVELS[i].name}`);
+  audio.music(LEVELS[i].theme || 'standard'); audio.sfx('start');
 }
 
 function restart() {
@@ -69,6 +75,9 @@ function showMap() {
   running = false;
   ['hud', 'joy', 'winOv', 'skinOv', 'startOv'].forEach(id => show(id, false));
   $('mapStars').textContent = `⭐ ${progress.totalStars()}`;
+  $('btnPower').textContent = power().emoji;
+  $('btnSound').textContent = (SOUND_MODES.find(m => m.id === audio.mode) || SOUND_MODES[0]).emoji;
+  audio.music('karte');
   const box = $('worlds'); box.textContent = '';
   for (const w of WORLDS) {
     const row = document.createElement('div'); row.className = 'world';
@@ -80,7 +89,7 @@ function showMap() {
       b.disabled = !open; b.dataset.level = lv.id;
       b.setAttribute('aria-label', lv.name);
       b.innerHTML = open ? `<span>${lv.emoji}</span><span class="s">${starRow(progress.best(lv.id), total)}</span>` : `<span>🔒</span><span class="s">${k + 1}</span>`;
-      b.onclick = () => startLevel(i);
+      b.onclick = () => { audio.sfx('tap'); startLevel(i); };
       row.lastChild.appendChild(b);
     });
     box.appendChild(row);
@@ -96,7 +105,7 @@ function showSkins() {
     b.className = 'skin' + (currentSkin().id === s.id ? ' sel' : '');
     b.disabled = !open; b.dataset.skin = s.id;
     b.innerHTML = open ? s.emoji : `🔒<small>${skinNeed(s)}⭐</small>`;
-    b.onclick = () => { progress.setSkin(s.id); if (view) view.setSkin(s); showSkins(); beep([660, 880], 0.07); };
+    b.onclick = () => { progress.setSkin(s.id); if (view) view.setSkin(s); showSkins(); audio.sfx('tap'); };
     grid.appendChild(b);
   }
   show('mapOv', false); show('skinOv');
@@ -104,7 +113,7 @@ function showSkins() {
 
 // ---------- Start ----------
 async function start(wantTilt) {
-  beep([1], 0.01); // Audio auf iOS freischalten
+  audio.unlock(); // Audio muss aus einem Tipp heraus starten (iOS)
   progress.setControl(wantTilt ? 'tilt' : 'joy');
   if (wantTilt) await input.useTilt(); else input.useJoy();
   show('startOv', false);
@@ -119,7 +128,18 @@ $('btnHome').onclick = showMap;
 $('againBtn').onclick = restart;
 $('mapBtn').onclick = showMap;
 $('nextBtn').onclick = () => { if (levelIdx + 1 < LEVELS.length) startLevel(levelIdx + 1); };
-$('btnSkins').onclick = showSkins;
+$('btnSkins').onclick = () => { audio.sfx('tap'); showSkins(); };
+// Stärke der Steuerung umschalten: 🐢 -> 🐇 -> 🚀
+$('btnPower').onclick = () => {
+  const p = POWERS[(POWERS.indexOf(power()) + 1) % POWERS.length];
+  progress.setPower(p.id); input.setPower(p); if (game) game.tilt = p.tilt * Math.PI / 180;
+  $('btnPower').textContent = p.emoji; audio.sfx('tap');
+};
+// Ton umschalten: 🔊 alles -> ohne Musik -> 🔇
+$('btnSound').onclick = () => {
+  const m = SOUND_MODES[(SOUND_MODES.findIndex(x => x.id === audio.mode) + 1) % SOUND_MODES.length];
+  progress.setSound(m.id); audio.setMode(m.id); $('btnSound').textContent = m.emoji; audio.sfx('tap');
+};
 $('skinBack').onclick = showMap;
 addEventListener('resize', () => view && view.resize());
 
@@ -131,15 +151,20 @@ function onWin() {
   const fresh = SKINS.filter(s => skinNeed(s) > before && skinNeed(s) <= after);
   $('winStars').textContent = starRow(game.st.stars, game.st.starTotal);
   $('winUnlock').textContent = fresh.length ? '🎨 ' + fresh.map(s => s.emoji).join(' ') + ' 🆕' : '';
+  if (fresh.length) setTimeout(() => audio.sfx('unlock'), 1500);
   show('winUnlock', fresh.length > 0);
   show('nextBtn', levelIdx + 1 < LEVELS.length && isOpen(levelIdx + 1));
   view.burst(view.goal ? view.goal.position : view.ballMesh.position, 60, [0xFF5A8A, 0xFFC928, 0x3BB273, 0x2F6FEB]);
   setTimeout(() => { show('winOv'); show('joy', false); }, 900);
 }
 
+const VIBRATE = { star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
 function onEvent(e) {
-  SOUNDS[e]?.();
+  if (e === 'hit') { audio.sfx('hit', game.hitStrength); return; }
+  audio.sfx(e);
+  if (VIBRATE[e]) buzz(VIBRATE[e]);
   if (e === 'star') view.burst(view.ballMesh.position, 12, [0xFFC928, 0xFFFFFF]);
+  if (e === 'bonus') { buzz([30, 30, 30]); view.burst(view.ballMesh.position, 30, [0xC77DFF, 0xFFC928, 0xFFFFFF]); }
   if (e === 'win') onWin();
 }
 
@@ -151,8 +176,10 @@ function loop(now) {
   camYaw += angleDiff(camYaw, game.track.yaw) * Math.min(1, dt * 3);
   const c = Math.cos(camYaw), s = Math.sin(camYaw);
   if (running) for (const e of game.step(sx * c + sz * s, -sx * s + sz * c, dt)) onEvent(e);
+  const bv = game.ball.velocity;
+  audio.roll(running ? Math.hypot(bv.x, bv.y, bv.z) : 0, !!game.groundBody, game.groundBody?.userData?.surface || 'normal');
   $('stars').textContent = `⭐ ${game.st.stars}/${game.st.starTotal}`;
-  view.render(dt, sx, sz, camYaw);
+  view.render(dt, sx, sz, camYaw, power().tilt);
   requestAnimationFrame(loop);
 }
 
@@ -162,5 +189,5 @@ requestAnimationFrame(loop);
 // Für Tests und zum Ausprobieren in der Konsole
 window.murmel = {
   get game() { return game; }, get running() { return running; }, get camYaw() { return camYaw; },
-  LEVELS, WORLDS, SKINS, progress, startLevel, showMap
+  LEVELS, WORLDS, SKINS, progress, startLevel, showMap, audio
 };

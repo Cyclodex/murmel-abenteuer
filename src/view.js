@@ -232,7 +232,7 @@ export function createView(THREE, renderer, game) {
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   }
 
-  function render(dt, inX, inZ, camYaw) {
+  function render(dt, inX, inZ, camYaw, tiltDeg = 25) {
     const b = game.ball;
     ballMesh.position.set(b.position.x, b.position.y, b.position.z);
     ballMesh.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
@@ -255,6 +255,9 @@ export function createView(THREE, renderer, game) {
     if (hit && hit.distance > 0.8) { tmp.copy(target).addScaledVector(dir, Math.max(2.5, hit.distance - 0.6)); k = 0.3; }
     if (!camInit) { camPos.copy(tmp); camInit = true; } else camPos.lerp(tmp, k);
     camera.position.copy(camPos); camera.lookAt(target.x + fx * 3, target.y, target.z + fz * 3);
+    // Bahn sichtbar mitkippen: rechts kippen = rechte Seite tiefer
+    const roll = tiltDeg * 0.3 * Math.PI / 180;
+    camera.rotateZ(inX * roll); camera.rotateX(inZ * roll * 0.4);
     sun.position.set(target.x + 6, target.y + 14, target.z + 6); sun.target.position.copy(target);
     renderer.render(scene, camera);
   }
