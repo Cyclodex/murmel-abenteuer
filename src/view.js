@@ -39,10 +39,15 @@ function boxGeo(THREE, sx, sy, sz, tile = 2) {
   return geo;
 }
 
-// Murmel-Kugel mit Design (Textur, Planetenring, Glanz)
+const BUMPS = new Map(); // Design -> fertig berechnete Bump-Map
+
+// Murmel-Kugel mit Design (Textur, Planetenring, Glanz, Struktur)
 export function createBallMesh(THREE) {
   const skinCanvas = document.createElement('canvas'); skinCanvas.width = 256; skinCanvas.height = 128;
   const skinTex = new THREE.CanvasTexture(skinCanvas);
+  // Bump-Map für Oberflächen mit Struktur (Golf-Dellen), feiner als die Farbe; je Design nur einmal berechnet
+  const bumpCanvas = document.createElement('canvas'); bumpCanvas.width = 512; bumpCanvas.height = 256;
+  const bumpTex = new THREE.CanvasTexture(bumpCanvas);
   const ballMat = new THREE.MeshPhongMaterial({ map: skinTex, shininess: 90 });
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 20), ballMat);
   mesh.castShadow = true;
@@ -51,6 +56,12 @@ export function createBallMesh(THREE) {
   function setSkin(skin) {
     skin.paint(skinCanvas.getContext('2d'), 256, 128); skinTex.needsUpdate = true;
     ring.visible = !!skin.ring;
+    if (skin.bump) {
+      if (!BUMPS.has(skin)) { const c = document.createElement('canvas'); c.width = 512; c.height = 256; skin.bump(c.getContext('2d'), 512, 256); BUMPS.set(skin, c); }
+      bumpCanvas.getContext('2d').drawImage(BUMPS.get(skin), 0, 0); bumpTex.needsUpdate = true;
+    }
+    const bump = skin.bump ? bumpTex : null;
+    if (ballMat.bumpMap !== bump) { ballMat.bumpMap = bump; ballMat.bumpScale = 0.02; ballMat.needsUpdate = true; }
     ballMat.shininess = skin.shiny ? 200 : 90; ballMat.specular.setHex(skin.shiny ? 0xFFF2B0 : 0x111111);
   }
   return { mesh, setSkin };
