@@ -54,7 +54,10 @@ export const TYPES = {
       const out = [{ pos: add(s.mid, scale(s.up, -th / 2)), half: [w / 2, th / 2, s.L / 2], quat: s.q, look, surface: d.surface, track: track(s) }];
       const h = d.walls || 0;
       if (h > 0) {
-        for (const k of [-1, 1]) out.push({ pos: add(add(s.mid, scale(s.right, k * (w / 2 + 0.2))), scale(s.up, h / 2)), half: [0.2, h / 2, s.L / 2], quat: s.q, look: 'wall' });
+        // Seitenwände enden an den Abschlusswänden (keine Überlappung -> kein Flimmern an den Ecken)
+        const c0 = d.caps === 'start' || d.caps === 'both' ? 0.2 : 0, c1 = d.caps === 'end' || d.caps === 'both' ? 0.2 : 0;
+        const fwd = scale([d.to[0] - d.from[0], d.to[1] - d.from[1], d.to[2] - d.from[2]], 1 / s.L), mid = add(s.mid, scale(fwd, (c0 - c1) / 2));
+        for (const k of [-1, 1]) out.push({ pos: add(add(mid, scale(s.right, k * (w / 2 + 0.2))), scale(s.up, h / 2)), half: [0.2, h / 2, (s.L - c0 - c1) / 2], quat: s.q, look: 'wall' });
         const cap = p => out.push({ pos: add(p, scale(s.up, h / 2)), half: [w / 2 + 0.4, h / 2, 0.2], quat: s.q, look: 'wall' });
         if (d.caps === 'start' || d.caps === 'both') cap(d.from);
         if (d.caps === 'end' || d.caps === 'both') cap(d.to);
@@ -149,7 +152,8 @@ export const TYPES = {
       const yaw = (d.yaw || 0) * DEG, q = quatYawPitch(yaw, 0), out = fwdOf(yaw), side = rightOf(yaw);
       const w = d.width ?? 2.5, dp = d.depth ?? 3.5, h = d.walls ?? 0.8;
       const res = [{ pos: add(add(d.at, scale(out, dp / 2)), [0, -0.5, 0]), half: [w / 2, 0.5, dp / 2], quat: q, look: d.look || d.surface || 'floor', surface: d.surface }];
-      for (const k of [-1, 1]) res.push({ pos: add(add(add(d.at, scale(out, (dp + 0.4) / 2)), scale(side, k * (w / 2 + 0.2))), [0, h / 2, 0]), half: [0.2, h / 2, (dp + 0.4) / 2], quat: q, look: 'wall' });
+      // Seitenwände enden an der Rückwand (keine Überlappung -> kein Flimmern an den Ecken)
+      for (const k of [-1, 1]) res.push({ pos: add(add(add(d.at, scale(out, dp / 2)), scale(side, k * (w / 2 + 0.2))), [0, h / 2, 0]), half: [0.2, h / 2, dp / 2], quat: q, look: 'wall' });
       res.push({ pos: add(add(d.at, scale(out, dp + 0.2)), [0, h / 2, 0]), half: [w / 2 + 0.4, h / 2, 0.2], quat: q, look: 'wall' });
       return res;
     }

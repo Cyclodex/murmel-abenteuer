@@ -96,6 +96,9 @@ export function createView(THREE, renderer, game) {
     if (kind === 'lego' || kind === 'klotz') {
       m = new THREE.MeshPhongMaterial({ color: COLORS[col] ?? 0xE53935, shininess: kind === 'lego' ? 60 : 10 });
       if (kind === 'lego') m.userData.lego = COLORS[col] ? col : 'rot';
+      // Überlappende Steine haben deckungsgleiche Flächen: feste Rangfolge je Farbe statt Z-Fighting
+      const rank = Object.keys(COLORS).indexOf(col);
+      Object.assign(m, { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: -(rank < 0 ? 0 : rank) - (kind === 'lego' ? 0 : 6) });
     }
     else if (look === 'floor') m = wood ? lambert(0xffffff, { map: wood }) : lambert(theme.floor);
     else if (look === 'ramp' || look === 'bridge') m = woodLight ? lambert(0xffffff, { map: woodLight }) : lambert(theme.ramp ?? 0xF0C382);
@@ -144,7 +147,7 @@ export function createView(THREE, renderer, game) {
   v.starGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.15, bevelEnabled: false });
 
   // ---------- Feste Klötze ----------
-  const studs = {}; // Farbe -> Liste von Matrizen
+  const studs = {}, studPos = []; // Farbe -> Liste von Matrizen; alle Noppen-Positionen
   const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpP = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
   const pillars = [], blockers = [];
   for (const s of game.solids) {
@@ -160,6 +163,9 @@ export function createView(THREE, renderer, game) {
       tmpQ.set(...s.quat);
       for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
         tmpP.set(-hx + (i + 0.5) * hx * 2 / nx, hy + 0.08, -hz + (j + 0.5) * hz * 2 / nz).applyQuaternion(tmpQ).add(mesh.position);
+        // wo Steine überlappen, nur eine Noppe setzen (sonst stecken zwei ineinander und flimmern)
+        if (studPos.some(p => p.distanceToSquared(tmpP) < 0.3 * 0.3)) continue;
+        studPos.push(tmpP.clone());
         (studs[col] = studs[col] || []).push(tmpM.clone().compose(tmpP, tmpQ, one));
       }
     }
