@@ -304,6 +304,20 @@ test('Zuschau-Modus ?autopilot fährt das Level sichtbar bis ins Ziel', async ({
   expect(errors).toEqual([]);
 });
 
+test('Band gegen die Fahrtrichtung dreht die Kamera nicht um', async ({ page }) => {
+  await page.goto('/');
+  const d = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { default: k1 } = await import('/src/levels/kueche1.js');
+    const g = createGame(CANNON, k1); g.reset();
+    g.track.yaw = Math.PI / 2; // nach der Kurve: Blick nach -x
+    g.spawn([-12, 1, -27]);     // auf das Band, das nach +x zurückschiebt
+    for (let i = 0; i < 30; i++) g.step(0, 0, 1 / 60);
+    return Math.atan2(Math.sin(g.track.yaw - Math.PI / 2), Math.cos(g.track.yaw - Math.PI / 2));
+  });
+  expect(Math.abs(d)).toBeLessThan(0.01);
+});
+
 test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {
