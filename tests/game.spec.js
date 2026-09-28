@@ -191,9 +191,11 @@ test('Murmeln prallen je nach Art verschieden stark von der Wand ab', async ({ p
   });
   expect(r.standard.e).toBe(0.5);
   expect(r.fussball.e).toBe(0.75);
-  expect(r.flummi.e).toBe(0.9);
+  expect(r.flummi.e).toBe(0.97);
+  expect(r.basketball.e).toBe(0.8);
+  expect(r.bowling.e).toBe(0.1);
   expect(r.melone.e).toBe(0.2);
-  for (const id of ['standard', 'fussball', 'flummi']) expect(r[id].x, id).toBeLessThan(1);
+  for (const id of ['standard', 'fussball', 'flummi', 'tennis', 'basketball']) expect(r[id].x, id).toBeLessThan(1);
 });
 
 test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
