@@ -34,6 +34,24 @@ test('Spiel startet und die Murmel rollt mit der Pfeiltaste', async ({ page }) =
   expect(errors).toEqual([]);
 });
 
+test('Buttons oben rechts sind antippbar', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.click('#startJoy');
+  await page.keyboard.down('ArrowUp');
+  await page.waitForTimeout(1000);
+  await page.keyboard.up('ArrowUp');
+  // Normaler Klick (ohne force): scheitert, wenn ein anderes Element den Button verdeckt
+  await page.tap('#btnReset');
+  const z = await page.evaluate(() => window.murmel.game.ball.position.z);
+  expect(z).toBeCloseTo(2, 0); // wieder am Start
+  // Kalibrieren-Button (nur im Kippen-Modus sichtbar)
+  await page.evaluate(() => document.getElementById('btnCal').classList.remove('hidden'));
+  await page.tap('#btnCal');
+  await expect(page.locator('#toast')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('Level 1 ist schaffbar (Simulation: immer geradeaus)', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/');
