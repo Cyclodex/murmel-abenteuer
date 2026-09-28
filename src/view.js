@@ -232,7 +232,8 @@ export function createView(THREE, renderer, game) {
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   }
 
-  function render(dt, inX, inZ, camYaw, tiltDeg = 25) {
+  // lean = 1: Welt kippt sichtbar mit (Kippen), 0: ruhige Kamera, nur die Kugel rollt (Joystick)
+  function render(dt, inX, inZ, camYaw, tiltDeg = 25, lean = 1) {
     const b = game.ball;
     ballMesh.position.set(b.position.x, b.position.y, b.position.z);
     ballMesh.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
@@ -245,7 +246,7 @@ export function createView(THREE, renderer, game) {
     // Kamera hinter der Murmel, dreht mit der Bahn, kippt leicht mit der Eingabe
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
     const target = ballMesh.position, lat = Math.max(-4, Math.min(4, game.track.lateral || 0)) * 0.4;
-    const back = 10 + inZ * 1.5, side = -inX * 1.5 - lat;
+    const back = 10 + inZ * 1.5 * lean, side = -inX * 1.5 * lean - lat;
     tmp.set(target.x - fx * back + rx * side, target.y + 7, target.z - fz * back + rz * side);
     // Ist etwas zwischen Murmel und Kamera (z. B. Looping), rückt die Kamera näher heran
     dir.subVectors(tmp, target); const dist = dir.length(); dir.divideScalar(dist);
@@ -256,7 +257,7 @@ export function createView(THREE, renderer, game) {
     if (!camInit) { camPos.copy(tmp); camInit = true; } else camPos.lerp(tmp, k);
     camera.position.copy(camPos); camera.lookAt(target.x + fx * 3, target.y, target.z + fz * 3);
     // Bahn sichtbar mitkippen: rechts kippen = rechte Seite tiefer
-    const roll = tiltDeg * 0.3 * Math.PI / 180;
+    const roll = tiltDeg * 0.3 * Math.PI / 180 * lean;
     camera.rotateZ(inX * roll); camera.rotateX(inZ * roll * 0.4);
     sun.position.set(target.x + 6, target.y + 14, target.z + 6); sun.target.position.copy(target);
     renderer.render(scene, camera);
