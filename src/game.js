@@ -116,8 +116,12 @@ export function createGame(CANNON, level, ballProps = BALL) {
     const u = best && best.userData;
     if (u && u.track) {
       const tr = u.track, p = ball.position;
-      g.track.yaw = tr.yaw;
-      g.track.lateral = (p.x - tr.mid[0]) * tr.right[0] + (p.y - tr.mid[1]) * tr.right[1] + (p.z - tr.mid[2]) * tr.right[2];
+      // Richtung eines Bahnstücks ist nur eine Achse: Läuft es gegen die Fahrtrichtung
+      // (z. B. Förderband, das zurückschiebt), Blickrichtung behalten statt umzudrehen.
+      const d = Math.atan2(Math.sin(tr.yaw - g.track.yaw), Math.cos(tr.yaw - g.track.yaw));
+      const flip = Math.abs(d) > Math.PI / 2 ? -1 : 1;
+      g.track.yaw = flip < 0 ? tr.yaw + Math.PI : tr.yaw;
+      g.track.lateral = flip * ((p.x - tr.mid[0]) * tr.right[0] + (p.y - tr.mid[1]) * tr.right[1] + (p.z - tr.mid[2]) * tr.right[2]);
     }
     g.surface = SURFACES[ground && ground.userData && ground.userData.surface] || SURFACES.normal;
   }
