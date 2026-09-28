@@ -1,4 +1,4 @@
-// Autopilot für Tests: fährt eine Liste von Wegpunkten ab und prüft so, ob ein Level schaffbar ist.
+// Autopilot für Tests (und zum Zuschauen: Spiel mit ?autopilot öffnen): fährt eine Liste von Wegpunkten ab und prüft so, ob ein Level schaffbar ist.
 // Wegpunkt: {x, z, speed?, r?, free?, wait?}
 //   speed = Wunschtempo (m/s), r = Radius "erreicht", free = nicht lenken (z. B. im Looping),
 //   wait = Name einer Bedingung aus WAITS, vorher wird angehalten.
@@ -12,42 +12,56 @@ const dist3 = (p, a) => Math.hypot(p.x - a[0], p.y - a[1], p.z - a[2]);
 const speed = v => Math.hypot(v.x, v.y, v.z);
 const clamp = v => Math.max(-1, Math.min(1, v));
 
+// Steuerung für einen Schritt: liefert die Eingabe [ix, iz] in Welt-Richtung.
+// Wird von autopilot() (Tests) und vom Zuschau-Modus im Spiel (?autopilot) benutzt.
+export function createPilot(g, wps) {
+  const pilot = {
+    i: 0, waiting: null,
+    drive() {
+      const w = wps[Math.min(pilot.i, wps.length - 1)], p = g.ball.position, v = g.ball.velocity;
+      let ix = 0, iz = 0;
+      const [wName, wArg] = w.wait ? [].concat(w.wait) : [];
+      const waiting = wName && !WAITS[wName](g, wArg);
+      pilot.waiting = waiting ? wName : null;
+      // Beim Warten den vorherigen Wegpunkt halten
+      const tgt = waiting ? wps[Math.max(0, pilot.i - 1)] : w;
+      const dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1e-6;
+      const onKin = g.groundBody && g.groundBody.type === g.C.Body.KINEMATIC;
+      if (waiting && onKin) { // mitfahren: relativ zur Plattform stillhalten
+        const pv = g.groundBody.velocity;
+        ix = clamp(-(v.x - pv.x) * 0.5); iz = clamp(-(v.z - pv.z) * 0.5);
+      } else if (!tgt.free || waiting) {
+        const sp = waiting ? Math.min(2, d * 2) : Math.min(w.speed ?? 4, d * 1.5 + 1);
+        ix = clamp((dx / d * sp - v.x) * 1.2); iz = clamp((dz / d * sp - v.z) * 1.2);
+        const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
+      }
+      if (!waiting && d < (w.r ?? 1.2)) pilot.i++;
+      return [ix, iz];
+    },
+    // nach dem Runterfallen beim nächstgelegenen Wegpunkt weitermachen
+    fell() {
+      let best = 0, bd = 1e9;
+      wps.forEach((q, k) => { const dd = Math.hypot(q.x - g.ball.position.x, q.z - g.ball.position.z); if (dd < bd) { bd = dd; best = k; } });
+      pilot.i = best;
+    }
+  };
+  return pilot;
+}
+
 export function autopilot(g, wps, maxTime = 180) {
-  const H = 1 / 60, log = [];
-  let i = 0, falls = 0, t = 0;
+  const H = 1 / 60, log = [], pilot = createPilot(g, wps);
+  let falls = 0, t = 0;
   g.reset();
   while (t < maxTime && !g.st.won) {
-    const w = wps[Math.min(i, wps.length - 1)], p = g.ball.position, v = g.ball.velocity;
-    let ix = 0, iz = 0;
-    const [wName, wArg] = w.wait ? [].concat(w.wait) : [];
-    const waiting = wName && !WAITS[wName](g, wArg);
-    // Beim Warten den vorherigen Wegpunkt halten
-    const tgt = waiting ? wps[Math.max(0, i - 1)] : w;
-    const dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1e-6;
-    const onKin = g.groundBody && g.groundBody.type === g.C.Body.KINEMATIC;
-    if (waiting && onKin) { // mitfahren: relativ zur Plattform stillhalten
-      const pv = g.groundBody.velocity;
-      ix = clamp(-(v.x - pv.x) * 0.5); iz = clamp(-(v.z - pv.z) * 0.5);
-    } else if (!tgt.free || waiting) {
-      const sp = waiting ? Math.min(2, d * 2) : Math.min(w.speed ?? 4, d * 1.5 + 1);
-      ix = clamp((dx / d * sp - v.x) * 1.2); iz = clamp((dz / d * sp - v.z) * 1.2);
-      const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
-    }
-    if (!waiting && d < (w.r ?? 1.2)) i++;
+    const [ix, iz] = pilot.drive();
     const ev = g.step(ix, iz, H);
     t += H;
     for (const e of ev) {
       log.push(`${e}@${t.toFixed(1)}`);
-      if (e === 'fall') {
-        falls++;
-        // beim nächstgelegenen Wegpunkt weitermachen
-        let best = 0, bd = 1e9;
-        wps.forEach((q, k) => { const dd = Math.hypot(q.x - g.ball.position.x, q.z - g.ball.position.z); if (dd < bd) { bd = dd; best = k; } });
-        i = best;
-      }
+      if (e === 'fall') { falls++; pilot.fell(); }
     }
   }
-  return { won: g.st.won, stars: g.st.stars, starTotal: g.st.starTotal, falls, time: +t.toFixed(1), wp: i, log };
+  return { won: g.st.won, stars: g.st.stars, starTotal: g.st.starTotal, falls, time: +t.toFixed(1), wp: pilot.i, log };
 }
 
 // Wegpunkte pro Level (id -> Liste)

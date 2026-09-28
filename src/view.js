@@ -69,6 +69,23 @@ function boxGeo(THREE, sx, sy, sz, tile = 2) {
   return geo;
 }
 
+// Murmel-Kugel mit Design (Textur, Planetenring, Glanz)
+export function createBallMesh(THREE) {
+  const skinCanvas = document.createElement('canvas'); skinCanvas.width = 256; skinCanvas.height = 128;
+  const skinTex = new THREE.CanvasTexture(skinCanvas);
+  const ballMat = new THREE.MeshPhongMaterial({ map: skinTex, shininess: 90 });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 20), ballMat);
+  mesh.castShadow = true;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.85, 40), new THREE.MeshLambertMaterial({ color: 0xE8D5A8, side: THREE.DoubleSide }));
+  ring.rotation.x = Math.PI / 2.4; mesh.add(ring);
+  function setSkin(skin) {
+    skin.paint(skinCanvas.getContext('2d'), 256, 128); skinTex.needsUpdate = true;
+    ring.visible = !!skin.ring;
+    ballMat.shininess = skin.shiny ? 200 : 90; ballMat.specular.setHex(skin.shiny ? 0xFFF2B0 : 0x111111);
+  }
+  return { mesh, setSkin };
+}
+
 export function createView(THREE, renderer, game) {
   const theme = THEMES[game.level.theme] || THEMES.standard;
   const scene = new THREE.Scene();
@@ -201,18 +218,8 @@ export function createView(THREE, renderer, game) {
   }
 
   // ---------- Murmel ----------
-  const skinCanvas = document.createElement('canvas'); skinCanvas.width = 256; skinCanvas.height = 128;
-  const skinTex = new THREE.CanvasTexture(skinCanvas);
-  const ballMat = new THREE.MeshPhongMaterial({ map: skinTex, shininess: 90 });
-  const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 20), ballMat);
-  ballMesh.castShadow = true; scene.add(ballMesh);
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.85, 40), new THREE.MeshLambertMaterial({ color: 0xE8D5A8, side: THREE.DoubleSide }));
-  ring.rotation.x = Math.PI / 2.4; ballMesh.add(ring);
-  function setSkin(skin) {
-    skin.paint(skinCanvas.getContext('2d'), 256, 128); skinTex.needsUpdate = true;
-    ring.visible = !!skin.ring;
-    ballMat.shininess = skin.shiny ? 200 : 90; ballMat.specular.setHex(skin.shiny ? 0xFFF2B0 : 0x111111);
-  }
+  const ball = createBallMesh(THREE), ballMesh = ball.mesh, setSkin = ball.setSkin;
+  scene.add(ballMesh);
 
   // ---------- Konfetti ----------
   const confetti = [];
@@ -243,6 +250,12 @@ export function createView(THREE, renderer, game) {
       c.v.y -= 9.8 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += dt * 6; c.life -= dt;
       if (c.life <= 0) { scene.remove(c.m); c.m.geometry.dispose(); c.m.material.dispose(); confetti.splice(i, 1); }
     }
+    if (view.fixedCam) { // feste Kamera (z. B. Treppe): fixedCam(camera) stellt sie und liefert den Blickpunkt
+      const look = view.fixedCam(camera);
+      sun.position.set(look.x + 6, look.y + 14, look.z + 6); sun.target.position.copy(look);
+      renderer.render(scene, camera);
+      return;
+    }
     // Kamera hinter der Murmel, dreht mit der Bahn, kippt leicht mit der Eingabe
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
     const target = ballMesh.position, lat = Math.max(-4, Math.min(4, game.track.lateral || 0)) * 0.4;
@@ -271,5 +284,6 @@ export function createView(THREE, renderer, game) {
     });
   }
 
-  return { scene, camera, ballMesh, burst, render, resize, setSkin, dispose, get goal() { return v.goal; } };
+  const view = { scene, camera, ballMesh, burst, render, resize, setSkin, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
+  return view;
 }

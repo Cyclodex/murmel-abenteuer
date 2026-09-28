@@ -264,6 +264,48 @@ test('Murmeln prallen je nach Art verschieden stark von der Wand ab', async ({ p
   for (const id of ['standard', 'fussball', 'flummi', 'tennis', 'basketball']) expect(r[id].x, id).toBeLessThan(1);
 });
 
+test('Treppe: alle Murmeln kommen unten an, der Flummi springt am höchsten', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createTreppe } = await import('/src/treppe.js');
+    const { SKINS } = await import('/src/skins.js');
+    const t = createTreppe(CANNON, SKINS);
+    const up = SKINS.map(() => 0);
+    for (let i = 0; i < 60 * 9; i++) { t.step(1 / 60); t.games.forEach((g, k) => { up[k] = Math.max(up[k], g.ball.velocity.y); }); }
+    return SKINS.map((s, k) => ({ id: s.id, z: t.games[k].ball.position.z, up: up[k] }));
+  });
+  const by = Object.fromEntries(r.map(x => [x.id, x]));
+  for (const x of r) expect(x.z, x.id).toBeGreaterThan(0); // unten im Auslauf
+  for (const x of r) if (x.id !== 'flummi') expect(by.flummi.up, x.id).toBeGreaterThan(x.up);
+  expect(by.basketball.up).toBeGreaterThan(by.standard.up);
+});
+
+test('Menüs zeigen die Treppe im Hintergrund, Knopf 🪜 zeigt sie im Vollbild', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.backdrop);
+  await page.click('#startJoy');
+  await newPlayer(page, 'Test');
+  await page.click('#btnTreppe');
+  await expect(page.locator('#mapOv')).toBeHidden();
+  await page.waitForFunction(() => window.murmel.treppe.treppe.time > 0.5);
+  await page.click('#treppeBack');
+  await page.click('.lvl[data-level="ausflug"]');
+  expect(await page.evaluate(() => window.murmel.backdrop)).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+test('Zuschau-Modus ?autopilot fährt das Level sichtbar bis ins Ziel', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?autopilot');
+  await page.click('#startJoy');
+  await newPlayer(page, 'Robo');
+  await page.click('.lvl[data-level="ausflug"]');
+  await expect(page.locator('#pilotInfo')).toContainText('🤖 Ziel');
+  await expect(page.locator('#winOv')).toBeVisible({ timeout: 50_000 });
+  expect(errors).toEqual([]);
+});
+
 test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {

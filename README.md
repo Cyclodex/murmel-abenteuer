@@ -22,6 +22,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen), Pfeiltasten, Stärken 🐢/🐇/🚀 (`POWERS`) |
 | `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
 | `src/skins.js` | Murmel-Designs, ab wie vielen Sternen sie frei sind, Sprungkraft an Wand/Boden und Schwerkraft (`ball: {wand, boden, schwere}`) |
+| `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |
 | `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne und Murmel pro Spieler, Rangliste; Einstellungen für alle |
 | `src/main.js` | Start, Karte, Menüs, Spielschleife |
 | `tests/` | Playwright-Tests, Autopilot mit Route pro Level |
@@ -52,3 +53,4 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 
 Neues Hindernis erfinden: in `src/elements.js` einen Typ ergänzen (`solids`, `init`, `reset`, `pre`, `step`, `view`), danach kann es in jedem Level verwendet werden.
 Neues Level testen: in `tests/autopilot.js` eine Route (Wegpunkte) ergänzen, dann `npm test`.
+Autopilot zuschauen: Spiel mit `?autopilot` öffnen (z. B. `http://localhost:8123/?autopilot`), Level wählen. Ringe = Wegpunkte (orange = aktuelles Ziel, lila = wartet, grau = erledigt).

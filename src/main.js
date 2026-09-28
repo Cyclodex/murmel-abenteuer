@@ -6,6 +6,7 @@ import { createInput, POWERS } from './input.js';
 import { createAudio, SOUND_MODES, buzz } from './audio.js';
 import { WORLDS, LEVELS } from './levels/index.js';
 import { SKINS } from './skins.js';
+import { createTreppenView } from './treppe.js';
 import { createProgress } from './progress.js';
 import { angleDiff } from './math.js';
 
@@ -52,9 +53,11 @@ function loadLevel(i) {
   view.resize();
   game.reset();
   camYaw = game.track.yaw;
+  setupPilot();
 }
 
 function startLevel(i) {
+  backdrop = false;
   loadLevel(i);
   ['mapOv', 'winOv', 'skinOv', 'startOv', 'playerOv'].forEach(id => show(id, false));
   show('hud'); show('joy', input.mode === 'joy');
@@ -65,6 +68,7 @@ function startLevel(i) {
 }
 
 function restart() {
+  if (pilot) pilot.i = 0;
   game.reset(); camYaw = game.track.yaw; show('winOv', false); running = true;
   if (input.mode === 'tilt') input.calibrate();
 }
@@ -72,8 +76,8 @@ function restart() {
 // ---------- Karte ----------
 function starRow(have, total) { return '⭐'.repeat(have) + '☆'.repeat(Math.max(0, total - have)); }
 function showMap() {
-  running = false;
-  ['hud', 'joy', 'winOv', 'skinOv', 'startOv', 'playerOv'].forEach(id => show(id, false));
+  running = false; backdrop = true;
+  ['hud', 'joy', 'winOv', 'skinOv', 'startOv', 'playerOv', 'treppeBack'].forEach(id => show(id, false));
   $('mapStars').textContent = `⭐ ${progress.totalStars()}`;
   $('btnPlayer').textContent = `👤 ${progress.player().name}`;
   $('btnPower').textContent = power().emoji;
@@ -104,6 +108,7 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 const rankText = (r, i) => `${MEDALS[i] || `${i + 1}.`} ${r.name} ⭐${r.stars}`;
 
 function showPlayers() {
+  backdrop = true;
   ['mapOv', 'startOv'].forEach(id => show(id, false));
   const list = $('playerList'); list.textContent = '';
   progress.ranking().forEach((r, i) => {
@@ -167,7 +172,10 @@ $('btnSound').onclick = () => {
 };
 $('skinBack').onclick = showMap;
 $('btnPlayer').onclick = () => { audio.sfx('tap'); showPlayers(); };
-addEventListener('resize', () => view && view.resize());
+// Treppe im Vollbild anschauen: alle Murmeln im Vergleich
+$('btnTreppe').onclick = () => { audio.sfx('tap'); show('mapOv', false); show('treppeBack'); treppe.treppe.reset(); };
+$('treppeBack').onclick = () => { audio.sfx('tap'); showMap(); };
+addEventListener('resize', () => { if (view) view.resize(); treppe.resize(); });
 
 function onWin() {
   running = false;
@@ -196,19 +204,64 @@ function onEvent(e) {
   if (e === 'star') view.burst(view.ballMesh.position, 12, [0xFFC928, 0xFFFFFF]);
   if (e === 'bonus') { buzz([30, 30, 30]); view.burst(view.ballMesh.position, 30, [0xC77DFF, 0xFFC928, 0xFFFFFF]); }
   if (e === 'win') onWin();
+  if (e === 'fall' && pilot) pilot.fell();
 }
+
+// ---------- Zuschau-Modus: Spiel mit ?autopilot öffnen, der Test-Autopilot fährt sichtbar ----------
+// Ringe = Wegpunkte (orange = aktuelles Ziel, lila = wartet dort, grau = erledigt).
+const PILOT = new URLSearchParams(location.search).has('autopilot');
+let pilotMod = null, pilot = null, marks = [];
+if (PILOT) import('../tests/autopilot.js').then(m => { pilotMod = m; if (game) setupPilot(); });
+
+function setupPilot() {
+  pilot = null; marks = [];
+  const wps = pilotMod && pilotMod.ROUTES[LEVELS[levelIdx].id];
+  show('pilotInfo', !!wps);
+  if (!wps) return;
+  pilot = pilotMod.createPilot(game, wps);
+  const ray = new CANNON.RaycastResult();
+  marks = wps.map(w => {
+    // Boden unter dem Wegpunkt suchen
+    ray.reset();
+    game.world.raycastClosest(new CANNON.Vec3(w.x, 40, w.z), new CANNON.Vec3(w.x, -20, w.z), { collisionFilterMask: 1, skipBackfaces: true }, ray);
+    const m = new THREE.Mesh(new THREE.TorusGeometry(w.r ?? 1.2, 0.07, 6, 32), new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
+    m.rotation.x = Math.PI / 2;
+    m.position.set(w.x, (ray.hasHit ? ray.hitPointWorld.y : 0) + 0.06, w.z);
+    view.scene.add(m);
+    return m;
+  });
+}
+function updatePilot() {
+  if (!pilot) return;
+  marks.forEach((m, k) => m.material.color.setHex(k < pilot.i ? 0x999999 : k > pilot.i ? 0xFFFFFF : pilot.waiting ? 0xC77DFF : 0xFF8A00));
+  const v = game.ball.velocity, WAIT = { platAtFrom: 'wartet auf Plattform', platAtTo: 'fährt mit Plattform', bridgeUp: 'wartet auf Brücke' };
+  $('pilotInfo').textContent = `🤖 Ziel ${Math.min(pilot.i + 1, marks.length)}/${marks.length} · ${Math.hypot(v.x, v.z).toFixed(1)} m/s` + (pilot.waiting ? ` · ${WAIT[pilot.waiting] || pilot.waiting}` : '');
+}
+
+// Hinter Start, Spieler, Karte und Murmel-Auswahl: alle Murmeln fallen die Treppe hinunter
+const treppe = createTreppenView(THREE, CANNON, renderer, SKINS);
+treppe.resize();
+let backdrop = true;
 
 let last = performance.now();
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  const [sx, sz] = input.read();
+  if (backdrop) {
+    audio.roll(0, false, 'normal');
+    treppe.frame(dt);
+    requestAnimationFrame(loop);
+    return;
+  }
   // Kamera dreht weich mit der Bahn; Eingabe wirkt relativ zur Kamera
   camYaw += angleDiff(camYaw, game.track.yaw) * Math.min(1, dt * 3);
   const c = Math.cos(camYaw), s = Math.sin(camYaw);
-  game.brake = input.mode === 'tilt' ? 0 : 1.5; // Joystick: Bremshilfe beim Loslassen
+  let [sx, sz] = input.read();
+  if (pilot && running) { const [ix, iz] = pilot.drive(); sx = ix * c - iz * s; sz = ix * s + iz * c; } // Welt -> Kamera
+  game.brake = input.mode === 'tilt' || pilot ? 0 : 1.5; // Joystick: Bremshilfe beim Loslassen
   if (running) for (const e of game.step(sx * c + sz * s, -sx * s + sz * c, dt)) onEvent(e);
   const bv = game.ball.velocity;
   audio.roll(running ? Math.hypot(bv.x, bv.y, bv.z) : 0, !!game.groundBody, game.groundBody?.userData?.surface || 'normal');
+  updatePilot();
   $('stars').textContent = `⭐ ${game.st.stars}/${game.st.starTotal}`;
   view.render(dt, sx, sz, camYaw, power().tilt, input.mode === 'tilt' ? 1 : 0);
   requestAnimationFrame(loop);
@@ -220,5 +273,5 @@ requestAnimationFrame(loop);
 // Für Tests und zum Ausprobieren in der Konsole
 window.murmel = {
   get game() { return game; }, get running() { return running; }, get camYaw() { return camYaw; },
-  LEVELS, WORLDS, SKINS, progress, startLevel, showMap, audio, input, get view() { return view; }
+  LEVELS, WORLDS, SKINS, progress, startLevel, showMap, audio, input, get view() { return view; }, treppe, get backdrop() { return backdrop; }
 };
