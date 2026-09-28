@@ -262,6 +262,29 @@ test('Murmeln prallen je nach Art verschieden stark von der Wand ab', async ({ p
   for (const id of ['standard', 'fussball', 'flummi', 'tennis', 'basketball']) expect(r[id].x, id).toBeLessThan(1);
 });
 
+test('Golfball hüpft kaum und rollt weiter als die Standard-Murmel', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { SKINS } = await import('/src/skins.js');
+    const lv = { id: 't', start: [0, 0, 0], parts: [{ type: 'weg', from: [0, 0, 60], to: [0, 0, -60], width: 6, walls: 1 }] };
+    const out = {};
+    for (const id of ['standard', 'golf']) {
+      const ball = SKINS.find(s => s.id === id).ball;
+      const g = createGame(CANNON, lv, ball); g.reset();
+      for (let i = 0; i < 60; i++) g.step(0, 0, 1 / 60);
+      const z0 = g.ball.position.z; g.ball.velocity.set(0, 0, -5); g.ball.angularVelocity.set(-10, 0, 0);
+      for (let i = 0; i < 300; i++) g.step(0, 0, 1 / 60);
+      const f = createGame(CANNON, lv, ball); f.reset(); f.spawn([0, 3.5, 0]); // aus 3 m fallen lassen
+      let up = 0; for (let i = 0; i < 120; i++) { f.step(0, 0, 1 / 60); up = Math.max(up, f.ball.velocity.y); }
+      out[id] = { weg: z0 - g.ball.position.z, up };
+    }
+    return out;
+  });
+  expect(r.golf.weg).toBeGreaterThan(r.standard.weg * 1.2);
+  expect(r.golf.up).toBeLessThan(2.5); // früher ~5.6 m/s Rückprall
+});
+
 test('Treppe: alle Murmeln kommen unten an, der Flummi springt am höchsten', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {

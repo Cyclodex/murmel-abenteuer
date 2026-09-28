@@ -107,7 +107,7 @@ export const ROUTES = {
     { x: 20, z: -25, speed: 9 }, { x: 28, z: -25, speed: 6 }, { x: 31.5, z: -26.5 }, { x: 33, z: -31 }, { x: 33, z: -36 }
   ],
   sz2: [
-    { x: 0, z: -7.3 }, { x: 0, z: -10, speed: 2, wait: 'platAtFrom' }, { x: 0, z: -19, speed: 2, wait: 'platAtTo' },
+    { x: 0, z: -7.3, speed: 2 }, { x: 0, z: -10, speed: 2, wait: 'platAtFrom' }, { x: 0, z: -19, speed: 2, wait: 'platAtTo' },
     { x: 0, z: -24.5 }, { x: 0, z: -28, speed: 2, wait: ['platAtFrom', 1] }, { x: 0, z: -32, speed: 2, wait: ['platAtTo', 1] }, { x: -5, z: -32.25, speed: 2 }, { x: 0, z: -33, speed: 2 },
     { x: 0, z: -39 }, { x: 0, z: -44, speed: 3 }, { x: 0, z: -49, speed: 3 }, { x: 0, z: -54 }
   ],

@@ -228,7 +228,7 @@ export const EXTRA = {
         }
       } else if (el.state === 'flug') {
         if ((g.groundBody && el.t > 0.2) || el.t > 5 || !g.lock) {
-          g.lock = false; g.ball.linearDamping = 0.12; el.state = 'pause'; el.t = 0;
+          g.lock = false; g.ball.linearDamping = g.damping; el.state = 'pause'; el.t = 0;
         }
       } else if (el.state === 'pause' && el.t > 1.5) el.state = 'bereit';
     },

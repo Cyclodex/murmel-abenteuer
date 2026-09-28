@@ -18,8 +18,9 @@ export const SURFACES = {
 };
 
 // Sprungkraft der Murmel: Anteil der Aufprallgeschwindigkeit, der zurückkommt (Wand / Boden),
-// schwere = Faktor für die Schwerkraft nach unten (Mond < 1)
-export const BALL = { wand: 0.5, boden: 0.25, schwere: 1 };
+// schwere = Faktor für die Schwerkraft nach unten (Mond < 1),
+// rollen = Faktor für das Abbremsen beim Rollen (< 1 = rollt weiter, z. B. Golfball)
+export const BALL = { wand: 0.5, boden: 0.25, schwere: 1, rollen: 1 };
 
 // Kollisionsgruppen: feste/bewegte Teile, Murmel, lose Teile (z. B. Dominos)
 export const GRP = { fest: 1, murmel: 2, lose: 4 };
@@ -60,7 +61,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
     st: { stars: 0, starTotal: 0, cp: -1, won: false },
     groundBody: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0,
     // Leichte Murmel (schwere < 1) nur in Welten mit normaler Schwerkraft; im Weltraum gilt die Level-Schwerkraft
-    ballProps, G: phys.schwerkraft ? gy : gy * (ballProps.schwere ?? 1), lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
+    ballProps, damping: DAMPING * (ballProps.rollen ?? 1), G: phys.schwerkraft ? gy : gy * (ballProps.schwere ?? 1), lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
   };
 
   level.parts.forEach((d, i) => {
@@ -81,7 +82,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
   });
   for (const el of g.els) TYPES[el.type].init?.(el, g);
 
-  const ball = new CANNON.Body({ mass: 1, material: mBall, shape: new CANNON.Sphere(R), linearDamping: DAMPING, angularDamping: 0.3 });
+  const ball = new CANNON.Body({ mass: 1, material: mBall, shape: new CANNON.Sphere(R), linearDamping: g.damping, angularDamping: 0.3 * (ballProps.rollen ?? 1) });
   ball.collisionFilterGroup = GRP.murmel; ball.collisionFilterMask = GRP.fest | GRP.lose;
   world.addBody(ball);
   g.ball = ball;
@@ -92,7 +93,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
 
   g.spawn = p => {
     ball.position.set(...p); ball.velocity.set(0, 0, 0); ball.angularVelocity.set(0, 0, 0);
-    g.groundBody = g.touchBody = null; g.lock = false; ball.linearDamping = DAMPING;
+    g.groundBody = g.touchBody = null; g.lock = false; ball.linearDamping = g.damping;
   };
   g.reset = () => {
     Object.assign(g.st, { stars: 0, cp: -1, won: false });
