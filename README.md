@@ -16,7 +16,10 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | Datei | Inhalt |
 |---|---|
 | `src/levels/*.js` | Level als Daten (ein Objekt pro Level), Welten und Reihenfolge in `src/levels/index.js` |
-| `src/elements.js` | Alle Bauteil-Typen: Klötze, Logik und Grafik je Typ |
+| `src/elements.js` | Grund-Bauteile: Klötze, Logik und Grafik je Typ |
+| `src/elements-extra.js` | Weitere Bauteile (Röhre, Band, Wind, Balken, Magnet, Kanone, Domino, Spirale) |
+| `src/bauteile.js` | Sammelt alle Bauteil-Typen |
+| `src/themes.js` | Aussehen der Welten (Boden, Wände, Himmel, Untergrund, Partikel) |
 | `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm) |
 | `src/view.js` | three.js-Szene, Themen (Spielzimmer), Kamera |
 | `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen), Pfeiltasten, Stärken 🐢/🐇/🚀 (`POWERS`) |
@@ -30,7 +33,8 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 
 Koordinaten in Metern: `x` = rechts, `y` = oben, `-z` = vorwärts. Murmel-Radius 0.5.
 Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rechts (+x).
-`theme: 'spielzimmer'` gibt Holzbahn, Legowände und Teppich.
+`theme`: `'spielzimmer'`, `'garten'`, `'kueche'`, `'weltraum'`, `'unterwasser'` (siehe `src/themes.js`).
+`physik`: `{ schwerkraft: 0.45, wasser: 0.35, abprall: 0.5 }` (Faktor Schwerkraft, Wasserbremse pro Sekunde, Faktor Abprall).
 
 | Bauteil | Felder |
 |---|---|
@@ -40,15 +44,23 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `wand` | `from`, `to` (Unterkante), `height`, `look` |
 | `klotz` | `at` (Mitte), `size: [b, h, t]`, `yaw`, `look` (`'lego-rot'`, `'klotz-blau'`, `'abc'` + `text`), `deko: true` = ohne Physik |
 | `nische` | `at` (Mitte der Öffnung am Wegrand), `yaw` (nach aussen), `width`, `depth` – Wand dort mit Lücke bauen |
-| `stern` | `at`, `bonus: true` (lila, versteckt) |
+| `stern` | `at`, `bonus: true` (lila, versteckt), `r` (Sammelradius) |
 | `checkpoint` | `at` (Boden, dort geht es weiter), `size: [b, h, t]`, `yaw` |
-| `trampolin` | `at`, `size: [b, t]`, `jump`, `push`, `yaw` |
+| `trampolin` | `at`, `size: [b, t]`, `jump`, `push` oder `tempo` (fester Schwung), `yaw` |
 | `turbo` | `at`, `size: [b, t]`, `yaw`, `speed` |
 | `plattform` | `from`, `to` (Mitte Oberkante), `size: [b, t]`, `yaw`, `time`, `pause`, `rim` |
 | `wippe` | `at` (Drehpunkt, Oberkante), `size: [b, länge]`, `yaw`, `angle` |
 | `schalter` | `at`, `id` |
 | `bruecke` | `from`, `to`, `width`, `walls`, `id` (wie Schalter), `drop` |
 | `ziel` | `at`, `r` |
+| `spirale` | wie `kurve`, mit `turn` (z. B. 720) und `rise` (z. B. -8) |
+| `roehre` | `from`, `yaw` (hinein), `to`, `toYaw` (heraus), `bogen`, `speed`, `out`, `farbe` – vor der Öffnung einen schmalen Weg bauen |
+| `band` | wie `weg` + `speed` (m/s), `grip` (wie stark) |
+| `wind` | `at` (Boden, Mitte), `size: [b, h, t]`, `yaw` (Blasrichtung) oder `up: true`, `strength` |
+| `balken` | `at` (Drehpunkt), `length`, `speed` (°/s, negativ = andersrum), `farbe` |
+| `magnet` | `at` (Boden darunter), `radius`, `strength` (negativ = stösst ab) |
+| `kanone` | `at` (Boden), `target` (Landepunkt), `time` (Flugzeit) |
+| `domino` | `from`, `to`, `count`, `size: [b, h, t]` |
 
 Neues Hindernis erfinden: in `src/elements.js` einen Typ ergänzen (`solids`, `init`, `reset`, `pre`, `step`, `view`), danach kann es in jedem Level verwendet werden.
-Neues Level testen: in `tests/autopilot.js` eine Route (Wegpunkte) ergänzen, dann `npm test`.
+Neues Level testen: in `tests/autopilot.js` eine Route (Wegpunkte) ergänzen, dann `npm test`. Wegpunkte können warten (`wait: 'platAtTo'`, `['hoehe', 7]`, `['balkenWeg', [x, z]]`) oder der Bahn folgen (`{ follow: true, bisY }`); mehrere Routen pro Level sind möglich (z. B. Umweg zum Bonusstern).

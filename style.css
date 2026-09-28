@@ -41,3 +41,7 @@ background:rgba(255,255,255,.35);border:3px solid rgba(255,255,255,.8);touch-act
 .skin small{font-size:15px}
 .skin.sel{outline:5px solid var(--go)}
 .skin:disabled{opacity:.5;cursor:default}
+/* Karte kann höher als der Bildschirm sein: oben beginnen (scrollbar), zentriert nur wenn Platz ist */
+#mapOv{justify-content:flex-start}
+#mapOv>:first-child{margin-top:auto}
+#mapOv>:last-child{margin-bottom:auto}

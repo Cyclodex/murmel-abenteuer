@@ -158,9 +158,10 @@ function onWin() {
   setTimeout(() => { show('winOv'); show('joy', false); }, 900);
 }
 
-const VIBRATE = { star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
+const VIBRATE = { boom: [80, 30, 40], roehre: 30, plopp: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
 function onEvent(e) {
   if (e === 'hit') { audio.sfx('hit', game.hitStrength); return; }
+  if (e === 'tock') { audio.sfx('tock', game.tockIdx); return; }
   audio.sfx(e);
   if (VIBRATE[e]) buzz(VIBRATE[e]);
   if (e === 'star') view.burst(view.ballMesh.position, 12, [0xFFC928, 0xFFFFFF]);

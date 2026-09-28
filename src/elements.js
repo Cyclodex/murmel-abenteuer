@@ -12,7 +12,7 @@ import { DEG, quatYawPitch, rotate, add, scale, lerp3, yawOf, toLocal, fwdOf, ri
 const R = 0.5; // Murmel-Radius
 const TAU = Math.PI * 2;
 
-function segment(from, to, fallbackYaw) {
+export function segment(from, to, fallbackYaw) {
   const dx = to[0] - from[0], dy = to[1] - from[1], dz = to[2] - from[2];
   const hl = Math.hypot(dx, dz);
   const yaw = hl > 1e-6 ? yawOf(dx, dz) : (fallbackYaw || 0) * DEG;
@@ -20,29 +20,29 @@ function segment(from, to, fallbackYaw) {
   const q = quatYawPitch(yaw, pitch);
   return { q, L: Math.hypot(hl, dy), mid: scale(add(from, to), 0.5), up: rotate(q, [0, 1, 0]), right: rotate(q, [1, 0, 0]), yaw, pitch };
 }
-const track = s => ({ yaw: s.yaw, mid: s.mid, right: s.right });
+export const track = s => ({ yaw: s.yaw, mid: s.mid, right: s.right });
 
 // Beweglicher Körper aus mehreren Klötzen (Form-Liste in lokalen Koordinaten)
-function kinematicBody(g, parts, surface) {
+export function kinematicBody(g, parts, surface) {
   const C = g.C;
   const body = new C.Body({ mass: 0, type: C.Body.KINEMATIC, material: g.matFor(surface) });
   for (const p of parts) body.addShape(new C.Box(new C.Vec3(...p.half)), new C.Vec3(...p.off));
-  body.collisionFilterGroup = 1; body.collisionFilterMask = 2;
+  body.collisionFilterGroup = 1; body.collisionFilterMask = 2 | 4;
   g.world.addBody(body);
   body.looks = parts.map(p => p.look || 'floor');
   return body;
 }
 // Form-Liste für ein flaches Brett mit optionalen Seitenrändern; Oberkante bei y = 0
-function boardParts(w, len, th, rim, look) {
+export function boardParts(w, len, th, rim, look) {
   const parts = [{ half: [w / 2, th / 2, len / 2], off: [0, -th / 2, 0], look }];
   if (rim > 0) for (const k of [-1, 1]) parts.push({ half: [0.15, rim / 2, len / 2], off: [k * (w / 2 + 0.15), rim / 2, 0], look: 'wall' });
   return parts;
 }
 // Kinematischen Körper so bewegen, dass er nach h Sekunden bei p ist
-function driveTo(body, p, h) {
+export function driveTo(body, p, h) {
   body.velocity.set((p[0] - body.position.x) / h, (p[1] - body.position.y) / h, (p[2] - body.position.z) / h);
 }
-const ballPos = g => [g.ball.position.x, g.ball.position.y, g.ball.position.z];
+export const ballPos = g => [g.ball.position.x, g.ball.position.y, g.ball.position.z];
 
 export const TYPES = {
   // Weg von A nach B (Oberkante). Wenn die Höhe sich ändert, wird er zur Rampe.
@@ -66,19 +66,27 @@ export const TYPES = {
     }
   },
 
-  // Flache Kurve. at = Startpunkt (Mitte, Oberkante), yaw = Startrichtung,
-  // turn = Grad (+ rechts, - links), radius = bis zur Wegmitte.
-  // {type:'kurve', at, yaw?, turn, radius?, width?, walls?, thick?, surface?}
+  // Kurve. at = Startpunkt (Mitte, Oberkante), yaw = Startrichtung,
+  // turn = Grad (+ rechts, - links, auch mehr als 360 für Spiralen), radius = bis zur Wegmitte,
+  // rise = Höhenänderung über die ganze Kurve (negativ = abwärts).
+  // {type:'kurve', at, yaw?, turn, radius?, width?, walls?, thick?, rise?, surface?}
   kurve: {
     solids(d) {
       const h0 = (d.yaw || 0) * DEG, T = Math.abs(d.turn) * DEG, s = Math.sign(d.turn), r = d.radius ?? 5, w = d.width ?? 5, th = d.thick ?? 1;
       const n = Math.max(2, Math.ceil(Math.abs(d.turn) / 10)), dphi = T / n, wh = d.walls || 0;
       const R0 = rightOf(h0), F0 = fwdOf(h0), C = add(d.at, scale(R0, s * r));
       const P = (phi, rad) => add(C, add(scale(R0, -s * Math.cos(phi) * rad), scale(F0, Math.sin(phi) * rad)));
-      const out = [];
+      const out = [], rise = d.rise || 0;
       for (let k = 0; k < n; k++) {
         const a = k * dphi, b = a + dphi, yaw = h0 - s * (a + b) / 2, q = quatYawPitch(yaw, 0);
         const chord = rad => 2 * rad * Math.sin(dphi / 2) + 0.06;
+        if (rise) { // geneigtes Segment (Spirale)
+          const pa = add(P(a, r), [0, rise * a / T, 0]), pb = add(P(b, r), [0, rise * b / T, 0]), sg = segment(pa, pb);
+          const L = rad => chord(rad) / Math.cos(sg.pitch);
+          out.push({ pos: add(sg.mid, scale(sg.up, -th / 2)), half: [w / 2, th / 2, L(r + w / 2) / 2], quat: sg.q, look: d.look || d.surface || 'ramp', surface: d.surface, track: track(sg) });
+          if (wh > 0) for (const k2 of [-1, 1]) out.push({ pos: add(add(sg.mid, scale(sg.right, k2 * (w / 2 + 0.2))), scale(sg.up, wh / 2)), half: [0.2, wh / 2, L(r - k2 * s * (w / 2 + 0.2)) / 2], quat: sg.q, look: 'wall' });
+          continue;
+        }
         const mid = scale(add(P(a, r), P(b, r)), 0.5);
         out.push({ pos: add(mid, [0, -th / 2, 0]), half: [w / 2, th / 2, chord(r + w / 2) / 2], quat: q, look: d.look || d.surface || 'floor', surface: d.surface, track: { yaw, mid, right: rightOf(yaw) } });
         if (wh > 0) for (const rad of [r + w / 2 + 0.2, r - w / 2 - 0.2]) {
@@ -159,13 +167,13 @@ export const TYPES = {
     }
   },
 
-  // Stern zum Sammeln. {type:'stern', at, bonus?:true}
+  // Stern zum Sammeln. r = Sammelradius (Standard 1.1). {type:'stern', at, bonus?:true, r?}
   stern: {
     init(el, g) { g.st.starTotal++; },
     reset(el) { el.got = false; },
     step(el, g, h, ev) {
       const p = g.ball.position, s = el.at;
-      if (!el.got && Math.hypot(p.x - s[0], p.y - s[1], p.z - s[2]) < 1.1) { el.got = true; g.st.stars++; ev.push(el.bonus ? 'bonus' : 'star'); }
+      if (!el.got && Math.hypot(p.x - s[0], p.y - s[1], p.z - s[2]) < (el.r ?? 1.1)) { el.got = true; g.st.stars++; ev.push(el.bonus ? 'bonus' : 'star'); }
     },
     view(el, v) {
       const m = new v.THREE.Mesh(v.starGeo, el.bonus ? v.mats.bonusStar : v.mats.star);
@@ -202,19 +210,19 @@ export const TYPES = {
     }
   },
 
-  // Trampolin: Rechteck auf dem Boden. {type:'trampolin', at, size:[b,t], yaw?, jump?, push?}
-  // push = Schwung in Blickrichtung des Trampolins.
+  // Trampolin: Rechteck auf dem Boden. {type:'trampolin', at, size:[b,t], yaw?, jump?, push?, tempo?}
+  // push = Schwung in Blickrichtung des Trampolins; tempo = fester Schwung (egal wie schnell man kommt).
   trampolin: {
     reset(el) { el.cool = 0; },
     step(el, g, h, ev) {
       el.cool -= h;
       const p = g.ball.position, v = g.ball.velocity, yaw = (el.yaw || 0) * DEG;
       const l = toLocal([p.x, p.y, p.z], el.at, yaw);
-      if (el.cool <= 0 && Math.abs(l[0]) < el.size[0] / 2 && Math.abs(l[2]) < el.size[1] / 2 && l[1] < R + 0.15) {
+      if (el.cool <= 0 && Math.abs(l[0]) < el.size[0] / 2 && Math.abs(l[2]) < el.size[1] / 2 && l[1] < R + 0.15 && l[1] > R - 0.4) {
         const f = [-Math.sin(yaw), -Math.cos(yaw)];          // Vorwärtsrichtung (x, z)
         const al = v.x * f[0] + v.z * f[1];
         const px = v.x - al * f[0], pz = v.z - al * f[1];
-        const fw = Math.max(0, al) + (el.push ?? 4);
+        const fw = el.tempo ?? (Math.max(0, al) + (el.push ?? 4)); // tempo = fester Absprung nach vorne
         v.set(px * 0.3 + f[0] * fw, el.jump ?? 11, pz * 0.3 + f[1] * fw);
         el.cool = 0.5; ev.push('jump');
       }
@@ -379,5 +387,5 @@ export function kurveEnde(d) {
   const h0 = (d.yaw || 0) * DEG, T = Math.abs(d.turn) * DEG, s = Math.sign(d.turn), r = d.radius ?? 5;
   const R0 = rightOf(h0), F0 = fwdOf(h0), C = add(d.at, scale(R0, s * r));
   const end = add(C, add(scale(R0, -s * Math.cos(T) * r), scale(F0, Math.sin(T) * r)));
-  return { at: end, yaw: (d.yaw || 0) - s * Math.abs(d.turn) };
+  return { at: add(end, [0, d.rise || 0, 0]), yaw: (d.yaw || 0) - s * Math.abs(d.turn) };
 }
