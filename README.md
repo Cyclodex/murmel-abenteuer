@@ -23,7 +23,10 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
 | `src/skins.js` | Murmel-Designs, ab wie vielen Sternen sie frei sind, Sprungkraft an Wand/Boden und Schwerkraft (`ball: {wand, boden, schwere}`) |
 | `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |
-| `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne und Murmel pro Spieler, Rangliste; Einstellungen für alle |
+| `src/trails.js` | Spuren hinter der Murmel (freischaltbar über Sterne ⭐ oder Sticker 📒), Partikel-Pool als InstancedMesh |
+| `src/stickers.js` | Sticker-Album: Sticker je Level/Welt werden aus `src/levels/index.js` erzeugt, dazu Extras |
+| `src/cheer.js` | Jubel beim Freischalten (Emojis, Konfetti, Klang `jubel`) |
+| `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne, Murmel, Spur und Sticker pro Spieler, Rangliste; Einstellungen für alle |
 | `src/main.js` | Start, Karte, Menüs, Spielschleife |
 | `tests/` | Playwright-Tests, Autopilot mit Route pro Level |
 
