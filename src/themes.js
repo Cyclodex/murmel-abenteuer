@@ -188,6 +188,7 @@ export const THEMES = {
     look(t, look) {
       const [k, c] = look.split('-');
       if (k === 'fliese') return phong(t.THREE, { weiss: 0xFAFAFA, blau: 0x81D4FA, mint: 0xA5D6A7 }[c] ?? 0xFAFAFA, { shininess: 110, specular: 0x555555 });
+      if (k === 'spiegel') return phong(t.THREE, 0xCFE8F3, { shininess: 200, specular: 0xffffff, emissive: 0x1a2a33 });
       return null;
     },
     ground(t, y) {

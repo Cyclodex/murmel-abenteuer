@@ -172,6 +172,8 @@ export function createAudio(opts = {}) {
     zisch: t => hiss(t, 0.35, 0.5, 'highpass', 3000, 6000, 0.7),
     spritz: t => { hiss(t, 0.3, 0.45, 'bandpass', 2500, 1200, 1.2); tone(900, t, 0.1, 0.1, 'sine', 1400); },
     gurgel: t => { for (let i = 0; i < 5; i++) tone(180 + i * 40, t + i * 0.07, 0.08, 0.3, 'sine', 400 + i * 60); hiss(t, 0.4, 0.3, 'lowpass', 600, 200, 1); },
+    // Toilettenspülung: Rauschen, das abklingt, dazu Blubbern nach unten
+    spuel: t => { hiss(t, 1.6, 0.6, 'bandpass', 1400, 300, 0.8); for (let i = 0; i < 6; i++) tone(420 - i * 45, t + 0.3 + i * 0.16, 0.12, 0.25, 'sine', 160 - i * 12); },
     klapp: t => { hiss(t, 0.08, 0.6, 'bandpass', 900, null, 1.5); tone(300, t, 0.18, 0.4, 'square', 120); },
     quetsch: t => { hiss(t, 0.2, 1.0, 'lowpass', 1200, 200, 0.8); tone(120, t, 0.15, 0.8, 'sine', 50); tone(midi(67), t + 0.25, 0.4, 0.25, 'triangle', midi(79)); },
     rumpel: t => { hiss(t, 0.6, 0.5, 'lowpass', 300, 120, 0.7); tone(60, t, 0.5, 0.4, 'sine', 40); },
