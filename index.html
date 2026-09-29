@@ -12,7 +12,10 @@
 <script>window.addEventListener('error',function(e){var h=document.querySelector('#startOv h1');if(h&&!window.__errShown){window.__errShown=1;var p=document.createElement('div');p.className='pill';p.style.fontSize='16px';p.textContent='Fehler: '+(e.message||'unbekannt');h.after(p);}});</script>
 <canvas id="c"></canvas>
 <div class="hud hidden" id="hud">
-  <div class="pill" id="stars">⭐ 0/5</div>
+  <div class="hudL">
+    <div class="pill" id="stars">⭐ 0/5</div>
+    <div class="pill small" id="timer">⏱ 0.0</div>
+  </div>
   <div id="pilotInfo" class="hidden"></div>
   <div class="btns">
     <button id="btnCal" class="hidden" aria-label="Neigung neu ausrichten">🎯</button>
@@ -67,6 +70,7 @@
 <div class="overlay hidden" id="winOv">
   <h1>🏆 Geschafft!</h1>
   <div class="pill" id="winStars">⭐⭐⭐⭐⭐</div>
+  <div class="pill" id="winTime"></div>
   <div class="pill hidden" id="winUnlock"></div>
   <div class="rank hidden" id="winRank"></div>
   <div class="row">

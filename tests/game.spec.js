@@ -708,6 +708,51 @@ test('Alle Spuren laufen ohne Fehler', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('Zeit messen: Aufnahme, Geistermurmel und Zeitformat', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createRecorder, ghostAt, formatTime, DT } = await import('/src/ghost.js');
+    const rec = createRecorder();
+    for (let t = 0; t <= 1.0001; t += 1 / 60) rec.add(t, { x: t * 2, y: 0.5, z: -t * 4 }); // 2 m/s nach rechts, 4 m/s vorwärts
+    const tr = rec.track(1, 'standard');
+    return { n: rec.length, dt: DT, mid: ghostAt(tr, 0.55), end: ghostAt(tr, 5), fmt: [0, 9.99, 12.34, 62.3, 125].map(formatTime) };
+  });
+  expect(r.n).toBe(11); // 0.0 .. 1.0 s alle 0.1 s
+  expect(r.mid.map(v => +v.toFixed(2))).toEqual([1.1, 0.5, -2.2]);
+  expect(r.end.map(v => +v.toFixed(2))).toEqual([2, 0.5, -4]); // bleibt am Ende stehen
+  expect(r.fmt).toEqual(['0.0', '9.9', '12.3', '1:02.3', '2:05.0']);
+});
+
+test('Bestzeit: Zeit im HUD, Geistermurmel fährt mit, Sticker 👻 wenn schneller', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?autopilot');
+  await page.click('#startJoy');
+  await newPlayer(page, 'Flitzer');
+  await page.click('.lvl[data-level="ausflug"]');
+  await expect(page.locator('#timer')).toHaveText(/⏱ \d+\.\d/);
+  expect(await page.evaluate(() => window.murmel.view.ghost)).toBeNull(); // noch keine Bestzeit
+  await expect(page.locator('#winOv')).toBeVisible({ timeout: 50_000 });
+  const t1 = await page.evaluate(() => window.murmel.progress.bestTime('ausflug'));
+  expect(t1).toBeGreaterThan(5);
+  await expect(page.locator('#winTime')).toHaveText(/^⏱ \d+\.\d$/);
+  expect((await saved(page)).stickers['x:geist']).toBeUndefined();
+  await page.click('#cheerOv').catch(() => {});
+  // nochmal: der Geist fährt die Bestzeit mit
+  await page.click('#againBtn');
+  await page.waitForFunction(() => window.murmel.game.time > 2);
+  const g = await page.evaluate(() => { const m = window.murmel, p = m.view.ghost.position; return { z: p.z, t: m.game.time, opacity: m.view.ghost.material.opacity }; });
+  expect(g.z).toBeLessThan(-1); // ist schon losgerollt
+  expect(g.opacity).toBeLessThan(1);
+  // schneller ins Ziel: neue Bestzeit, Geist-Sticker
+  await winLevel(page, 5);
+  await expect(page.locator('#winTime')).toContainText('🏁 Bestzeit!');
+  const t2 = await page.evaluate(() => window.murmel.progress.bestTime('ausflug'));
+  expect(t2).toBeLessThan(t1);
+  expect((await saved(page)).stickers['x:geist']).toBe(true);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-geist-v1'))[JSON.parse(localStorage.getItem('murmel-abenteuer-v2')).current].ausflug.t)).toBe(t2);
+  expect(errors).toEqual([]);
+});
+
 test('Ohne localStorage: gewinnen, Sticker, Album und Spur funktionieren', async ({ page }) => {
   const errors = watchErrors(page);
   await page.addInitScript(() => {
