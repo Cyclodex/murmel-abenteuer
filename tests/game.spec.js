@@ -48,6 +48,18 @@ test('Spiel startet, Karte erscheint, Murmel rollt mit der Pfeiltaste', async ({
   expect(errors).toEqual([]);
 });
 
+test('Jedes Level lässt sich mit Grafik laden und zeichnen', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  const ids = await page.evaluate(() => window.murmel.LEVELS.map(l => l.id));
+  for (const id of ids) {
+    await page.evaluate(i => window.murmel.startLevel(window.murmel.LEVELS.findIndex(l => l.id === i)), id);
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    expect(errors, id).toEqual([]);
+  }
+});
+
 test('Schwebender Joystick: irgendwo drücken und ziehen', async ({ page }) => {
   const errors = watchErrors(page);
   await play(page);
