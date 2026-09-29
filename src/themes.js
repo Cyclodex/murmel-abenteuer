@@ -5,6 +5,9 @@
 //   look(t, name)   = eigene Looks dieser Welt (z. B. 'hecke', 'neon-blau')
 //   ground(t, y)    = Untergrund unter der Bahn; darf {tick(dt)} zurückgeben
 //   pillars         = Looks für Säulen unter flachen Bahnstücken (null = keine)
+//   props           = riesige Gegenstände (src/props.js) auf dem Untergrund rund um die Bahn: [[form, farbe?], ...]
+import { buildProp, PROP_SIZE } from './props.js';
+
 export const COLORS = { rot: 0xE53935, blau: 0x1E88E5, gelb: 0xFDD835, gruen: 0x43A047, orange: 0xFB8C00, lila: 0x8E24AA };
 const PASTELL = { rosa: 0xF8BBD0, mint: 0xB2DFDB, hellblau: 0xBBDEFB, gelb: 0xFFF59D, lila: 0xD1C4E9, weiss: 0xFAFAFA };
 const NEON = { blau: 0x00E5FF, pink: 0xFF4FD8, gruen: 0x76FF03, gelb: 0xFFEA00 };
@@ -73,6 +76,19 @@ const basaltTex = (THREE, base, glow) => canvasTex(THREE, 256, 256, (x, w, h) =>
 const lavaTex = THREE => dots(THREE, '#E8480C', ['#FF7A1A', '#FFB020', '#B8290A', '#FFD54A'], 160, 6, 22, 23);
 const hedgeTex = THREE => dots(THREE, '#2E7D32', ['#388E3C', '#1B5E20', '#43A047', '#4CAF50'], 260, 4, 11, 5, 128);
 
+// Riesige Gegenstände verstreut auf dem Untergrund (unter und neben der Bahn), fest je Welt
+function scatter(t, y, list, seed, n = 26) {
+  if (!list || !list.length) return;
+  const r = rnd(seed);
+  for (let i = 0; i < n; i++) {
+    const [form, farbe] = list[i % list.length], a = r() * Math.PI * 2, d = 14 + r() * 55;
+    const g = buildProp(t.THREE, form, { farbe }), top = (PROP_SIZE[form] || [2, 2, 2])[1];
+    // nicht durch die Bahn (meist auf y = 0 und höher) hinaufragen
+    g.position.set(Math.cos(a) * d, y, Math.sin(a) * d - 25); g.rotation.y = r() * 6.3; g.scale.setScalar(Math.min(0.8 + r() * 0.6, (-1.5 - y) / top));
+    t.scene.add(g);
+  }
+}
+
 // Hilfen für eigene Looks
 function phong(THREE, color, extra) { return new THREE.MeshPhongMaterial({ color, ...extra }); }
 
@@ -88,7 +104,8 @@ export const THEMES = {
     floor: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#D9A066', '#7A4A1E') }),
     ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#EBC08A', '#8A5A2A') }),
     pillars: ['klotz-rot', 'klotz-blau', 'klotz-gelb', 'klotz-gruen'],
-    ground(t, y) { const tex = carpetTex(t.THREE); tex.repeat.set(60, 60); t.plane(tex, y); }
+    props: [['teddy'], ['wuerfel', 0xE53935], ['wuerfel', 0x1E88E5], ['auto'], ['auto', 0x43A047], ['kreisel'], ['teddy', 0xFFCC80]],
+    ground(t, y) { const tex = carpetTex(t.THREE); tex.repeat.set(60, 60); t.plane(tex, y); scatter(t, y, THEMES.spielzimmer.props, 3); }
   },
 
   garten: {
@@ -97,6 +114,7 @@ export const THEMES = {
     floor: t => t.lambert(0xffffff, { map: stoneTex(t.THREE) }),
     ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#C98B4F', '#6D4220') }),
     pillars: ['stamm'],
+    props: [['zwerg'], ['zwerg', 0xE53935], ['giesskanne'], ['eimer'], ['eimer', 0xE53935], ['burg'], ['baum'], ['pilz'], ['blume', 0xB388FF], ['stein']],
     look(t, look) {
       if (look === 'hecke') return t.lambert(0xffffff, { map: hedgeTex(t.THREE) });
       if (look === 'stamm') return t.lambert(0x7B5230);
@@ -112,6 +130,7 @@ export const THEMES = {
         for (let i = 0; i < n / 4; i++) { m.makeTranslation((r() - 0.5) * 160, y + 0.3, (r() - 0.5) * 160 - 20); im.setMatrixAt(i, m); }
         t.scene.add(im);
       }
+      scatter(t, y, THEMES.garten.props, 5);
     }
   },
 
@@ -126,7 +145,8 @@ export const THEMES = {
       if (k === 'kachel') return phong(t.THREE, PASTELL[c] ?? PASTELL.weiss, { shininess: 90, specular: 0x444444 });
       return null;
     },
-    ground(t, y) { const tex = tiles(t.THREE, '#303030', '#F2F2F2', 2); tex.repeat.set(60, 60); t.plane(tex, y); }
+    props: [['apfel'], ['apfel', 0x7CB342], ['orange'], ['tomate'], ['tasse'], ['tasse', 0xE53935], ['teekanne'], ['toaster'], ['milch'], ['kaese'], ['salz'], ['glas'], ['teller']],
+    ground(t, y) { const tex = tiles(t.THREE, '#303030', '#F2F2F2', 2); tex.repeat.set(60, 60); t.plane(tex, y); scatter(t, y, THEMES.kueche.props, 7); }
   },
 
   weltraum: {
@@ -154,6 +174,27 @@ export const THEMES = {
       const ring = new T.Mesh(new T.RingGeometry(24, 32, 48), new T.MeshBasicMaterial({ color: 0xFFD6A0, side: T.DoubleSide, transparent: true, opacity: 0.6, fog: false }));
       ring.position.copy(planet.position); ring.rotation.x = 1.2; t.scene.add(ring);
       return { tick(dt, cam) { stars.position.copy(cam.position); planet.rotation.y += dt * 0.05; } };
+    }
+  },
+
+  badezimmer: {
+    sky: 0xDFF3FA, fog: [50, 130], hemi: [0xffffff, 0x9ab8c8, 0.9],
+    walls: ['fliese-weiss', 'fliese-blau', 'fliese-weiss', 'fliese-mint'],
+    floor: t => { const tx = tiles(t.THREE, '#FFFFFF', '#E3F2FD', 4, '#90A4AE'); return t.lambert(0xffffff, { map: tx }); },
+    ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#E8D5B5', '#A08060') }),
+    pillars: ['fliese-weiss'],
+    bank: 0xB0BEC5,
+    props: [['ente'], ['ente', 0xFF8A65], ['shampoo'], ['shampoo', 0x26C6DA], ['becher'], ['seife'], ['zahnbuerste'], ['flasche', 0x80DEEA]],
+    look(t, look) {
+      const [k, c] = look.split('-');
+      if (k === 'fliese') return phong(t.THREE, { weiss: 0xFAFAFA, blau: 0x81D4FA, mint: 0xA5D6A7 }[c] ?? 0xFAFAFA, { shininess: 110, specular: 0x555555 });
+      return null;
+    },
+    ground(t, y) {
+      const tex = tiles(t.THREE, '#B3E5FC', '#FFFFFF', 2, '#78909C'); tex.repeat.set(50, 50); t.plane(tex, y);
+      // Badvorleger
+      const T = t.THREE, mat = new T.Mesh(new T.PlaneGeometry(30, 18), t.lambert(0xF48FB1)); mat.rotation.x = -Math.PI / 2; mat.position.set(-20, y + 0.05, -30); t.scene.add(mat);
+      scatter(t, y, THEMES.badezimmer.props, 9);
     }
   },
 
@@ -205,6 +246,7 @@ export const THEMES = {
     ground(t, y) {
       const tex = dots(t.THREE, '#C9B27C', ['#BBA36D', '#D6C08C'], 300, 2, 6, 17); tex.repeat.set(40, 40);
       t.plane(tex, y);
+      scatter(t, y, [['muschel'], ['seestern'], ['anker'], ['truhe'], ['koralle'], ['koralle', 0xB388FF], ['fisch']], 11);
       // aufsteigende Blasen
       const T = t.THREE, n = 60, r = rnd(8), im = new T.InstancedMesh(new T.SphereGeometry(0.18, 8, 6),
         new T.MeshPhongMaterial({ color: 0xDFF6FF, transparent: true, opacity: 0.6, shininess: 120 }), n);

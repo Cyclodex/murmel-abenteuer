@@ -2,6 +2,15 @@
 // Wegpunkt: {x, z, speed?, r?, free?, wait?}
 //   speed = Wunschtempo (m/s), r = Radius "erreicht", free = nicht lenken (z. B. im Looping),
 //   wait = Name einer Bedingung aus WAITS, vorher wird angehalten.
+import uebung from './routes/uebung.js';
+import spielzimmer from './routes/spielzimmer.js';
+import garten from './routes/garten.js';
+import kueche from './routes/kueche.js';
+import badezimmer from './routes/badezimmer.js';
+import weltraum from './routes/weltraum.js';
+import unterwasser from './routes/unterwasser.js';
+import vulkan from './routes/vulkan.js';
+
 const WAITS = {
   // n-te Plattform steht am Start bzw. am Ziel
   platAtFrom: (g, n = 0) => { const e = g.els.filter(x => x.type === 'plattform')[n]; return dist3(e.body.position, e.from) < 0.05 && speed(e.body.velocity) < 0.01; },
@@ -9,8 +18,18 @@ const WAITS = {
   bridgeUp: g => g.els.filter(x => x.type === 'bruecke').every(e => e.k >= 1),
   hoehe: (g, y) => g.ball.position.y > y,
   amBoden: g => !!g.groundBody && Math.abs(g.ball.velocity.y) < 0.3,
-  // der drehende Balken ist gerade am Punkt [x, z] vorbei (10°..80° danach), bis er zurückkommt bleibt Zeit
-  balkenWeg: (g, [x, z]) => g.els.filter(e => e.type === 'balken').every(e => {
+  // Takt eines bewegten Teils: wait: ['phase', [type, n, a, b]] = n-tes Teil vom Typ type ist in der Phase a..b (0..1) seines Takts
+  // (Plattform/Schieber: 0 = Pause bei from, Hammer: 0 = oben, zuschlagen ab up/per, Felsen: 0 = neuer Felsen)
+  phase: (g, [type, n, a, b]) => {
+    const e = g.els.filter(x => x.type === type)[n];
+    const per = e.per ?? 2 * ((e.time ?? 3) + (e.pause ?? 1.5)), t = e.t + (e.per ? e.offset || 0 : 0);
+    const u = ((t % per) + per) % per / per;
+    return a <= b ? u >= a && u <= b : u >= a || u <= b;
+  },
+  // Falltür n ist zu (und nicht gerade am Aufgehen)
+  tuerZu: (g, n = 0) => { const e = g.els.filter(x => x.type === 'falltuer')[n]; return e.state === 'zu' && e.a < 0.01; },
+  // der drehende Balken (oder Rasensprenger) ist gerade am Punkt [x, z] vorbei (10°..80° danach), bis er zurückkommt bleibt Zeit
+  balkenWeg: (g, [x, z]) => g.els.filter(e => e.type === 'balken' || e.type === 'sprenger').every(e => {
     const dx = x - e.at[0], dz = z - e.at[2];
     if (Math.hypot(dx, dz) > (e.length ?? 6) / 2 + 1) return true;
     const dir = Math.sign(e.speed ?? 40), pa = Math.atan2(dz, dx); // Balkenachse liegt bei Winkel -a
@@ -80,7 +99,8 @@ export function autopilot(g, wps, maxTime = 180, delay = 0) {
     t += H;
     for (const e of ev) {
       log.push(`${e}@${t.toFixed(1)}`);
-      if (e === 'fall') { falls++; pilot.fell(); }
+      if (e === 'fall' || e === 'quetsch') falls++;
+      if (e === 'fall' || e === 'zurueck') pilot.fell();
     }
   }
   const got = g.els.filter(e => e.type === 'stern').map(e => !!e.got);
@@ -189,3 +209,6 @@ export const ROUTES = {
     { x: 0, z: -73, speed: 8 }, { x: 5, z: -77, free: true, r: 2.5 }, { x: 5, z: -81 }
   ]
 };
+
+// Routen der schweren Level und der Badezimmer-Welt liegen je Welt in tests/routes/
+Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, weltraum, unterwasser, vulkan);

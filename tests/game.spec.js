@@ -100,9 +100,9 @@ test('Nach der Kurve wirkt die Steuerung relativ zur Kamera', async ({ page }) =
   // auf die Gerade nach der Rechtskurve setzen (Bahn zeigt nach +x)
   await page.evaluate(() => window.murmel.game.spawn([8, 0.6, -25]));
   await page.waitForFunction(() => Math.abs(window.murmel.camYaw + Math.PI / 2) < 0.05, null, { timeout: 5000 });
-  const x0 = (await ballPos(page)).x;
+  const x0 = (await ballPos(page)).x, t0 = await page.evaluate(() => window.murmel.game.time);
   await page.keyboard.down('ArrowUp');
-  await page.waitForTimeout(1500);
+  await page.waitForFunction(t => window.murmel.game.time > t + 1.5, t0); // Spielzeit (unter Last laufen weniger Schritte pro Sekunde)
   await page.keyboard.up('ArrowUp');
   const p = await ballPos(page);
   expect(p.x).toBeGreaterThan(x0 + 1);        // "hoch" = vorwärts entlang der Bahn
@@ -431,6 +431,75 @@ test('Dreckige Murmel: Flecken auf der Kugel, Spritzer, Sticker 🐷 und 🧼', 
   expect(errors).toEqual([]);
 });
 
+// Kleine Testbahn fahren: liefert Ereignisse (ohne Klacken) und Endposition
+const fahre = (page, parts, start, sek, input = [0, 0], extra = '') => page.evaluate(async ([parts, start, sek, input, extra]) => {
+  const { createGame } = await import('/src/game.js');
+  const g = createGame(CANNON, { id: 't', start, killY: -8, parts }); g.reset();
+  if (extra) new Function('g', extra)(g);
+  const ev = [];
+  for (let i = 0; i < sek * 60; i++) for (const e of g.step(input[0], input[1], 1 / 60)) if (e !== 'hit') ev.push(e);
+  const p = g.ball.position;
+  return { ev, p: [p.x, p.y, p.z], dirt: g.dirt };
+}, [parts, start, sek, input, extra]);
+
+test('Fallen: Hammer quetscht, Falltür klappt auf, Loch im Feld, Schieber schiebt weg', async ({ page }) => {
+  await page.goto('/');
+  const weg = { type: 'weg', from: [0, 0, 4], to: [0, 0, -30], width: 3 };
+  // Hammer: Murmel steht darunter -> platt, dann zurück zum Start
+  const h = await fahre(page, [weg, { type: 'hammer', at: [0, 0, -3] }, { type: 'checkpoint', at: [0, 0, 2], size: [3, 3, 2] }], [0, 0, 2], 4, [0, 0], 'g.spawn([0, 1, -3]); g.st.cp = 0;');
+  expect(h.ev.slice(0, 2)).toEqual(['quetsch', 'zurueck']);
+  // Falltür: stehen bleiben -> Klappe auf, runterfallen; schnell drüber -> kommt durch
+  const tuer = [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -1.5], width: 3 }, { type: 'falltuer', at: [0, 0, -3], size: [3, 3] }, { type: 'weg', from: [0, 0, -4.5], to: [0, 0, -40], width: 3 }];
+  const steh = await fahre(page, tuer, [0, 0, -3], 3);
+  expect(steh.ev.slice(0, 2)).toEqual(['klapp', 'fall']); // Neustart liegt wieder auf der Klappe
+  const schnell = await fahre(page, tuer, [0, 0, 3], 2, [0, 0], 'g.ball.velocity.set(0, 0, -8); g.ball.angularVelocity.set(-16, 0, 0);');
+  expect(schnell.ev).not.toContain('fall'); // Klappe geht erst hinter der Murmel auf
+  expect(schnell.p[2]).toBeLessThan(-6);
+  // Feld: Loch in der Mitte
+  const feld = await fahre(page, [{ type: 'feld', at: [0, 0, 2], cell: 2, map: ['###', '#.#', '###'] }], [0, 0, 1], 3, [0, -0.6]);
+  expect(feld.ev[0]).toBe('fall');
+  // Schieber schiebt die stehende Murmel vom Weg
+  const sch = await fahre(page, [weg, { type: 'schieber', from: [-3, 0, -3], to: [0.5, 0, -3], size: [2, 1.2, 2], time: 0.8, pause: 1 }], [0, 0, -3], 5);
+  expect(sch.ev).toContain('fall');
+});
+
+test('Bergab: Treppe runter, Fluss trägt und wäscht, Felsen rollen los', async ({ page }) => {
+  await page.goto('/');
+  const t = await fahre(page, [{ type: 'weg', from: [0, 4, 4], to: [0, 4, 0], width: 3 }, { type: 'treppe', from: [0, 4, 0], to: [0, 0, -10], steps: 6, width: 3 },
+    { type: 'weg', from: [0, 0, -10], to: [0, 0, -20], width: 3, walls: 1, caps: 'end' }], [0, 4, 2], 7, [0, -0.3]);
+  expect(t.p[1]).toBeLessThan(1);
+  expect(t.p[2]).toBeLessThan(-10);
+  const f = await fahre(page, [{ type: 'fluss', from: [0, 0, 2], to: [0, -2, -20], width: 3, speed: 3 }, { type: 'weg', from: [0, -2.7, -20], to: [0, -2.7, -30], width: 3, walls: 1, caps: 'end' }],
+    [0, 0.5, 0], 8, [0, 0], 'g.dirt = 1; g.dirty = true;');
+  expect(f.p[2]).toBeLessThan(-18); // ohne Steuern flussabwärts getragen
+  expect(f.dirt).toBe(0);
+  const r = await fahre(page, [{ type: 'weg', from: [0, 4, 10], to: [0, 0, -10], width: 3 }, { type: 'felsen', from: [0, 4, 8], every: 3 }], [20, 0, 0], 4);
+  expect(r.ev.filter(e => e === 'rumpel').length).toBe(2);
+});
+
+test('Echte Dinge: durch die Pfanne, Herdplatte hüpft, Abfluss im Lavabo, Sprenger und Schlauch', async ({ page }) => {
+  await page.goto('/');
+  // Pfanne: über den Rand hinein, vorne durch die Lücke hinaus
+  const pf = await fahre(page, [{ type: 'weg', from: [0, 0, 6], to: [0, 0, -4], width: 4, walls: 0.8, caps: 'start' }, { type: 'weg', from: [0, 0, -4], to: [0, 1, -6.8], width: 2.6 },
+    { type: 'schuessel', at: [0, 0, -12], r: 3, R: 5, h: 1, rim: 0.4, art: 'pfanne', offen: [0] }, { type: 'weg', from: [0, 0, -14], to: [0, 0, -30], width: 2.6, walls: 0.8, caps: 'end' }], [0, 0, 2], 8, [0, -0.6]);
+  expect(pf.ev).not.toContain('fall');
+  expect(pf.p[2]).toBeLessThan(-18);
+  // Herdplatte: Murmel hüpft
+  const hp = await fahre(page, [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -8], width: 5 }, { type: 'herdplatte', at: [0, 0, -2] }], [0, 0, -2], 2);
+  expect(hp.ev.filter(e => e === 'zisch').length).toBeGreaterThan(1);
+  // Lavabo mit Abfluss: Murmel rollt in die Mitte, gurgelt hinunter und kommt unten heraus
+  const lv = await fahre(page, [{ type: 'schuessel', at: [0, 0, 0], r: 1.5, R: 3.5, h: 1.5, rim: 1.5, art: 'lavabo', abfluss: true, aussen: false },
+    { type: 'roehre', from: [0, 0, 0], down: true, to: [0, -6, -12], toYaw: 0, bogen: 3, fang: 0.7 }, { type: 'weg', from: [0, -6, -10], to: [0, -6, -20], width: 4, walls: 0.8, caps: 'end' }], [2, 0.5, 0], 6);
+  expect(lv.ev).toEqual(expect.arrayContaining(['gurgel', 'plopp']));
+  expect(lv.p[1]).toBeLessThan(-5);
+  // Rasensprenger schiebt die Murmel weg, Schlauch wäscht
+  const sp = await fahre(page, [{ type: 'weg', from: [0, 0, 10], to: [0, 0, -10], width: 20 }, { type: 'sprenger', at: [0, 0, 0], length: 8, speed: 90 }], [2.5, 0, 0], 4);
+  expect(Math.hypot(sp.p[0], sp.p[2])).toBeGreaterThan(4);
+  const sl = await fahre(page, [{ type: 'weg', from: [0, 0, 10], to: [0, 0, -10], width: 20 }, { type: 'wind', at: [0, 0, 0], size: [4, 3, 4], yaw: -90, strength: 6, look: 'schlauch' }], [0, 0, 0], 1.5, [0, 0], 'g.dirt = 1; g.dirty = true;');
+  expect(sl.p[0]).toBeGreaterThan(1);
+  expect(sl.dirt).toBeLessThan(0.1);
+});
+
 test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {
@@ -500,7 +569,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
@@ -508,11 +577,11 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
     out.rollenPfuetze = await render(a => a.roll(6, true, 'pfuetze'), 1);
     out.rollenLuft = await render(a => a.roll(6, false, 'normal'), 1);
     out.aus = await render(a => { a.setMode('aus'); a.sfx('win'); });
-    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser', 'vulkan']) out['musik_' + song] = await render(a => a.music(song), 1);
+    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser', 'vulkan', 'badezimmer']) out['musik_' + song] = await render(a => a.music(song), 1);
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }
@@ -564,6 +633,24 @@ test('Karte im Querformat: oberste Knöpfe und letzte Welt erreichbar', async ({
   await expect(page.locator('.lvl[data-level="v1"]')).toBeInViewport();
   await page.click('.lvl[data-level="u1"]'); // erste Level jeder Welt sind offen
   await expect(page.locator('#hud')).toBeVisible();
+});
+
+test('Schwere Versionen: 💀-Reihe, offen nach dem normalen Level, Sticker 💀', async ({ page }) => {
+  const errors = watchErrors(page);
+  await play(page, 'ausflug');
+  await page.click('#btnHome');
+  await expect(page.locator('.world.hard .lvl[data-level="ausflugs"]')).toBeDisabled();
+  await expect(page.locator('.lvl[data-level="ausflugs"]')).toContainText('💀1');
+  await page.click('.lvl[data-level="ausflug"]');
+  await winLevel(page, 5);
+  await page.click('#cheerOv').catch(() => {});
+  await page.click('#mapBtn');
+  await expect(page.locator('.lvl[data-level="ausflugs"]')).toBeEnabled();
+  await page.click('.lvl[data-level="ausflugs"]');
+  await expect(page.locator('#hud')).toBeVisible();
+  await winLevel(page, 7);
+  expect((await saved(page)).stickers['profi:uebung']).toBe(true);
+  expect(errors).toEqual([]);
 });
 
 test('Profi-Welt Vulkan ist erst ab genug Sternen offen', async ({ page }) => {

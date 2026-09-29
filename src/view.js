@@ -24,6 +24,29 @@ const puddleTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
   x.strokeStyle = 'rgba(220,240,255,0.55)'; x.lineWidth = 2;
   for (let i = 0; i < 14; i++) { const cx = r() * w, cy = r() * h, rr = 4 + r() * 14; x.beginPath(); x.ellipse(cx, cy, rr, rr * 0.6, 0, 0, 7); x.stroke(); }
 });
+const stripeTex = THREE => canvasTex(THREE, 64, 64, (x, w, h) => { // Warnstreifen (Falltür)
+  x.fillStyle = '#FFD23F'; x.fillRect(0, 0, w, h); x.fillStyle = '#2B2B2B';
+  for (let i = -2; i < 4; i++) { x.beginPath(); x.moveTo(i * 24, 0); x.lineTo(i * 24 + 12, 0); x.lineTo(i * 24 + 12 + h, h); x.lineTo(i * 24 + h, h); x.fill(); }
+});
+const sandTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  x.fillStyle = '#EACB86'; x.fillRect(0, 0, w, h);
+  const r = rnd(8);
+  for (let i = 0; i < 500; i++) { x.fillStyle = r() > 0.5 ? '#D9B56C' : '#F5DDA3'; x.fillRect(r() * w, r() * h, 2, 2); }
+});
+const pebbleTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => { // Flussbett
+  x.fillStyle = '#7E8A8F'; x.fillRect(0, 0, w, h);
+  const r = rnd(12);
+  for (let i = 0; i < 70; i++) { const c = 110 + Math.floor(r() * 70); x.fillStyle = `rgb(${c},${c + 5},${c + 8})`; x.beginPath(); x.ellipse(r() * w, r() * h, 3 + r() * 6, 2 + r() * 4, r() * 3, 0, 7); x.fill(); }
+});
+const towelTex = THREE => canvasTex(THREE, 64, 64, (x, w, h) => { // Frottee mit Streifen
+  x.fillStyle = '#F7A8C4'; x.fillRect(0, 0, w, h); x.fillStyle = '#FFFFFF'; x.fillRect(0, 26, w, 12);
+  const r = rnd(4); x.fillStyle = 'rgba(0,0,0,0.06)'; for (let i = 0; i < 300; i++) x.fillRect(r() * w, r() * h, 1, 1);
+});
+const soapTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => { // Seifenschaum
+  x.fillStyle = '#CFEFFF'; x.fillRect(0, 0, w, h);
+  const r = rnd(6);
+  for (let i = 0; i < 40; i++) { x.strokeStyle = 'rgba(255,255,255,0.9)'; x.lineWidth = 2; x.beginPath(); x.arc(r() * w, r() * h, 3 + r() * 9, 0, 7); x.stroke(); }
+});
 const arrowTex = THREE => canvasTex(THREE, 64, 64, (x, w, h) => {
   x.fillStyle = '#FF7A00'; x.fillRect(0, 0, w, h);
   x.fillStyle = '#FFE14D'; x.beginPath();
@@ -145,6 +168,16 @@ export function createView(THREE, renderer, game) {
     else if (look === 'schlamm') m = lambert(0xffffff, { map: mudTex(THREE) });
     else if (look === 'pfuetze') m = new THREE.MeshPhongMaterial({ map: puddleTex(THREE), shininess: 120, specular: 0xCCE8FF });
     else if (look === 'band') m = lambert(0x3A3F47);
+    else if (look === 'falltuer') m = lambert(0xffffff, { map: stripeTex(THREE) });
+    else if (look === 'schieber') m = new THREE.MeshPhongMaterial({ color: 0x8E24AA, shininess: 50 });
+    else if (kind === 'hammer') m = new THREE.MeshPhongMaterial({ color: COLORS[col] ?? COLORS.rot, shininess: 70 });
+    else if (look === 'stiel') m = lambert(0x9C6B3C);
+    else if (look === 'treppe') m = theme.stairs ? theme.stairs(tools) : (cache.ramp = cache.ramp || theme.ramp(tools));
+    else if (look === 'flussbett') m = lambert(0xffffff, { map: pebbleTex(THREE) });
+    else if (look === 'ufer') m = lambert(theme.bank ?? 0x6D8F4E);
+    else if (look === 'sand') m = lambert(0xffffff, { map: sandTex(THREE) });
+    else if (look === 'handtuch') m = lambert(0xffffff, { map: towelTex(THREE) });
+    else if (look === 'seife') m = new THREE.MeshPhongMaterial({ map: soapTex(THREE), shininess: 100, specular: 0xffffff });
     else if (look === 'platform') m = new THREE.MeshPhongMaterial({ color: COLORS.gelb, shininess: 40 });
     else if (look === 'seesaw') m = new THREE.MeshPhongMaterial({ color: COLORS.orange, shininess: 40 });
     else m = lambert(theme.wall ?? 0xA8743A);
@@ -178,7 +211,7 @@ export function createView(THREE, renderer, game) {
         m.position.set(o.x, o.y, o.z); m.receiveShadow = true; m.castShadow = true; grp.add(m);
       });
       scene.add(grp);
-      return { tick() { grp.position.copy(body.position); grp.quaternion.copy(body.quaternion); } };
+      return { grp, tick() { grp.position.copy(body.position); grp.quaternion.copy(body.quaternion); } };
     }
   };
   const shape = new THREE.Shape();
@@ -194,6 +227,7 @@ export function createView(THREE, renderer, game) {
   const STUD_R = 0.3, STUD_H = 0.2125; // relativ zum Rastermass (Original: 4.8 mm bzw. 1.7 mm bei 8 mm Raster)
   const pillars = [], blockers = [];
   for (const s of game.solids) {
+    if (s.hide) continue; // nur Physik, die Grafik baut das Bauteil selbst (z. B. Schüssel)
     const m0 = s.look === 'abc' ? abcMat(s.text) : mat(s.look);
     const mesh = new THREE.Mesh(s.look === 'abc' ? new THREE.BoxGeometry(s.half[0] * 2, s.half[1] * 2, s.half[2] * 2) : boxGeo(THREE, s.half[0] * 2, s.half[1] * 2, s.half[2] * 2), m0);
     mesh.position.set(...s.pos); mesh.quaternion.set(...s.quat); mesh.receiveShadow = true;
@@ -297,6 +331,9 @@ export function createView(THREE, renderer, game) {
     const b = game.ball;
     ballMesh.position.set(b.position.x, b.position.y, b.position.z);
     ballMesh.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
+    // zerquetscht: platt auf dem Boden
+    if (game.squashT > 0) { ballMesh.quaternion.set(0, 0, 0, 1); ballMesh.scale.set(1.6, 0.3, 1.6); ballMesh.position.y -= R * 0.7; }
+    else ballMesh.scale.set(1, 1, 1);
     for (const t of ticks) t(dt, game);
     moveGhost();
     if (groundFx && groundFx.tick) groundFx.tick(dt, camera);

@@ -19,12 +19,15 @@ export const EXTRA = {
   // Röhre: Murmel rollt hinein, fliegt im Bogen durch die Röhre und kommt am Ziel heraus.
   // from/to = Bodenpunkt vor der Öffnung, yaw = Richtung hinein, toYaw = Richtung heraus,
   // bogen = Höhe des Bogens, speed = Tempo in der Röhre, out = Tempo beim Herauskommen.
-  // {type:'roehre', from, yaw?, to, toYaw?, bogen?, speed?, out?}
+  // down = Abfluss: die Röhre geht bei from senkrecht nach unten (z. B. Lavabo, Badewanne), fang = Fangradius
+  // {type:'roehre', from, yaw?, to, toYaw?, bogen?, speed?, out?, down?, fang?}
   roehre: {
     init(el) {
       const f = fwdOf((el.yaw || 0) * DEG), e = fwdOf((el.toYaw ?? el.yaw ?? 0) * DEG), b = el.bogen ?? 4;
       const p0 = add(el.from, [0, 0.9, 0]), p3 = add(el.to, [0, 0.9, 0]);
-      el.P = [p0, add(add(p0, scale(f, 3)), [0, b, 0]), add(sub(p3, scale(e, 3)), [0, b, 0]), p3];
+      el.P = el.down
+        ? [p0, add(p0, [0, -b, 0]), sub(p3, scale(e, Math.max(3, b))), p3]
+        : [p0, add(add(p0, scale(f, 3)), [0, b, 0]), add(sub(p3, scale(e, 3)), [0, b, 0]), p3];
       let L = 0, last = p0;
       for (let i = 1; i <= 30; i++) { const q = bezier(el.P, i / 30); L += Math.hypot(...sub(q, last)); last = q; }
       el.len = L; el.exitDir = e;
@@ -35,7 +38,7 @@ export const EXTRA = {
       el.cool -= h;
       if (el.t < 0) {
         const p = g.ball.position, m = el.P[0];
-        if (el.cool <= 0 && Math.hypot(p.x - m[0], p.z - m[2]) < 0.9 && Math.abs(p.y - m[1]) < 1) { el.t = 0; g.lock = true; ev.push('roehre'); }
+        if (el.cool <= 0 && Math.hypot(p.x - m[0], p.z - m[2]) < (el.fang ?? 0.9) && Math.abs(p.y - m[1]) < 1) { el.t = 0; g.lock = true; ev.push(el.down ? 'gurgel' : 'roehre'); }
         return;
       }
       el.t += h * (el.speed ?? 9) / el.len;
@@ -49,11 +52,13 @@ export const EXTRA = {
     },
     view(el, v) {
       const T = v.THREE, V = p => new T.Vector3(...p);
-      const curve = new T.CubicBezierCurve3(...el.P.map(V));
+      // Abfluss: Röhre erst unter dem Boden zeigen (die Öffnung malt das Becken)
+      const pts = el.down ? [add(el.from, [0, -0.9, 0]), ...el.P.slice(1)] : el.P;
+      const curve = new T.CubicBezierCurve3(...pts.map(V));
       const tube = new T.Mesh(new T.TubeGeometry(curve, 48, 0.8, 16, false),
         new T.MeshPhongMaterial({ color: el.farbe ?? 0x3BB273, transparent: true, opacity: 0.45, side: T.DoubleSide, shininess: 80, depthWrite: false }));
       v.scene.add(tube);
-      for (const t of [0, 1]) { // Ringe an den Öffnungen
+      for (const t of el.down ? [1] : [0, 1]) { // Ringe an den Öffnungen
         const ring = new T.Mesh(new T.TorusGeometry(0.85, 0.12, 10, 28), new T.MeshLambertMaterial({ color: el.farbe ?? 0x3BB273 }));
         const p = curve.getPoint(t), tan = curve.getTangent(t);
         ring.position.copy(p); ring.lookAt(p.clone().add(tan)); v.scene.add(ring);
@@ -94,7 +99,8 @@ export const EXTRA = {
 
   // Wind (Ventilator): in der Zone wird die Murmel geschoben. up:true = Aufwind nach oben.
   // at = Mitte der Zone am Boden, size = [breit, hoch, tief], yaw = Blasrichtung, strength = Beschleunigung m/s²
-  // {type:'wind', at, size?, yaw?, up?, strength?}
+  // look = 'schlauch' (Gartenschlauch) oder 'hahn' (Wasserhahn): Wasserstrahl statt Ventilator, wäscht stärker
+  // {type:'wind', at, size?, yaw?, up?, strength?, look?}
   wind: {
     init(el) {
       el.size = el.size || [3, 4, 6]; el.yw = (el.yaw || 0) * DEG;
@@ -107,15 +113,32 @@ export const EXTRA = {
       if (inside) {
         const a = (el.strength ?? (el.up ? 16 : 8)) * h, v = g.ball.velocity;
         v.x += el.dir[0] * a; v.y += el.dir[1] * a; v.z += el.dir[2] * a;
-        g.washK += 3; // Wind bläst den Dreck weg
+        g.washK += el.look ? 6 : 3; // Wind bläst den Dreck weg, Wasser wäscht ihn ab
         if (!el.inside) ev.push('wind');
       }
       el.inside = inside;
     },
     view(el, v) {
-      const T = v.THREE, [b, hh, t] = el.size, q = quatYawPitch(el.yw, 0);
-      // Ventilator
+      const T = v.THREE, [b, hh, t] = el.size, q = quatYawPitch(el.yw, 0), wet = !!el.look;
+      // Ventilator (oder Schlauch / Wasserhahn)
       const fan = new T.Group(), blades = new T.Group();
+      if (wet) {
+        const nozzle = new T.Group(), chrome = new T.MeshPhongMaterial({ color: 0xD7DCE2, shininess: 150, specular: 0xffffff });
+        if (el.look === 'hahn') {
+          const pipe = new T.Mesh(new T.CylinderGeometry(0.35, 0.35, 1.8, 16), chrome); pipe.rotation.x = Math.PI / 2; pipe.position.z = 0.4;
+          const top = new T.Mesh(new T.SphereGeometry(0.5, 16, 10), chrome); top.position.z = 1.3;
+          nozzle.add(pipe, top);
+        } else {
+          const green = new T.MeshPhongMaterial({ color: 0x2E9E48, shininess: 60 });
+          const hose = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 3, 14), green); hose.rotation.x = Math.PI / 2; hose.position.z = 1.5;
+          const tip = new T.Mesh(new T.CylinderGeometry(0.25, 0.45, 0.6, 14), new T.MeshPhongMaterial({ color: 0xFFA000 })); tip.rotation.x = Math.PI / 2; tip.position.z = -0.2;
+          const coil = new T.Mesh(new T.TorusGeometry(1.4, 0.4, 10, 24), green); coil.position.set(0, -hh / 2 + 0.4, 4); coil.rotation.x = Math.PI / 2;
+          nozzle.add(hose, tip, coil);
+        }
+        if (el.up) { nozzle.rotation.x = -Math.PI / 2; nozzle.position.set(el.at[0], el.at[1] + 0.3, el.at[2]); }
+        else { nozzle.quaternion.set(...q); nozzle.position.set(...add(add(el.at, rotate(q, [0, 0, t / 2])), [0, hh / 2, 0])); }
+        v.scene.add(nozzle);
+      } else {
       const ring = new T.Mesh(new T.TorusGeometry(Math.min(b, hh) * 0.45, 0.1, 8, 28), v.mats.pole);
       for (let i = 0; i < 3; i++) {
         const bl = new T.Mesh(new T.BoxGeometry(0.35, Math.min(b, hh) * 0.4, 0.05), new T.MeshLambertMaterial({ color: 0xE0F4FF }));
@@ -125,13 +148,15 @@ export const EXTRA = {
       if (el.up) { fan.rotation.x = -Math.PI / 2; fan.position.set(el.at[0], el.at[1] + 0.15, el.at[2]); }
       else { fan.quaternion.set(...q); fan.position.set(...add(add(el.at, rotate(q, [0, 0, t / 2])), [0, hh / 2, 0])); }
       v.scene.add(fan);
-      // Luftstriche
-      const n = 14, streakGeo = el.up ? new T.BoxGeometry(0.05, 0.6, 0.05) : new T.BoxGeometry(0.05, 0.05, 0.6);
-      const mat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 });
+      }
+      // Luftstriche bzw. Wassertropfen (Strahl in der Mitte der Zone)
+      const n = wet ? 30 : 14, streakGeo = wet ? new T.SphereGeometry(0.14, 6, 4) : el.up ? new T.BoxGeometry(0.05, 0.6, 0.05) : new T.BoxGeometry(0.05, 0.05, 0.6);
+      const mat = new T.MeshBasicMaterial({ color: wet ? 0x6EC6FF : 0xffffff, transparent: true, opacity: wet ? 0.8 : 0.55 });
       const streaks = [];
       for (let i = 0; i < n; i++) {
         const m = new T.Mesh(streakGeo, mat); m.quaternion.set(...q); v.scene.add(m);
-        streaks.push({ m, x: (Math.random() - 0.5) * b, y: Math.random() * hh, z: (Math.random() - 0.5) * t });
+        const sprd = wet ? 0.35 : 1; // Wasser: gebündelter Strahl
+        streaks.push({ m, x: (Math.random() - 0.5) * b * sprd, y: wet && !el.up ? hh / 2 + (Math.random() - 0.5) * hh * 0.3 : Math.random() * hh, z: (Math.random() - 0.5) * t });
       }
       const sp = (el.strength ?? 8) * 0.6;
       return {
