@@ -34,6 +34,10 @@ export const BALL = { wand: 0.5, boden: 0.25, schwere: 1, rollen: 1 };
 // Kollisionsgruppen: feste/bewegte Teile, Murmel, lose Teile (z. B. Dominos)
 export const GRP = { fest: 1, murmel: 2, lose: 4 };
 const DAMPING = 0.12;
+// Hangabtrieb: rollt die Murmel auf geneigten Bahnstücken (Weg, Rampe, Spirale, Fluss) bergab, zieht es sie zusätzlich
+// (Faktor der Hangkraft), sonst schlucken Rollen und Dämpfung einen grossen Teil davon und bergab wirkt zäh.
+const SLOPE_PUSH = 0.6;
+const BRAKE_FLAT = 0.998; // Bremshilfe nur auf (fast) ebenem Boden (Neigung < 3.6°), bergab rollt die Murmel weiter
 
 export function createGame(CANNON, level, ballProps = BALL) {
   // Level-Physik: schwerkraft = Faktor (Weltraum < 1), wasser = Abbremsen pro Sekunde in alle Richtungen,
@@ -68,7 +72,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
   const g = {
     C: CANNON, world, level, matFor, els: [], solids: [], checkpoints: [], switches: {},
     st: { stars: 0, starTotal: 0, cp: -1, won: false },
-    groundBody: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0, dirt: 0, washK: 0,
+    groundBody: null, groundN: [0, 1, 0], touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0, dirt: 0, washK: 0,
     // Leichte Murmel (schwere < 1) nur in Welten mit normaler Schwerkraft; im Weltraum gilt die Level-Schwerkraft
     // gy = Schwerkraft des Levels für lose Teile (Dominos): ohne Kippen und ohne Murmel-Schwere
     ballProps, damping: DAMPING * (ballProps.rollen ?? 1), G: phys.schwerkraft ? gy : gy * (ballProps.schwere ?? 1), gy, lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
@@ -128,11 +132,12 @@ export function createGame(CANNON, level, ballProps = BALL) {
   function contacts() {
     let best = null, bestNy = -2, ground = null;
     for (const c of world.contacts) {
-      let other = null, ny = 0;
-      if (c.bi === ball) { other = c.bj; ny = -c.ni.y; } else if (c.bj === ball) { other = c.bi; ny = c.ni.y; }
+      let other = null, s = 1;
+      if (c.bi === ball) { other = c.bj; s = -1; } else if (c.bj === ball) other = c.bi;
       if (!other) continue;
+      const ny = c.ni.y * s; // Normale zeigt vom Körper zur Murmel
       if (ny > bestNy) { bestNy = ny; best = other; }
-      if (ny > 0.3) ground = other;
+      if (ny > 0.3) { ground = other; g.groundN = [c.ni.x * s, ny, c.ni.z * s]; }
     }
     g.touchBody = best; g.groundBody = ground;
     const u = best && best.userData;
@@ -193,6 +198,17 @@ export function createGame(CANNON, level, ballProps = BALL) {
     if (g.dirty && g.dirt === 0) { g.dirty = false; g.washed = true; ev.push('sauber'); }
   }
 
+  // Hangabtrieb auf festen Bahnstücken (nicht im Looping, nicht auf bewegten Teilen wie Wippe oder Falltür)
+  function slope() {
+    const gb = g.groundBody, u = gb && gb.userData;
+    if (g.lock || !u || !u.track || u.loop || gb.type !== CANNON.Body.STATIC) return;
+    // Richtung bergab = Schwerkraft entlang der Fläche: (0, -1, 0) + n * ny, Länge = sin(Neigung)
+    const [nx, ny, nz] = g.groundN, dx = nx * ny, dy = ny * ny - 1, dz = nz * ny, v = ball.velocity;
+    if (v.x * dx + v.y * dy + v.z * dz <= 0) return; // nur bergab, bergauf bleibt es wie bisher
+    const k = SLOPE_PUSH * g.G * H;
+    v.x += dx * k; v.y += dy * k; v.z += dz * k;
+  }
+
   function substep(ix, iz, ev) {
     const grip = g.lock ? 0 : g.surface.grip; // lock: Röhre/Kanone steuern die Murmel
     world.gravity.set(Math.sin(g.tilt) * G * ix * grip, -g.G, Math.sin(g.tilt) * G * iz * grip);
@@ -216,8 +232,9 @@ export function createGame(CANNON, level, ballProps = BALL) {
     contacts();
     if (water) { const f = Math.exp(-water * H); ball.velocity.x *= f; ball.velocity.y *= f; ball.velocity.z *= f; }
     if (g.surface.drag) { const f = Math.exp(-g.surface.drag * H); ball.velocity.x *= f; ball.velocity.z *= f; }
-    // Bremshilfe (Joystick): ohne Eingabe am Boden sanft abbremsen
-    if (g.brake && g.groundBody && Math.hypot(ix, iz) < 0.1 && Math.hypot(ball.velocity.x, ball.velocity.z) < 7) { const f = Math.exp(-g.brake * H); ball.velocity.x *= f; ball.velocity.z *= f; }
+    slope();
+    // Bremshilfe (Joystick): ohne Eingabe auf ebenem Boden sanft abbremsen
+    if (g.brake && g.groundBody && g.groundN[1] > BRAKE_FLAT && Math.hypot(ix, iz) < 0.1 && Math.hypot(ball.velocity.x, ball.velocity.z) < 7) { const f = Math.exp(-g.brake * H); ball.velocity.x *= f; ball.velocity.z *= f; }
     for (const el of g.els) TYPES[el.type].step?.(el, g, H, ev);
     dirt(ev);
     if (ball.position.y < killY) g.fall(ev);
