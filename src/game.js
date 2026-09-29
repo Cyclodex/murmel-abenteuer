@@ -16,7 +16,10 @@ export const SURFACES = {
   normal: { friction: 0.4, bounce: 1, grip: 1, drag: 0, wash: 0.015 },
   eis: { friction: 0.02, bounce: 1, grip: 0.45, drag: -0.1, wash: 0.04 },
   schlamm: { friction: 0.9, bounce: 0.2, grip: 1, drag: 2.2, dirt: 0.15 },
-  pfuetze: { friction: 0.4, bounce: 0.3, grip: 1, drag: 0.8, wash: 1 }
+  pfuetze: { friction: 0.4, bounce: 0.3, grip: 1, drag: 0.8, wash: 1 },
+  sand: { friction: 0.7, bounce: 0.3, grip: 0.9, drag: 1.4, dirt: 0.03 },
+  seife: { friction: 0.02, bounce: 1, grip: 0.4, drag: -0.15, wash: 0.8 },
+  handtuch: { friction: 0.9, bounce: 0.1, grip: 1, drag: 1.8, wash: 0.3 }
 };
 const DIRT_STILL = 0.08; // so viel Dreck pro Sekunde auch im Stehen im Schlamm
 const WASH_WATER = 0.6;  // Unterwasser: Abwaschen pro Sekunde
@@ -98,11 +101,19 @@ export function createGame(CANNON, level, ballProps = BALL) {
 
   g.spawn = p => {
     ball.position.set(...p); ball.velocity.set(0, 0, 0); ball.angularVelocity.set(0, 0, 0);
-    g.groundBody = g.touchBody = null; g.lock = false; ball.linearDamping = g.damping;
+    g.groundBody = g.touchBody = null; g.lock = false; g.squashT = 0; ball.linearDamping = g.damping;
+  };
+  // Zerquetscht (z. B. Hammer): Murmel bleibt kurz platt liegen, dann geht es am Checkpoint weiter.
+  // Events: 'quetsch' sofort, 'zurueck' beim Neustart.
+  const SQUASH_T = 0.8;
+  g.squash = () => {
+    if (g.squashT > 0) return;
+    const p = ball.position;
+    g.squashT = SQUASH_T; g.squashPos = [p.x, p.y, p.z]; g.squashNew = true; g.lock = true;
   };
   g.reset = () => {
     Object.assign(g.st, { stars: 0, cp: -1, won: false });
-    Object.assign(g, { dirt: 0, dirtPeak: 0, dirty: false, washed: false, washK: 0 });
+    Object.assign(g, { dirt: 0, dirtPeak: 0, dirty: false, washed: false, washK: 0, squashT: 0, squashNew: false });
     g.switches = {}; acc = 0; g.time = 0; g.hitCool = 0.5; g.hitStrength = 0;
     g.track.yaw = (level.startYaw || 0) * Math.PI / 180;
     for (const el of g.els) TYPES[el.type].reset?.(el, g);
@@ -182,8 +193,16 @@ export function createGame(CANNON, level, ballProps = BALL) {
     const grip = g.lock ? 0 : g.surface.grip; // lock: Röhre/Kanone steuern die Murmel
     world.gravity.set(Math.sin(g.tilt) * G * ix * grip, -g.G, Math.sin(g.tilt) * G * iz * grip);
     for (const el of g.els) TYPES[el.type].pre?.(el, g, H);
+    if (g.squashNew) { g.squashNew = false; ev.push('quetsch'); }
     const v = ball.velocity, vx = v.x, vy = v.y, vz = v.z, gr = world.gravity;
     world.step(H);
+    if (g.squashT > 0) { // platt liegen bleiben
+      ball.position.set(...g.squashPos); ball.velocity.set(0, 0, 0); ball.angularVelocity.set(0, 0, 0);
+      g.hitCool = 0.3; g.time += H;
+      if ((g.squashT -= H) <= 0) { g.spawn(spawnPoint()); ev.push('zurueck'); }
+      for (const el of g.els) TYPES[el.type].step?.(el, g, H, ev);
+      return;
+    }
     bounce(vx, vy, vz);
     // Aufprall: Geschwindigkeitsänderung, die nicht von der Schwerkraft kommt
     const hit = Math.hypot(v.x - vx - gr.x * H, v.y - vy - gr.y * H, v.z - vz - gr.z * H);

@@ -16,8 +16,12 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | Datei | Inhalt |
 |---|---|
 | `src/levels/*.js` | Level als Daten (ein Objekt pro Level), Welten und Reihenfolge in `src/levels/index.js` (`need` = Welt erst ab so vielen Sternen offen, z. B. Profi-Welt Vulkan) |
+| `src/levels/schwer/*.js` | Schwere Versionen (💀) je Welt: Level mit `schwer: '<id des normalen Levels>'`, offen sobald das normale geschafft ist |
 | `src/elements.js` | Grund-Bauteile: Klötze, Logik und Grafik je Typ |
 | `src/elements-extra.js` | Weitere Bauteile (Röhre, Band, Wind, Balken, Magnet, Kanone, Domino, Spirale) |
+| `src/elements-fallen.js` | Fallen für schwere Level (Feld mit Löchern, Falltür, Schieber, Hammer, Treppe, Fluss, Felsen) |
+| `src/elements-welt.js` | Echte Dinge der Welten (Schüssel = Pfanne/Topf/Lavabo, Deko-Gegenstände, Herdplatte, Rasensprenger) |
+| `src/props.js` | Riesige Alltagsgegenstände aus einfachen Formen (Apfel, Tasse, Toaster, Ente, Zwerg, Sandburg …) |
 | `src/bauteile.js` | Sammelt alle Bauteil-Typen |
 | `src/themes.js` | Aussehen der Welten (Boden, Wände, Himmel, Untergrund, Partikel) |
 | `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm, Pfütze), Dreck (`g.dirt`: Schlamm macht dreckig, Pfütze/Wind/Wasser waschen) |
@@ -38,12 +42,12 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 
 Koordinaten in Metern: `x` = rechts, `y` = oben, `-z` = vorwärts. Murmel-Radius 0.5.
 Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rechts (+x).
-`theme`: `'spielzimmer'`, `'garten'`, `'kueche'`, `'weltraum'`, `'unterwasser'`, `'vulkan'` (siehe `src/themes.js`).
+`theme`: `'spielzimmer'`, `'garten'`, `'kueche'`, `'badezimmer'`, `'weltraum'`, `'unterwasser'`, `'vulkan'` (siehe `src/themes.js`).
 `physik`: `{ schwerkraft: 0.45, wasser: 0.35, abprall: 0.5 }` (Faktor Schwerkraft, Wasserbremse pro Sekunde, Faktor Abprall).
 
 | Bauteil | Felder |
 |---|---|
-| `weg` | `from`, `to` (Oberkante; Höhenunterschied = Rampe), `width`, `walls`, `caps` (`'start'`/`'end'`/`'both'`), `thick`, `surface` (`'eis'`/`'schlamm'`/`'pfuetze'`) |
+| `weg` | `from`, `to` (Oberkante; Höhenunterschied = Rampe), `width`, `walls`, `caps` (`'start'`/`'end'`/`'both'`), `thick`, `surface` (`'eis'`/`'schlamm'`/`'pfuetze'`/`'sand'`/`'seife'`/`'handtuch'`) |
 | `kurve` | `at` (Start, Mitte), `yaw` (Startrichtung), `turn` (+ rechts / - links), `radius`, `width`, `walls` |
 | `looping` | `at` (Einfahrt unten), `yaw`, `radius`, `width`, `shift` (Ausfahrt seitlich versetzt). Braucht `turbo` davor |
 | `wand` | `from`, `to` (Unterkante), `height`, `look` |
@@ -66,7 +70,20 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `magnet` | `at` (Boden darunter), `radius`, `strength` (negativ = stösst ab) |
 | `kanone` | `at` (Boden), `target` (Landepunkt), `time` (Flugzeit) |
 | `domino` | `from`, `to`, `count`, `size: [b, h, t]` |
+| `feld` | `at` (Mitte der vorderen Kante), `yaw`, `cell` (Kachel, Standard 2), `map` (Zeilen, unterste = Einfahrt): `#` Boden, `.` Loch, `w` Mauer, `e`/`s`/`p`/`a`/`o`/`h` Eis/Schlamm/Pfütze/Sand/Seife/Handtuch; `walls` |
+| `falltuer` | `at`, `size: [b, t]`, `yaw`, `delay` (s bis sie aufklappt, Standard 0.6), `offen` (s bis sie zugeht) |
+| `schieber` | `from`, `to` (Mitte unten), `size: [b, h, t]`, `time`, `pause`, `offset` – schiebt die Murmel weg |
+| `hammer` | `at` (Aufschlag, Oberkante), `yaw` (Wegrichtung), `side` (1 = Stiel rechts), `length`, `size`, `up`, `down`, `offset`, `farbe` – quetscht die Murmel |
+| `treppe` | `from` (oberste Stufe), `to` (unterste), `steps`, `width`, `walls` |
+| `fluss` | `from`, `to` (Wasseroberfläche), `width`, `depth`, `speed`, `banks` – trägt die Murmel mit, wäscht |
+| `felsen` | `from`, `dir: [x, z]`, `speed`, `every` (s), `r`, `offset` – rollende Felsen, bergab einsetzen |
+| `schuessel` | `at` (Bodenmitte), `r`, `R`, `h`, `rim`, `art` (`'pfanne'`/`'topf'`/`'lavabo'`/`'schuessel'`/`'sandkuchen'`), `offen: [yaw]` (Lücke für eine Rampe), `aussen`, `griff`, `hahn`, `abfluss` |
+| `roehre` mit `down: true` | Abfluss: bei `from` geht es senkrecht hinunter, `fang` = Fangradius (z. B. Mitte vom Lavabo) |
+| `wind` mit `look` | `'schlauch'` (Gartenschlauch) oder `'hahn'` (Wasserhahn): Wasserstrahl statt Ventilator |
+| `sprenger` | `at`, `length` (Reichweite), `speed` (°/s), `strength`, `breite` – Rasensprenger schiebt die Murmel weg |
+| `herdplatte` | `at` (auf einem Weg), `r`, `jump` – heiss, die Murmel hüpft |
+| `deko` | `form` (siehe `src/props.js`), `at`, `yaw`, `scale`, `farbe`, `fest` (man kann nicht hindurch), `dreh` (°/s) |
 
 Neues Hindernis erfinden: in `src/elements.js` einen Typ ergänzen (`solids`, `init`, `reset`, `pre`, `step`, `view`), danach kann es in jedem Level verwendet werden.
-Neues Level testen: in `tests/autopilot.js` eine Route (Wegpunkte) ergänzen, dann `npm test`. Wegpunkte können warten (`wait: 'platAtTo'`, `'amBoden'`, `['hoehe', 7]`, `['balkenWeg', [x, z]]`) oder der Bahn folgen (`{ follow: true, bisY }`); mehrere Routen pro Level sind möglich (z. B. Umweg zum Bonusstern).
+Neues Level testen: in `tests/autopilot.js` (schwere Level: `tests/routes/<welt>.js`) eine Route (Wegpunkte) ergänzen, dann `node tests/pruefe-level.mjs <id>` (schnell, ohne Browser; `--fahrt` zeigt eine Fahrt mit Wegpunkten und Abstürzen) und `npm test`. Wegpunkte können warten (`wait: 'platAtTo'`, `'amBoden'`, `['hoehe', 7]`, `['balkenWeg', [x, z]]` (auch Sprenger), `['phase', ['hammer', 0, 0.72, 0.85]]` (Takt von Hammer/Felsen/Plattform/Schieber), `['tuerZu', 0]`) oder der Bahn folgen (`{ follow: true, bisY }`); mehrere Routen pro Level sind möglich (z. B. Umweg zum Bonusstern).
 Autopilot zuschauen: Spiel mit `?autopilot` öffnen (z. B. `http://localhost:8123/?autopilot`), Level wählen. Ringe = Wegpunkte (orange = aktuelles Ziel, lila = wartet, grau = erledigt).

@@ -62,9 +62,12 @@ let game = null, view = null, running = false, levelIdx = 0, camYaw = 0;
 
 // Level-Reihenfolge: erstes Level jeder Welt offen (bei Welten mit need erst ab so vielen Sternen),
 // danach freigeschaltet durch das vorherige
+// Schwere Version (lv.schwer = ID des normalen Levels): offen, sobald das normale Level geschafft ist
 const worldOpen = w => !w.need || progress.totalStars() >= w.need;
 function isOpen(i) {
-  const lv = LEVELS[i], w = WORLDS.find(x => x.levels.includes(lv)), k = w.levels.indexOf(lv);
+  const lv = LEVELS[i];
+  if (lv.schwer) return progress.isDone(lv.schwer);
+  const w = WORLDS.find(x => x.levels.includes(lv)), k = w.levels.indexOf(lv);
   return k === 0 ? worldOpen(w) : progress.isDone(w.levels[k - 1].id);
 }
 
@@ -118,21 +121,26 @@ function showMap() {
   $('btnSound').textContent = (SOUND_MODES.find(m => m.id === audio.mode) || SOUND_MODES[0]).emoji;
   audio.music('karte');
   const box = $('worlds'); box.textContent = '';
-  for (const w of WORLDS) {
-    const row = document.createElement('div'); row.className = 'world';
-    row.innerHTML = `<div class="wicon" title="${w.name}">${w.emoji}</div><div class="levels"></div>`;
-    w.levels.forEach((lv, k) => {
+  // pro Welt eine Reihe, darunter die schweren Versionen (💀)
+  const levelRow = (list, icon, title, cls, lockText) => {
+    const row = document.createElement('div'); row.className = cls;
+    row.innerHTML = `<div class="wicon" title="${title}">${icon}</div><div class="levels"></div>`;
+    list.forEach((lv, k) => {
       const i = LEVELS.indexOf(lv), open = isOpen(i), total = lv.parts.filter(p => p.type === 'stern').length;
       const b = document.createElement('button');
       b.className = 'lvl' + (progress.isDone(lv.id) ? ' done' : '');
       b.disabled = !open; b.dataset.level = lv.id;
       b.setAttribute('aria-label', lv.name);
-      const lock = k === 0 && !worldOpen(w) ? `${w.need}⭐` : k + 1; // gesperrte Welt: so viele Sterne braucht es
-      b.innerHTML = open ? `<span>${lv.emoji}</span><span class="s">${starRow(progress.best(lv.id), total)}</span>` : `<span>🔒</span><span class="s">${lock}</span>`;
+      b.innerHTML = open ? `<span>${lv.emoji}</span><span class="s">${starRow(progress.best(lv.id), total)}</span>` : `<span>🔒</span><span class="s">${lockText(k)}</span>`;
       b.onclick = () => { audio.sfx('tap'); startLevel(i); };
       row.lastChild.appendChild(b);
     });
     box.appendChild(row);
+  };
+  for (const w of WORLDS) {
+    // gesperrte Welt: so viele Sterne braucht es
+    levelRow(w.levels, w.emoji, w.name, 'world', k => (k === 0 && !worldOpen(w) ? `${w.need}⭐` : k + 1));
+    if (w.hard && w.hard.length) levelRow(w.hard, '💀', w.name + ' schwer', 'world hard', k => `💀${k + 1}`);
   }
   show('mapOv');
 }
@@ -272,7 +280,7 @@ function onWin() {
   setTimeout(() => { show('winOv'); show('joy', false); cheer.show(cheers); }, 900);
 }
 
-const VIBRATE = { platsch: 40, boom: [80, 30, 40], roehre: 30, plopp: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
+const VIBRATE = { quetsch: [120, 40, 60], klapp: 30, platsch: 40, boom: [80, 30, 40], roehre: 30, plopp: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
 function onEvent(e) {
   if (e === 'hit') { audio.sfx('hit', game.hitStrength); return; }
   if (e === 'tock') { audio.sfx('tock', game.tockIdx); return; }
@@ -283,7 +291,7 @@ function onEvent(e) {
   if (e === 'sauber') view.burst(view.ballMesh.position, 20, [0xFFFFFF, 0xBDEBFF, 0x7FC4F5]);
   if (e === 'bonus') { buzz([30, 30, 30]); view.burst(view.ballMesh.position, 30, [0xC77DFF, 0xFFC928, 0xFFFFFF]); }
   if (e === 'win') onWin();
-  if (e === 'fall' && pilot) pilot.fell();
+  if ((e === 'fall' || e === 'zurueck') && pilot) pilot.fell();
 }
 
 // ---------- Zuschau-Modus: Spiel mit ?autopilot öffnen, der Test-Autopilot fährt sichtbar ----------

@@ -258,7 +258,7 @@ export const TYPES = {
   },
 
   // Bewegte Plattform: pendelt zwischen from und to (Mitte der Oberkante).
-  // {type:'plattform', from, to, size:[b,t], yaw?, time?:Fahrzeit s, pause?:s, rim?:Randhöhe, surface?}
+  // {type:'plattform', from, to, size:[b,t], yaw?, time?:Fahrzeit s, pause?:s, rim?:Randhöhe, surface?, offset?:Startverzögerung s}
   plattform: {
     init(el, g) {
       const size = el.size || [4, 4];
@@ -269,7 +269,7 @@ export const TYPES = {
       el.lastV = [0, 0, 0];
     },
     reset(el) {
-      el.t = 0; el.body.position.set(...el.from); el.body.velocity.set(0, 0, 0); el.lastV = [0, 0, 0];
+      el.t = el.offset || 0; el.body.position.set(...TYPES.plattform.posAt(el, el.t)); el.body.velocity.set(0, 0, 0); el.lastV = [0, 0, 0];
     },
     posAt(el, t) {
       const move = el.time ?? 3, pause = el.pause ?? 1.5, per = 2 * (move + pause), u = t % per;

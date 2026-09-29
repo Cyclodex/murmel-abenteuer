@@ -52,6 +52,12 @@ export const SONGS = {
       69, null, 72, 76, 81, null, 79, 76, 74, null, 72, 71, 69, null, null, null],
     bass: [45, null, 52, null, 50, null, 52, null, 45, null, 52, null, 48, null, 45, null]
   },
+  badezimmer: { // plätschernd, verspielt
+    bpm: 96, lead: 'box',
+    melody: [72, 76, 79, null, 77, 74, 71, null, 72, 76, 79, 84, 83, null, 79, null,
+      81, 79, 77, 76, 74, null, 76, 77, 79, null, 72, null, 72, null, null, null],
+    bass: [48, null, 55, null, 50, null, 55, null, 48, null, 55, null, 53, 55, 48, null]
+  },
   vulkan: { // spannend, Moll, treibend
     bpm: 118, lead: 'pluck', drums: true,
     melody: [69, null, 72, 69, 76, null, 74, 72, 71, null, 74, 71, 77, 76, 74, null,
@@ -71,7 +77,10 @@ const ROLL = {
   normal: { f0: 220, fv: 70, q: 0.9, vol: 0.17, rumble: 1 },
   eis: { f0: 1800, fv: 160, q: 2.5, vol: 0.14, rumble: 0.2 },
   schlamm: { f0: 110, fv: 25, q: 0.7, vol: 0.15, rumble: 1.4 },
-  pfuetze: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 }
+  pfuetze: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 },
+  sand: { f0: 1400, fv: 50, q: 0.5, vol: 0.12, rumble: 0.6 },
+  seife: { f0: 2200, fv: 120, q: 3, vol: 0.12, rumble: 0.2 },
+  handtuch: { f0: 160, fv: 20, q: 0.6, vol: 0.08, rumble: 0.5 }
 };
 
 export function createAudio(opts = {}) {
@@ -157,6 +166,14 @@ export function createAudio(opts = {}) {
     // Dreck: ganz dreckig (Matsch-Platsch) und wieder blitzblank (Glitzer)
     platsch: t => { hiss(t, 0.35, 0.8, 'lowpass', 700, 120, 0.8); tone(200, t, 0.25, 0.5, 'sine', 60); },
     sauber: t => { [84, 91, 96, 103].forEach((n, i) => bell(midi(n), t + i * 0.07, 0.15, 0.45)); hiss(t, 0.4, 0.08, 'highpass', 8000); },
+    // Fallen: Klappe geht auf, Hammer quetscht (Platsch + Boing), Felsen rumpelt los
+    // echte Dinge: Herdplatte zischt, Sprenger spritzt, Abfluss gurgelt
+    zisch: t => hiss(t, 0.35, 0.5, 'highpass', 3000, 6000, 0.7),
+    spritz: t => { hiss(t, 0.3, 0.45, 'bandpass', 2500, 1200, 1.2); tone(900, t, 0.1, 0.1, 'sine', 1400); },
+    gurgel: t => { for (let i = 0; i < 5; i++) tone(180 + i * 40, t + i * 0.07, 0.08, 0.3, 'sine', 400 + i * 60); hiss(t, 0.4, 0.3, 'lowpass', 600, 200, 1); },
+    klapp: t => { hiss(t, 0.08, 0.6, 'bandpass', 900, null, 1.5); tone(300, t, 0.18, 0.4, 'square', 120); },
+    quetsch: t => { hiss(t, 0.2, 1.0, 'lowpass', 1200, 200, 0.8); tone(120, t, 0.15, 0.8, 'sine', 50); tone(midi(67), t + 0.25, 0.4, 0.25, 'triangle', midi(79)); },
+    rumpel: t => { hiss(t, 0.6, 0.5, 'lowpass', 300, 120, 0.7); tone(60, t, 0.5, 0.4, 'sine', 40); },
     tock: (t, i = 0) => { tone(midi(72 + Math.min(i, 12) * 2), t, 0.07, 0.5, 'triangle'); hiss(t, 0.02, 0.3, 'highpass', 3000); },
     // Jubel beim Freischalten: Trommelwirbel, Fanfare, Glitzer
     jubel: t => {

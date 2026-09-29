@@ -1,7 +1,7 @@
 // Sticker-Album: pro Welt ein Blatt, dazu ein Blatt "Extras". Wird aus den Welten/Leveln erzeugt,
 // neue Level bekommen ihre Sticker also automatisch.
 //   pro Level: geschafft (Level-Emoji), alle Sterne 🌟, Bonusstern 💎 (nur wenn das Level einen hat)
-//   pro Welt:  alle Level geschafft 🏆
+//   pro Welt:  alle Level geschafft 🏆, alle schweren Versionen geschafft 💀
 //   Extras:    erste Murmel 🔮, erste Spur 💫, alle Welt-Sticker 👑, ganz dreckig ins Ziel 🐷, wieder blitzblank gewaschen 🧼,
 //              schneller als die eigene Geistermurmel 👻
 // has(p, ctx) prüft, ob der Sticker verdient ist (p = Spielstand, ctx = { skinsOpen, trailsOpen, bonus, dreckig, sauber, geist }).
@@ -10,7 +10,7 @@ const stars = lv => lv.parts.filter(p => p.type === 'stern');
 export function buildAlbum(WORLDS) {
   const pages = WORLDS.map(w => {
     const list = [];
-    for (const lv of w.levels) {
+    for (const lv of [...w.levels, ...(w.hard || [])]) {
       const total = stars(lv).length;
       list.push({ id: 'lvl:' + lv.id, emoji: lv.emoji, has: p => p.isDone(lv.id) });
       list.push({ id: 'sterne:' + lv.id, emoji: '🌟', has: p => total > 0 && p.best(lv.id) >= total });
@@ -18,6 +18,7 @@ export function buildAlbum(WORLDS) {
       if (stars(lv).some(s => s.bonus)) list.push({ id: 'bonus:' + lv.id, emoji: '💎', has: (p, c) => c.bonus === lv.id || p.best(lv.id) >= total });
     }
     list.push({ id: 'welt:' + w.id, emoji: '🏆', has: p => w.levels.every(lv => p.isDone(lv.id)) });
+    if (w.hard && w.hard.length) list.push({ id: 'profi:' + w.id, emoji: '💀', has: p => w.hard.every(lv => p.isDone(lv.id)) });
     return { id: w.id, emoji: w.emoji, stickers: list };
   });
   const worldIds = pages.flatMap(pg => pg.stickers.map(s => s.id));
