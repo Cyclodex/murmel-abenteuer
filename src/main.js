@@ -58,10 +58,12 @@ input.setPower(power());
 
 let game = null, view = null, running = false, levelIdx = 0, camYaw = 0;
 
-// Level-Reihenfolge: erstes Level jeder Welt offen, danach freigeschaltet durch das vorherige
+// Level-Reihenfolge: erstes Level jeder Welt offen (bei Welten mit need erst ab so vielen Sternen),
+// danach freigeschaltet durch das vorherige
+const worldOpen = w => !w.need || progress.totalStars() >= w.need;
 function isOpen(i) {
   const lv = LEVELS[i], w = WORLDS.find(x => x.levels.includes(lv)), k = w.levels.indexOf(lv);
-  return k === 0 || progress.isDone(w.levels[k - 1].id);
+  return k === 0 ? worldOpen(w) : progress.isDone(w.levels[k - 1].id);
 }
 
 function loadLevel(i) {
@@ -116,7 +118,8 @@ function showMap() {
       b.className = 'lvl' + (progress.isDone(lv.id) ? ' done' : '');
       b.disabled = !open; b.dataset.level = lv.id;
       b.setAttribute('aria-label', lv.name);
-      b.innerHTML = open ? `<span>${lv.emoji}</span><span class="s">${starRow(progress.best(lv.id), total)}</span>` : `<span>🔒</span><span class="s">${k + 1}</span>`;
+      const lock = k === 0 && !worldOpen(w) ? `${w.need}⭐` : k + 1; // gesperrte Welt: so viele Sterne braucht es
+      b.innerHTML = open ? `<span>${lv.emoji}</span><span class="s">${starRow(progress.best(lv.id), total)}</span>` : `<span>🔒</span><span class="s">${lock}</span>`;
       b.onclick = () => { audio.sfx('tap'); startLevel(i); };
       row.lastChild.appendChild(b);
     });

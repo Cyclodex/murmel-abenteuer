@@ -167,5 +167,25 @@ export const ROUTES = {
   u3: [
     { x: 0, z: -6 }, { x: 0, z: -17, speed: 4 }, { x: 3, z: -24, speed: 4, r: 0.6, wait: ['balkenWeg', [2, -20.5]] }, { x: 0, z: -30, speed: 4 }, { x: 0, z: -44 }, { x: 0, z: -46, speed: 2 }, { x: 0, z: -62 },
     { x: -3, z: -62.25, speed: 2 }, { x: -5.5, z: -62.25, speed: 2, r: 0.5 }, { x: 0, z: -62.25, speed: 3 }, { x: 0, z: -66 }
+  ],
+  v1: [
+    { x: 0, z: -8, speed: 3 }, { x: 0, z: -12, speed: 1.5, r: 0.5 }, { x: -6.3, z: -12, speed: 1.5, r: 0.5 }, { x: 0, z: -12, speed: 1.5, r: 0.5 },
+    { x: 0, z: -15.5, speed: 2 }, { x: 1.17, z: -18.83, speed: 2 }, { x: 4.5, z: -20, speed: 2 }, { x: 11, z: -20, speed: 3 },
+    { x: 12, z: -20, speed: 1.5, wait: 'platAtFrom' }, { x: 13.5, z: -20, speed: 1.5, r: 0.5 }, { x: 18.5, z: -20, speed: 1.5, wait: 'platAtTo', r: 0.5 },
+    { x: 21.5, z: -20, speed: 2 }, { x: 26, z: -20, speed: 2 }, { x: 33.5, z: -20, speed: 2 }, { x: 37, z: -20, speed: 2 },
+    { x: 39.83, z: -21.17, speed: 2 }, { x: 41, z: -24.5, speed: 2 }, { x: 41, z: -31 }
+  ],
+  v2: [
+    { x: 0, z: -8, speed: 4 }, { x: 0, z: -16, speed: 4 }, { x: 0, z: -27, speed: 3 }, { x: 0, z: -29, speed: 1.5, r: 0.5 }, { x: 7, z: -29, speed: 1.5, r: 0.5 }, { x: 0, z: -29, speed: 1.5, r: 0.5 },
+    { x: 0, z: -33, speed: 2 }, { x: 0, z: -35, speed: 1.5, r: 0.5 }, { x: 0, z: -43, speed: 5, r: 0.8, wait: ['balkenWeg', [0, -39]] },
+    { x: 0, z: -47, speed: 2.5 }, { x: 0, z: -58, speed: 2.5, r: 0.8 }, { x: 0, z: -64, speed: 2 }, { x: 0, z: -69, speed: 2 },
+    { x: -1.46, z: -73.54, speed: 3 }, { x: -6, z: -75, speed: 3 }, { x: -12, z: -75 }
+  ],
+  v3: [
+    { x: 0, z: -7, speed: 3 }, { x: 0, z: -13, speed: 2 }, { x: 0, z: -30, speed: 2 }, { x: 0, z: -37, speed: 2 },
+    { x: 0.5, z: -40, speed: 1.5, r: 0.5 }, { x: 6.5, z: -40, speed: 1.5, r: 0.5 }, { x: 0.5, z: -40, speed: 1.5, r: 0.5 },
+    { x: 0.9, z: -42, speed: 1.5, r: 0.5 }, { x: 0, z: -44.5, speed: 1.5, r: 0.5 }, { x: -0.9, z: -47, speed: 1.5, r: 0.5 }, { x: 0, z: -49.5, speed: 2 },
+    { follow: true, bisY: 0.7, speed: 3 }, { x: 0, z: -54, speed: 4 }, { x: 0, z: -66, speed: 5 }, { x: 0, z: -70, speed: 4 },
+    { x: 0, z: -73, speed: 8 }, { x: 5, z: -77, free: true, r: 2.5 }, { x: 5, z: -81 }
   ]
 };

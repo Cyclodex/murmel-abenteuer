@@ -508,11 +508,11 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
     out.rollenPfuetze = await render(a => a.roll(6, true, 'pfuetze'), 1);
     out.rollenLuft = await render(a => a.roll(6, false, 'normal'), 1);
     out.aus = await render(a => { a.setMode('aus'); a.sfx('win'); });
-    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser']) out['musik_' + song] = await render(a => a.music(song), 1);
+    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser', 'vulkan']) out['musik_' + song] = await render(a => a.music(song), 1);
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }
@@ -560,8 +560,35 @@ test('Karte im Querformat: oberste Knöpfe und letzte Welt erreichbar', async ({
   await page.click('#startJoy');
   await newPlayer(page, 'Quer');
   await expect(page.locator('#btnSound')).toBeInViewport();
+  await page.locator('.lvl[data-level="v1"]').scrollIntoViewIfNeeded(); // Profi-Welt ganz unten
+  await expect(page.locator('.lvl[data-level="v1"]')).toBeInViewport();
   await page.click('.lvl[data-level="u1"]'); // erste Level jeder Welt sind offen
   await expect(page.locator('#hud')).toBeVisible();
+});
+
+test('Profi-Welt Vulkan ist erst ab genug Sternen offen', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.click('#startJoy');
+  await newPlayer(page, 'Profi');
+  const need = await page.evaluate(() => window.murmel.WORLDS.find(w => w.id === 'vulkan').need);
+  await expect(page.locator('.lvl[data-level="v1"]')).toBeDisabled();
+  await expect(page.locator('.lvl[data-level="v1"]')).toContainText(`${need}⭐`);
+  // ein Stern zu wenig: noch zu; genug: offen, v2 erst nach v1
+  const setStars = n => page.evaluate(n => {
+    const { progress, LEVELS, showMap } = window.murmel;
+    let left = n;
+    for (const lv of LEVELS) { const k = Math.min(left, lv.parts.filter(p => p.type === 'stern').length); if (k) progress.finish(lv.id, k); left -= k; }
+    showMap();
+  }, n);
+  await setStars(need - 1);
+  await expect(page.locator('.lvl[data-level="v1"]')).toBeDisabled();
+  await setStars(need);
+  await expect(page.locator('.lvl[data-level="v1"]')).toBeEnabled();
+  await expect(page.locator('.lvl[data-level="v2"]')).toBeDisabled();
+  await page.click('.lvl[data-level="v1"]');
+  await expect(page.locator('#hud')).toBeVisible();
+  expect(errors).toEqual([]);
 });
 
 // ---------- Belohnungen: Sticker, Spuren, Jubel ----------

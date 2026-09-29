@@ -15,7 +15,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 
 | Datei | Inhalt |
 |---|---|
-| `src/levels/*.js` | Level als Daten (ein Objekt pro Level), Welten und Reihenfolge in `src/levels/index.js` |
+| `src/levels/*.js` | Level als Daten (ein Objekt pro Level), Welten und Reihenfolge in `src/levels/index.js` (`need` = Welt erst ab so vielen Sternen offen, z. B. Profi-Welt Vulkan) |
 | `src/elements.js` | Grund-Bauteile: Klötze, Logik und Grafik je Typ |
 | `src/elements-extra.js` | Weitere Bauteile (Röhre, Band, Wind, Balken, Magnet, Kanone, Domino, Spirale) |
 | `src/bauteile.js` | Sammelt alle Bauteil-Typen |
@@ -37,7 +37,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 
 Koordinaten in Metern: `x` = rechts, `y` = oben, `-z` = vorwärts. Murmel-Radius 0.5.
 Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rechts (+x).
-`theme`: `'spielzimmer'`, `'garten'`, `'kueche'`, `'weltraum'`, `'unterwasser'` (siehe `src/themes.js`).
+`theme`: `'spielzimmer'`, `'garten'`, `'kueche'`, `'weltraum'`, `'unterwasser'`, `'vulkan'` (siehe `src/themes.js`).
 `physik`: `{ schwerkraft: 0.45, wasser: 0.35, abprall: 0.5 }` (Faktor Schwerkraft, Wasserbremse pro Sekunde, Faktor Abprall).
 
 | Bauteil | Felder |

@@ -52,6 +52,12 @@ export const SONGS = {
       69, null, 72, 76, 81, null, 79, 76, 74, null, 72, 71, 69, null, null, null],
     bass: [45, null, 52, null, 50, null, 52, null, 45, null, 52, null, 48, null, 45, null]
   },
+  vulkan: { // spannend, Moll, treibend
+    bpm: 118, lead: 'pluck', drums: true,
+    melody: [69, null, 72, 69, 76, null, 74, 72, 71, null, 74, 71, 77, 76, 74, null,
+      69, null, 72, 76, 81, null, 80, 77, 76, 74, 72, 71, 69, null, null, null],
+    bass: [45, 45, 52, 45, 43, 43, 50, 43, 41, 41, 48, 41, 40, 47, 45, null]
+  },
   spielzimmer: {
     bpm: 100, lead: 'box', drums: true,
     melody: [72, null, 76, 79, 81, 79, 76, null, 74, null, 77, 81, 79, 77, 74, null,
