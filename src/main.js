@@ -32,7 +32,7 @@ const skinNeed = s => (s.need === 'alle' ? ALL_STARS : s.need);
 const skinOpen = s => progress.totalStars() >= skinNeed(s);
 const currentSkin = () => { const s = SKINS.find(k => k.id === progress.skin); return s && skinOpen(s) ? s : SKINS[0]; };
 const trailOpen = t => (t.need.stars ? progress.totalStars() >= t.need.stars : progress.stickerCount() >= (t.need.stickers || 0));
-const trailNeed = t => (t.need.stars ? t.need.stars + '⭐' : t.need.stickers + '🏆');
+const trailNeed = t => (t.need.stars ? t.need.stars + '⭐' : t.need.stickers + '🏅');
 const currentTrail = () => { const t = TRAILS.find(k => k.id === progress.trail); return t && trailOpen(t) ? t : TRAILS[0]; };
 const ALBUM = buildAlbum(WORLDS);
 const cheer = createCheer($('cheerOv'), audio);
@@ -189,7 +189,7 @@ function showSkins() {
 let albumPage = 0;
 function showAlbum(k = albumPage) {
   albumPage = k;
-  $('albumCount').textContent = `🏆 ${ALBUM.all.filter(st => progress.hasSticker(st.id)).length}/${ALBUM.all.length}`;
+  $('albumCount').textContent = `🏅 ${ALBUM.all.filter(st => progress.hasSticker(st.id)).length}/${ALBUM.all.length}`;
   const tabs = $('albumTabs'); tabs.textContent = '';
   ALBUM.pages.forEach((pg, i) => {
     const b = document.createElement('button');
