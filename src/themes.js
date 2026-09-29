@@ -8,6 +8,7 @@
 export const COLORS = { rot: 0xE53935, blau: 0x1E88E5, gelb: 0xFDD835, gruen: 0x43A047, orange: 0xFB8C00, lila: 0x8E24AA };
 const PASTELL = { rosa: 0xF8BBD0, mint: 0xB2DFDB, hellblau: 0xBBDEFB, gelb: 0xFFF59D, lila: 0xD1C4E9, weiss: 0xFAFAFA };
 const NEON = { blau: 0x00E5FF, pink: 0xFF4FD8, gruen: 0x76FF03, gelb: 0xFFEA00 };
+const BASALT = { dunkel: 0x2E2A2B, hell: 0x4A4344, rot: 0x6B2E22 };
 const KORALLE = { rot: 0xFF6F61, orange: 0xFFA25C, rosa: 0xFF8FB8, lila: 0xB388FF, gelb: 0xFFD54F };
 
 export function rnd(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
@@ -59,6 +60,17 @@ const carpetTex = THREE => canvasTex(THREE, 256, 256, (x, w, h) => {
   x.fillStyle = '#7FB7E6'; x.fillRect(0, 0, w, h); x.fillStyle = '#9CCBF0';
   for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.beginPath(); x.arc(i * 64 + 32, j * 64 + 32, 18, 0, 7); x.fill(); }
 });
+// Basalt: dunkle Steinplatten mit glühenden Fugen
+const basaltTex = (THREE, base, glow) => canvasTex(THREE, 256, 256, (x, w, h) => {
+  x.fillStyle = glow; x.fillRect(0, 0, w, h);
+  const r = rnd(19);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+    const c = base + Math.floor(r() * 18); x.fillStyle = `rgb(${c},${c - 4},${c - 3})`;
+    x.fillRect(i * 64 + 2 + r() * 2, j * 64 + 2 + r() * 2, 59, 59);
+  }
+});
+// Lava: fliessende, glühende Flecken
+const lavaTex = THREE => dots(THREE, '#E8480C', ['#FF7A1A', '#FFB020', '#B8290A', '#FFD54A'], 160, 6, 22, 23);
 const hedgeTex = THREE => dots(THREE, '#2E7D32', ['#388E3C', '#1B5E20', '#43A047', '#4CAF50'], 260, 4, 11, 5, 128);
 
 // Hilfen für eigene Looks
@@ -142,6 +154,39 @@ export const THEMES = {
       const ring = new T.Mesh(new T.RingGeometry(24, 32, 48), new T.MeshBasicMaterial({ color: 0xFFD6A0, side: T.DoubleSide, transparent: true, opacity: 0.6, fog: false }));
       ring.position.copy(planet.position); ring.rotation.x = 1.2; t.scene.add(ring);
       return { tick(dt, cam) { stars.position.copy(cam.position); planet.rotation.y += dt * 0.05; } };
+    }
+  },
+
+  vulkan: {
+    sky: 0x5A2418, fog: [35, 110], hemi: [0xFFC9A8, 0x5A1A08, 0.8], sun: 0.75,
+    walls: ['basalt-dunkel', 'basalt-rot'],
+    floor: t => t.lambert(0xffffff, { map: basaltTex(t.THREE, 72, '#E0561A') }),
+    ramp: t => t.lambert(0xffffff, { map: basaltTex(t.THREE, 88, '#C84A16') }),
+    pillars: ['basalt-dunkel'],
+    look(t, look) {
+      const [k, c] = look.split('-');
+      if (k === 'basalt') return t.lambert(BASALT[c] ?? BASALT.dunkel);
+      return null;
+    },
+    ground(t, y) {
+      const T = t.THREE, tex = lavaTex(T); tex.repeat.set(30, 30);
+      const lava = t.plane(tex, y); lava.material.dispose(); lava.material = new T.MeshBasicMaterial({ map: tex }); // leuchtet selbst
+      // aufsteigende Funken
+      const n = 50, r = rnd(31), im = new T.InstancedMesh(new T.OctahedronGeometry(0.12), new T.MeshBasicMaterial({ color: 0xFFB020 }), n);
+      const b = Array.from({ length: n }, () => ({ x: (r() - 0.5) * 60, y: y + r() * 20, z: (r() - 0.5) * 60, sp: 1.5 + r() * 2 }));
+      const m = new T.Matrix4(), p = new T.Vector3(), q = new T.Quaternion(), sc = new T.Vector3(1, 1, 1);
+      t.scene.add(im);
+      return {
+        tick(dt, cam) {
+          tex.offset.x = (tex.offset.x + dt * 0.02) % 1; tex.offset.y = (tex.offset.y + dt * 0.013) % 1;
+          b.forEach((o, i) => {
+            o.y += o.sp * dt; if (o.y > y + 20) o.y = y;
+            p.set(cam.position.x + o.x, o.y, cam.position.z + o.z);
+            im.setMatrixAt(i, m.compose(p, q, sc));
+          });
+          im.instanceMatrix.needsUpdate = true;
+        }
+      };
     }
   },
 

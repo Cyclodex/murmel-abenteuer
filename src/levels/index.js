@@ -17,6 +17,9 @@ import w3 from './weltraum3.js';
 import u1 from './wasser1.js';
 import u2 from './wasser2.js';
 import u3 from './wasser3.js';
+import v1 from './vulkan1.js';
+import v2 from './vulkan2.js';
+import v3 from './vulkan3.js';
 
 export const WORLDS = [
   { id: 'uebung', name: 'Übung', emoji: '🌳', levels: [ausflug] },
@@ -24,7 +27,9 @@ export const WORLDS = [
   { id: 'garten', name: 'Garten', emoji: '🌻', levels: [g1, g2, g3] },
   { id: 'kueche', name: 'Küche', emoji: '🍳', levels: [k1, k2, k3] },
   { id: 'weltraum', name: 'Weltraum', emoji: '🚀', levels: [w1, w2, w3] },
-  { id: 'unterwasser', name: 'Unterwasser', emoji: '🌊', levels: [u1, u2, u3] }
+  { id: 'unterwasser', name: 'Unterwasser', emoji: '🌊', levels: [u1, u2, u3] },
+  // Profi-Welt: erst ab need Sternen offen
+  { id: 'vulkan', name: 'Vulkan', emoji: '🌋', need: 50, levels: [v1, v2, v3] }
 ];
 
 export const LEVELS = WORLDS.flatMap(w => w.levels);
