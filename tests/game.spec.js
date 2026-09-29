@@ -463,6 +463,33 @@ test('Fallen: Hammer quetscht, Falltür klappt auf, Loch im Feld, Schieber schie
   expect(sch.ev).toContain('fall');
 });
 
+test('Nagelwand: jede Murmel fällt hindurch, prallt an Nägeln ab und kommt unten an', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { SKINS } = await import('/src/skins.js');
+    const parts = [
+      { type: 'weg', from: [0, 14, 6], to: [0, 14, 0], width: 3, walls: 0.6, caps: 'start' },
+      { type: 'nagelbrett', at: [0, 14, 0], breite: 10, hoehe: 14 },
+      { type: 'weg', from: [-7, 0, -0.65], to: [7, 0, -0.65], width: 5, walls: 0.8, caps: 'both' }
+    ];
+    return SKINS.map(S => {
+      const g = createGame(CANNON, { id: 't', start: [0, 14, 3], killY: -8, parts }, S.ball); g.reset();
+      let hits = 0, unten = -1, xs = new Set();
+      for (let i = 0; i < 60 * 15 && unten < 0; i++) {
+        hits += g.step(0, i < 60 ? -0.5 : 0, 1 / 60).filter(e => e === 'hit').length;
+        if (g.ball.position.y < 1.5) unten = i / 60;
+      }
+      return { id: S.id, hits, unten, x: +g.ball.position.x.toFixed(1) };
+    });
+  });
+  for (const x of r) {
+    expect(x.unten, x.id).toBeGreaterThan(0); // unten angekommen (klemmt nirgends)
+    expect(x.hits, x.id).toBeGreaterThan(2);  // an Nägeln abgeprallt
+  }
+  expect(new Set(r.map(x => x.x)).size).toBeGreaterThan(3); // verschiedene Murmeln landen an verschiedenen Stellen
+});
+
 test('Bergab: Treppe runter, Fluss trägt und wäscht, Felsen rollen los', async ({ page }) => {
   await page.goto('/');
   const t = await fahre(page, [{ type: 'weg', from: [0, 4, 4], to: [0, 4, 0], width: 3 }, { type: 'treppe', from: [0, 4, 0], to: [0, 0, -10], steps: 6, width: 3 },

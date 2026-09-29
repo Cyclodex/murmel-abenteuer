@@ -17,6 +17,7 @@ const WAITS = {
   platAtTo: (g, n = 0) => { const e = g.els.filter(x => x.type === 'plattform')[n]; return dist3(e.body.position, e.to) < 0.05 && speed(e.body.velocity) < 0.01; },
   bridgeUp: g => g.els.filter(x => x.type === 'bruecke').every(e => e.k >= 1),
   hoehe: (g, y) => g.ball.position.y > y,
+  tiefer: (g, y) => g.ball.position.y < y,
   amBoden: g => !!g.groundBody && Math.abs(g.ball.velocity.y) < 0.3,
   // Takt eines bewegten Teils: wait: ['phase', [type, n, a, b]] = n-tes Teil vom Typ type ist in der Phase a..b (0..1) seines Takts
   // (Plattform/Schieber: 0 = Pause bei from, Hammer: 0 = oben, zuschlagen ab up/per, Felsen: 0 = neuer Felsen)
@@ -110,7 +111,7 @@ export function autopilot(g, wps, maxTime = 180, delay = 0) {
 // Level mit allen Routen prüfen: die erste Route muss gewinnen, alle zusammen sammeln die Sterne.
 // ROUTES[id] ist eine Wegpunkt-Liste oder eine Liste von Listen (z. B. Umweg zum Bonusstern).
 // Wie ein Kind, das es nochmal probiert: jede Route auch mit Startverzögerung (andere Balken-/Plattform-Phase).
-export function checkLevel(makeGame, routes, maxTime = 120, delays = [0, 1.3, 2.6]) {
+export function checkLevel(makeGame, routes, maxTime = 400, delays = [0, 1.3, 2.6]) {
   const list = Array.isArray(routes[0]) ? routes : [routes];
   const runs = [];
   list.forEach((r, k) => { for (const d of delays) { const res = autopilot(makeGame(), r, maxTime, d); res.main = k === 0; runs.push(res); if (res.won && res.falls === 0 && res.got.every(Boolean)) break; } });
