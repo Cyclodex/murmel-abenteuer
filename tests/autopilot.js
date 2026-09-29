@@ -89,11 +89,13 @@ export function createPilot(g, wps) {
 // ROUTES[id] kann eine Liste von Routen sein (z. B. Umweg zum Bonusstern): die erste ist die Hauptroute.
 export const mainRoute = r => (r && Array.isArray(r[0]) ? r[0] : r);
 
-export function autopilot(g, wps, maxTime = 180, delay = 0) {
+// stopAtEnd: Neben-Route (z. B. nur zum Bonusstern): 2 s nach dem letzten Wegpunkt aufhören statt bis maxTime zu fahren
+export function autopilot(g, wps, maxTime = 180, delay = 0, stopAtEnd = false) {
   const H = 1 / 60, log = [], pilot = createPilot(g, wps);
-  let falls = 0, t = 0;
+  let falls = 0, t = 0, endT = -1;
   g.reset();
   while (t < maxTime && !g.st.won) {
+    if (stopAtEnd && pilot.i >= wps.length) { if (endT < 0) endT = t; else if (t - endT > 2) break; }
     let [ix, iz] = pilot.drive();
     if (t < delay) { ix = 0; iz = 0; } // Startverzögerung: andere Phase für Balken/Plattformen
     const ev = g.step(ix, iz, H);
@@ -114,7 +116,7 @@ export function autopilot(g, wps, maxTime = 180, delay = 0) {
 export function checkLevel(makeGame, routes, maxTime = 400, delays = [0, 1.3, 2.6]) {
   const list = Array.isArray(routes[0]) ? routes : [routes];
   const runs = [];
-  list.forEach((r, k) => { for (const d of delays) { const res = autopilot(makeGame(), r, maxTime, d); res.main = k === 0; runs.push(res); if (res.won && res.falls === 0 && res.got.every(Boolean)) break; } });
+  list.forEach((r, k) => { for (const d of delays) { const res = autopilot(makeGame(), r, maxTime, d, k > 0); res.main = k === 0; runs.push(res); if (res.won && res.falls === 0 && res.got.every(Boolean)) break; } });
   const got = runs[0].got.map((_, k) => runs.some(r => r.got[k]));
   const best = runs.filter(r => r.main && r.won).sort((a, b) => a.falls - b.falls)[0];
   return { won: !!best, falls: best ? best.falls : -1, stars: got.filter(Boolean).length, total: got.length, time: best ? best.time : -1, tries: runs.length };
