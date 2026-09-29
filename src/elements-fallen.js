@@ -271,8 +271,8 @@ export const FALLEN = {
   },
 
   // Rollende Felsen: kommen alle `every` Sekunden bei from herunter und rollen in Richtung dir (bergab).
-  // dir = Richtung [x, z] (Standard vorwärts -z), speed = Anfangstempo, r = Grösse
-  // {type:'felsen', from, dir?:[x,z], speed?, every?, r?, offset?}
+  // dir = Richtung [x, z] (Standard vorwärts -z), speed = Anfangstempo, r = Grösse, farbe (z. B. Kartoffeln, Äpfel)
+  // {type:'felsen', from, dir?:[x,z], speed?, every?, r?, offset?, farbe?}
   felsen: {
     init(el, g) {
       const C = g.C, r = el.r ?? 0.9;
@@ -302,7 +302,7 @@ export const FALLEN = {
       if (el.body.position.y < (g.level.killY ?? -8)) TYPES.felsen.park(el);
     },
     view(el, v) {
-      const T = v.THREE, m = new T.Mesh(new T.DodecahedronGeometry(el.r ?? 0.9, 1), new T.MeshLambertMaterial({ color: 0x8A7F72, flatShading: true }));
+      const T = v.THREE, m = new T.Mesh(new T.DodecahedronGeometry(el.r ?? 0.9, 1), new T.MeshLambertMaterial({ color: el.farbe ?? 0x8A7F72, flatShading: true }));
       m.castShadow = true; v.scene.add(m);
       return { tick() { m.position.copy(el.body.position); m.quaternion.copy(el.body.quaternion); } };
     }
