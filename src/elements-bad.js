@@ -86,18 +86,20 @@ export const BAD = {
   },
 
   // Schiffchen: schwimmt auf dem Wasser (at = Mitte der Wasseroberfläche darunter), schaukelt auf und ab,
-  // fährt optional hin und her (to, time, pause, offset wie bei der Plattform). Deck aus Frottee (die Murmel hüpft kaum).
+  // fährt optional hin und her (to, time, pause, offset wie bei der Plattform). Deck aus Frottee (die Murmel hüpft kaum),
+  // surface = andere Oberfläche (z. B. 'normal' = Holz für eine Fähre: Frottee bremst gegen die Fahrt).
   // size = [breit, lang], deck = Deckhöhe über dem Wasser, bob = wie stark es schaukelt (m).
   // trampolin = { vorne: Abstand der Mitte nach vorne, size: [b, t], ziel: Landepunkt (Oberkante), time: Flugzeit s (bei normaler Schwerkraft), bremse: Tempo nach der Landung (Anteil) }
   //   springt immer genau auf das Ziel (wie die Kanone: Flug ausgerechnet, in der Luft nicht lenken)
-  // {type:'schiff', at, size?, yaw?, deck?, bob?, to?, time?, pause?, offset?, farbe?, segel?, trampolin?}
+  // {type:'schiff', at, size?, yaw?, deck?, bob?, to?, time?, pause?, offset?, farbe?, segel?, surface?, trampolin?}
   schiff: {
     init(el, g) {
       const [b, len] = el.size || [3.5, 5];
       el.yw = (el.yaw || 0) * DEG; el.deckY = el.deck ?? 0.5;
-      el.body = kinematicBody(g, boardParts(b, len, 0.6, 0.35, 'handtuch'), 'handtuch');
+      el.surf = el.surface ?? 'handtuch';
+      el.body = kinematicBody(g, boardParts(b, len, 0.6, 0.35, 'handtuch'), el.surf);
       el.body.quaternion.set(...quatYawPitch(el.yw, 0));
-      el.body.userData = { surface: 'handtuch', track: null, yaw: el.yw };
+      el.body.userData = { surface: el.surf, track: null, yaw: el.yw };
       el.from = el.at; el.to = el.to || el.at;
     },
     reset(el) {
@@ -156,7 +158,8 @@ export const BAD = {
       // Deck (Frottee) und Reling
       const towel = v.canvasTex(64, 64, (x, W, H) => { x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H); x.fillStyle = '#4FC3F7'; x.fillRect(0, 24, W, 16); });
       towel.repeat.set(1, len / 2);
-      const deck = new T.Mesh(new T.BoxGeometry(b, 0.6, len), new T.MeshLambertMaterial({ map: towel })); deck.position.y = -0.3; deck.receiveShadow = true; grp.add(deck);
+      const deckMat = el.surf === 'handtuch' ? new T.MeshLambertMaterial({ map: towel }) : new T.MeshLambertMaterial({ color: 0xD7B98E }); // Frottee oder Holz
+      const deck = new T.Mesh(new T.BoxGeometry(b, 0.6, len), deckMat); deck.position.y = -0.3; deck.receiveShadow = true; grp.add(deck);
       for (const k of [-1, 1]) { const r = new T.Mesh(new T.BoxGeometry(0.3, 0.35, len), new T.MeshPhongMaterial({ color: 0xFFFFFF })); r.position.set(k * (b / 2 + 0.15), 0.175, 0); grp.add(r); }
       // Mast mit Segel (seitlich, damit die Bahn frei bleibt)
       if (el.segel !== false) {
