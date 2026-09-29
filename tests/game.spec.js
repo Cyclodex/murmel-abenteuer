@@ -695,6 +695,33 @@ test('Kippen: Welt kippt sichtbar mit, keine Bremshilfe', async ({ page }) => {
   expect(await page.evaluate(() => window.murmel.game.brake)).toBe(0);
 });
 
+test('Steuerung wechseln: im Spiel und auf der Karte, wird gespeichert', async ({ page }) => {
+  const errors = watchErrors(page);
+  await play(page, 'sz1');
+  await expect(page.locator('#btnControl')).toHaveText('🕹️');
+  // Kippen-Modus: Sensor liefert Werte
+  await page.evaluate(() => window.dispatchEvent(Object.assign(new Event('deviceorientation'), { beta: 0, gamma: 0 })));
+  await page.tap('#btnControl');
+  await expect(page.locator('#btnControl')).toHaveText('📱');
+  expect(await page.evaluate(() => window.murmel.input.mode)).toBe('tilt');
+  await expect(page.locator('#joy')).toBeHidden();
+  await expect(page.locator('#btnCal')).toBeVisible();
+  expect(await page.evaluate(() => window.murmel.game.brake)).toBe(0);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v2')).control)).toBe('tilt');
+  // zurück zum Joystick, mitten im Spiel
+  await page.tap('#btnControl');
+  await expect(page.locator('#btnControl')).toHaveText('🕹️');
+  await expect(page.locator('#joy')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#btnCal')).toBeHidden();
+  // auf der Karte: Joystick bleibt unsichtbar, Knopf zeigt den Modus
+  await page.tap('#btnHome');
+  await expect(page.locator('#mapControl')).toHaveText('🕹️');
+  await page.click('#mapControl');
+  await expect(page.locator('#mapControl')).toHaveText('📱');
+  await expect(page.locator('#joy')).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
 test('Karte im Querformat: oberste Knöpfe und letzte Welt erreichbar', async ({ page }) => {
   await page.setViewportSize({ width: 844, height: 390 });
   await page.goto('/');

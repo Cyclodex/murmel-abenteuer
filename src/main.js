@@ -51,9 +51,16 @@ function syncStickers(bonus = null, run = {}) {
   return fresh;
 }
 
+// Steuerung im Spiel/auf der Karte zeigen: Knopf-Symbol = aktueller Modus, Joystick nur im Spiel sichtbar
+function syncControl() {
+  const emoji = input.mode === 'tilt' ? '📱' : '🕹️';
+  $('btnControl').textContent = emoji; $('mapControl').textContent = emoji;
+  show('joy', input.mode === 'joy' && !$('hud').classList.contains('hidden'));
+}
 const input = createInput({
   area: $('c'), joy: $('joy'), knob: $('knob'), onToast: toast,
-  onCalButton: on => show('btnCal', on)
+  onCalButton: on => show('btnCal', on),
+  onMode: m => { progress.setControl(m); syncControl(); } // auch wenn Kippen ausfällt und zurückgeschaltet wird
 });
 const renderer = createRenderer(THREE, $('c'));
 input.setPower(power());
@@ -118,6 +125,7 @@ function showMap() {
   $('mapStars').textContent = `⭐ ${progress.totalStars()}`;
   $('btnPlayer').textContent = `👤 ${progress.player().name}`;
   $('btnPower').textContent = power().emoji;
+  syncControl();
   $('btnSound').textContent = (SOUND_MODES.find(m => m.id === audio.mode) || SOUND_MODES[0]).emoji;
   audio.music('karte');
   const box = $('worlds'); box.textContent = '';
@@ -227,6 +235,13 @@ async function start(wantTilt) {
 $('startTilt').onclick = () => start(true);
 $('startJoy').onclick = () => start(false);
 $('btnCal').onclick = () => input.calibrate();
+// Steuerung wechseln (Kippen <-> Joystick), auch mitten im Spiel
+async function toggleControl() {
+  audio.sfx('tap');
+  if (input.mode === 'tilt') input.useJoy(); else await input.useTilt();
+}
+$('btnControl').onclick = toggleControl;
+$('mapControl').onclick = toggleControl;
 $('btnReset').onclick = restart;
 $('btnHome').onclick = showMap;
 $('againBtn').onclick = restart;
