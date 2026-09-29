@@ -561,6 +561,32 @@ test('Bremsen: langsam bleibt die Murmel bald stehen, schnell behält sie Schwun
   expect(r.gefaelle).toBeGreaterThan(0.5); // 3° Gefälle: rollt von selbst los
 });
 
+test('Fluss: leichte Murmeln schwimmen oben, schwere rollen am Grund, alle kommen durch', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { SKINS } = await import('/src/skins.js');
+    const dy = Math.tan(5 * Math.PI / 180) * 30;
+    const parts = [{ type: 'fluss', from: [0, dy, 0], to: [0, 0, -30], width: 3.6, speed: 4 }, { type: 'weg', from: [0, -0.7, -30], to: [0, -0.7, -60], width: 3.6, walls: 1 }];
+    const out = {};
+    for (const id of ['pingpong', 'fussball', 'standard', 'gold']) {
+      const g = createGame(CANNON, { id: 't', start: [0, dy - 0.7, -1], killY: -20, parts }, SKINS.find(s => s.id === id).ball); g.reset();
+      let t = 0, hoehe = 0, n = 0, durch = null;
+      while (t < 15) {
+        g.step(0, 0, 1 / 60); t += 1 / 60;
+        const p = g.ball.position;
+        if (t > 1.5 && t < 3) { hoehe += p.y - dy * (1 + p.z / 30); n++; } // Mitte über der Wasseroberfläche
+        if (durch === null && p.z < -30) durch = t;
+      }
+      out[id] = { hoehe: hoehe / n, durch };
+    }
+    return out;
+  });
+  for (const id of ['pingpong', 'fussball']) expect(r[id].hoehe, id).toBeGreaterThan(0.2);   // schwimmt oben
+  for (const id of ['standard', 'gold']) expect(r[id].hoehe, id).toBeLessThan(-0.15);        // liegt am Grund (0.7 m tief)
+  for (const id in r) expect(r[id].durch, id).not.toBeNull();                                 // alle treibt es hinaus
+});
+
 test('Echte Dinge: durch die Pfanne, Herdplatte hüpft, Abfluss im Lavabo, Sprenger und Schlauch', async ({ page }) => {
   await page.goto('/');
   // Pfanne: über den Rand hinein, vorne durch die Lücke hinaus
