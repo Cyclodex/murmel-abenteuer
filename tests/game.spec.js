@@ -197,51 +197,51 @@ test('Ohne localStorage läuft das Spiel trotzdem', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('Alle Level sind mit jeder Stärke schaffbar, alle Sterne erreichbar (Autopilot)', async ({ page }) => {
-  test.setTimeout(600_000);
-  const errors = watchErrors(page);
+// Autopilot pro Welt (laufen parallel): jede Stärke mit der Standard-Murmel, jede Murmel mit Stärke normal.
+// Neue Welt: hier eintragen (der Test darunter meldet vergessene Welten).
+const WELTEN = ['uebung', 'spielzimmer', 'garten', 'kueche', 'badezimmer', 'weltraum', 'unterwasser', 'vulkan'];
+
+test('Jedes Level hat eine Route und gehört zu einer Welt aus WELTEN', async ({ page }) => {
   await page.goto('/');
-  const res = await page.evaluate(async () => {
-    const { createGame } = await import('/src/game.js');
-    const { LEVELS } = await import('/src/levels/index.js');
-    const { checkLevel, ROUTES } = await import('/tests/autopilot.js');
-    const { POWERS } = await import('/src/input.js');
-    const out = [];
-    for (const P of POWERS) for (const L of LEVELS) {
-      const r = checkLevel(() => { const g = createGame(CANNON, L); g.tilt = P.tilt * Math.PI / 180; return g; }, ROUTES[L.id]);
-      out.push({ id: L.id + ' ' + P.emoji, ...r });
-    }
-    return { out, n: LEVELS.length * POWERS.length };
-  }).then(x => { expect(x.out.length).toBe(x.n); return x.out; });
-  for (const r of res) {
-    expect(r.won, r.id).toBe(true);
-    expect(r.falls, r.id).toBe(0);
-    if (!r.id.startsWith('ausflug')) expect(r.stars, r.id).toBe(r.total);
-  }
-  expect(errors).toEqual([]);
+  const r = await page.evaluate(async () => {
+    const { WORLDS, LEVELS } = await import('/src/levels/index.js');
+    const { ROUTES } = await import('/tests/autopilot.js');
+    return { worlds: WORLDS.map(w => w.id), ohneRoute: LEVELS.filter(l => !ROUTES[l.id]).map(l => l.id) };
+  });
+  for (const w of r.worlds) expect(WELTEN, w).toContain(w);
+  expect(r.ohneRoute).toEqual([]);
 });
 
-test('Jede Murmel schafft alle Level (Autopilot, Stärke normal)', async ({ page }) => {
-  test.setTimeout(600_000);
-  await page.goto('/');
-  const res = await page.evaluate(async () => {
-    const { createGame } = await import('/src/game.js');
-    const { LEVELS } = await import('/src/levels/index.js');
-    const { checkLevel, ROUTES } = await import('/tests/autopilot.js');
-    const { SKINS } = await import('/src/skins.js');
-    const out = [];
-    for (const S of SKINS) for (const L of LEVELS) {
-      const r = checkLevel(() => createGame(CANNON, L, S.ball), ROUTES[L.id]);
-      out.push({ id: L.id + ' ' + S.id, ...r });
+for (const welt of WELTEN) {
+  test(`Autopilot ${welt}: alle Level mit jeder Stärke und jeder Murmel schaffbar, alle Sterne erreichbar`, async ({ page }) => {
+    test.setTimeout(600_000);
+    const errors = watchErrors(page);
+    await page.goto('/');
+    const res = await page.evaluate(async welt => {
+      const { createGame } = await import('/src/game.js');
+      const { WORLDS } = await import('/src/levels/index.js');
+      const { checkLevel, ROUTES } = await import('/tests/autopilot.js');
+      const { POWERS } = await import('/src/input.js');
+      const { SKINS } = await import('/src/skins.js');
+      const w = WORLDS.find(x => x.id === welt), out = [];
+      if (!w) return out; // Welt (noch) nicht vorhanden
+      for (const L of [...w.levels, ...(w.hard || [])]) {
+        const combos = [...POWERS.map(P => [P, SKINS[0]]), ...SKINS.slice(1).map(S => [POWERS[1], S])];
+        for (const [P, S] of combos) {
+          const r = checkLevel(() => { const g = createGame(CANNON, L, S.ball); g.tilt = P.tilt * Math.PI / 180; return g; }, ROUTES[L.id]);
+          out.push({ lv: L.id, id: `${L.id} ${P.emoji} ${S.id}`, ...r });
+        }
+      }
+      return out;
+    }, welt);
+    for (const r of res) {
+      expect(r.won, r.id).toBe(true);
+      expect(r.falls, r.id).toBe(0);
+      if (r.lv !== 'ausflug') expect(r.stars, r.id).toBe(r.total); // im ersten Level fehlt ein Stern auf der Route
     }
-    return out;
+    expect(errors).toEqual([]);
   });
-  for (const r of res) {
-    expect(r.won, r.id).toBe(true);
-    expect(r.falls, r.id).toBe(0);
-    if (!r.id.startsWith('ausflug')) expect(r.stars, r.id).toBe(r.total);
-  }
-});
+}
 
 test('Murmeln prallen je nach Art verschieden stark von der Wand ab', async ({ page }) => {
   await page.goto('/');
