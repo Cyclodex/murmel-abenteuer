@@ -194,8 +194,9 @@ export const FALLEN = {
       const along = rel[0] * el.dir[0] + rel[1] * el.dir[1] + rel[2] * el.dir[2], side = rel[0] * s.right[0] + rel[2] * s.right[2];
       const up = rel[0] * s.up[0] + rel[1] * s.up[1] + rel[2] * s.up[2];
       if (Math.abs(along) > s.L / 2 || Math.abs(side) > (el.width ?? 4) / 2 || up > R + 0.1 || up < -(el.depth ?? 0.7) - 0.5) return;
+      // Strömung schiebt bis zu ihrem Tempo mit; ist die Murmel bergab schneller, bremst sie nicht
       const v = g.ball.velocity, sp = el.speed ?? 3, va = v.x * el.dir[0] + v.y * el.dir[1] + v.z * el.dir[2], k = Math.min(1, 2.5 * h);
-      const dv = (sp - va) * k;
+      const dv = Math.max(0, sp - va) * k;
       v.x += el.dir[0] * dv; v.y += el.dir[1] * dv; v.z += el.dir[2] * dv;
       // seitlich bremst das Wasser, Auftrieb hält die Murmel oben
       const vs = v.x * s.right[0] + v.z * s.right[2], f = Math.min(1, 1.5 * h);

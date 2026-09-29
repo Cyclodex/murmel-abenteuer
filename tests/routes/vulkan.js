@@ -28,7 +28,7 @@ const v2Rest = [
   { x: 0, z: -86, speed: 3 }, { x: 0.9, z: -90, speed: 3 }, { x: -0.9, z: -99, speed: 3 }, { x: 0, z: -104, speed: 3 }, { x: 0, z: -110, speed: 2 },
   { x: 0, z: -115, speed: 2 }, { x: 0, z: -125, speed: 4, r: 0.8, wait: ['balkenWeg', [0, -120]] },
   { x: 0, z: -135, speed: 4, r: 0.8, wait: ['balkenWeg', [0, -130]] }, { x: 0, z: -146, speed: 3, r: 0.8 },
-  { x: 0, z: -153, speed: 2 }, { x: 0, z: -159, speed: 2, r: 0.6 }, { x: -2, z: -159, speed: 2, r: 0.6 }, { x: -2, z: -163, speed: 2, r: 0.6 },
+  { x: 0, z: -153, speed: 2 }, { x: 0, z: -159, speed: 1.5, r: 0.6 }, { x: -2, z: -159, speed: 2, r: 0.6 }, { x: -2, z: -163, speed: 2, r: 0.6 },
   { x: 0, z: -163, speed: 2, r: 0.6 }, { x: 0, z: -167, speed: 2 },
   { x: 0, z: -173, speed: 2.5 }, { x: -1.46, z: -177.54, speed: 2.5 }, { x: -5, z: -179, speed: 2.5 }, { x: -12, z: -179 }
 ];

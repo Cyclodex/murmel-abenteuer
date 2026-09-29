@@ -504,6 +504,33 @@ test('Bergab: Treppe runter, Fluss trägt und wäscht, Felsen rollen los', async
   expect(r.ev.filter(e => e === 'rumpel').length).toBe(2);
 });
 
+test('Bergab zieht es: Rampe beschleunigt kräftig, Bremshilfe nur in der Ebene, Fluss bremst schnelle Murmel nicht', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const tempo = (parts, start, sek, brake = 0, v0 = 0) => {
+      const g = createGame(CANNON, { id: 't', start, killY: -50, parts }); g.reset(); g.brake = brake;
+      g.ball.velocity.set(0, 0, -v0); g.ball.angularVelocity.set(-v0 / 0.5, 0, 0);
+      for (let i = 0; i < sek * 60; i++) g.step(0, 0, 1 / 60);
+      const v = g.ball.velocity; return Math.hypot(v.x, v.y, v.z);
+    };
+    const tan = d => Math.tan(d * Math.PI / 180);
+    const rampe = [{ type: 'weg', from: [0, tan(10) * 100, 0], to: [0, 0, -100], width: 4 }], rStart = [0, tan(10) * 98, -2];
+    const eben = [{ type: 'weg', from: [0, 0, 0], to: [0, 0, -100], width: 4 }];
+    const fluss = [{ type: 'fluss', from: [0, tan(15) * 100, 0], to: [0, 0, -100], width: 3.6, speed: 4 }];
+    return {
+      rampe: tempo(rampe, rStart, 3), rampeBremse: tempo(rampe, rStart, 3, 1.5),
+      eben: tempo(eben, [0, 0, -2], 2, 0, 3), ebenBremse: tempo(eben, [0, 0, -2], 2, 1.5, 3),
+      fluss: tempo(fluss, [0, tan(15) * 98 - 0.7, -2], 4)
+    };
+  });
+  // 10°-Rampe, 3 s: rollende Kugel ohne Verluste wäre 5/7 * g * sin(10°) * 3 s = 3.65 m/s
+  expect(r.rampe).toBeGreaterThan(3.2);
+  expect(Math.abs(r.rampeBremse - r.rampe)).toBeLessThan(0.01); // Bremshilfe bremst bergab nicht
+  expect(r.ebenBremse).toBeLessThan(r.eben - 1); // in der Ebene bremst sie weiter
+  expect(r.fluss).toBeGreaterThan(5); // steiler Fluss: schneller als die Strömung (4 m/s)
+});
+
 test('Echte Dinge: durch die Pfanne, Herdplatte hüpft, Abfluss im Lavabo, Sprenger und Schlauch', async ({ page }) => {
   await page.goto('/');
   // Pfanne: über den Rand hinein, vorne durch die Lücke hinaus
