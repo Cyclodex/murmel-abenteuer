@@ -119,7 +119,7 @@ export default {
     { type: 'stern', at: [0, 30.9, -133] },
     { type: 'stern', at: [8, 23.9, -132] },
     { type: 'stern', at: [16, 19.9, -158.5] },
-    { type: 'stern', at: [16, 11, -182] },
+    { type: 'stern', at: [16, 11, -182], r: 1.8 },
     { type: 'stern', at: [16, 8.2, -230] },
     { type: 'stern', at: [16, 10.2, -249] },
     { type: 'stern', at: [-2.5, 57.4, -22], bonus: true }
