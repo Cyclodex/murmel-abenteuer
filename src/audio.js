@@ -80,7 +80,8 @@ const ROLL = {
   pfuetze: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 },
   sand: { f0: 1400, fv: 50, q: 0.5, vol: 0.12, rumble: 0.6 },
   seife: { f0: 2200, fv: 120, q: 3, vol: 0.12, rumble: 0.2 },
-  handtuch: { f0: 160, fv: 20, q: 0.6, vol: 0.08, rumble: 0.5 }
+  handtuch: { f0: 160, fv: 20, q: 0.6, vol: 0.08, rumble: 0.5 },
+  flussbett: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 }
 };
 
 export function createAudio(opts = {}) {

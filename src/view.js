@@ -1,7 +1,7 @@
 // Grafik mit three.js: baut die Szene aus den Spieldaten und zeichnet jedes Bild.
 import { TYPES } from './bauteile.js';
 import { R, SURFACES } from './game.js';
-import { THEMES, COLORS, canvasTex, rnd } from './themes.js';
+import { THEMES, COLORS, canvasTex, rnd, woodTex } from './themes.js';
 import { createTrailFx } from './trails.js';
 import { ghostAt } from './ghost.js';
 
@@ -168,6 +168,8 @@ export function createView(THREE, renderer, game) {
     else if (look === 'schlamm') m = lambert(0xffffff, { map: mudTex(THREE) });
     else if (look === 'pfuetze') m = new THREE.MeshPhongMaterial({ map: puddleTex(THREE), shininess: 120, specular: 0xCCE8FF });
     else if (look === 'band') m = lambert(0x3A3F47);
+    else if (look === 'glas') m = new THREE.MeshPhongMaterial({ color: 0xDFF4FF, transparent: true, opacity: 0.16, shininess: 150, depthWrite: false });
+    else if (look === 'nagelwand') m = lambert(0xffffff, { map: woodTex(THREE, '#D9A066', '#7A4A1E') });
     else if (look === 'falltuer') m = lambert(0xffffff, { map: stripeTex(THREE) });
     else if (look === 'schieber') m = new THREE.MeshPhongMaterial({ color: 0x8E24AA, shininess: 50 });
     else if (kind === 'hammer') m = new THREE.MeshPhongMaterial({ color: COLORS[col] ?? COLORS.rot, shininess: 70 });
@@ -232,7 +234,7 @@ export function createView(THREE, renderer, game) {
     const mesh = new THREE.Mesh(s.look === 'abc' ? new THREE.BoxGeometry(s.half[0] * 2, s.half[1] * 2, s.half[2] * 2) : boxGeo(THREE, s.half[0] * 2, s.half[1] * 2, s.half[2] * 2), m0);
     mesh.position.set(...s.pos); mesh.quaternion.set(...s.quat); mesh.receiveShadow = true;
     scene.add(mesh);
-    if (!s.deko) blockers.push(mesh);
+    if (!s.deko && !s.clear) blockers.push(mesh); // durchsichtiges Glas hält die Kamera nicht auf
     // Legonoppen oben drauf. Rastermass = Breite des Steins (dünne Wand = 1er-Stein, breiter Klotz = 2er-Stein),
     // Noppen wie beim Original: Durchmesser 0.6, Höhe 0.2125 des Rastermasses
     const col = m0.userData.lego;

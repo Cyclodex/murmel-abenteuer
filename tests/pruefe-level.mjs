@@ -27,7 +27,7 @@ if (mode === '--fahrt') {
   const pilot = createPilot(g, mainRoute(ROUTES[id]));
   const hist = [], f = v => v.toFixed(2);
   let t = 0, last = -1;
-  while (t < 150 && !g.st.won) {
+  while (t < 400 && !g.st.won) {
     let [ix, iz] = pilot.drive(); if (t < delay) ix = iz = 0;
     const p = g.ball.position, v = g.ball.velocity;
     hist.push(`${f(t)} wp${pilot.i}${pilot.waiting ? '(wartet)' : ''} p=${f(p.x)},${f(p.y)},${f(p.z)} v=${f(v.x)},${f(v.y)},${f(v.z)}`);

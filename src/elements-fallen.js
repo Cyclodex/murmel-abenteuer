@@ -184,7 +184,7 @@ export const FALLEN = {
   fluss: {
     solids(d) {
       const dp = d.depth ?? 0.7, down = [0, -dp, 0];
-      const out = TYPES.weg.solids({ from: add(d.from, down), to: add(d.to, down), width: d.width ?? 4, walls: dp + (d.banks ?? 0.5), look: 'flussbett' });
+      const out = TYPES.weg.solids({ from: add(d.from, down), to: add(d.to, down), width: d.width ?? 4, walls: dp + (d.banks ?? 0.5), look: 'flussbett', surface: 'flussbett' });
       for (const o of out.slice(1)) o.look = 'ufer';
       return out;
     },
@@ -218,9 +218,61 @@ export const FALLEN = {
     }
   },
 
+  // Nagelwand: senkrechte Wand mit vielen Nägeln. Die Murmel rollt oben hinein, fällt senkrecht und prallt von Nagel zu Nagel.
+  // Vorne Glas (durchsichtig), unten offen: dort einen Weg quer darunter legen, auf dem es weitergeht.
+  // at = Mitte der oberen Vorderkante (Höhe des Wegs, der hineinführt), yaw = Fahrtrichtung, breite, hoehe,
+  // abstand = Nagelabstand, tiefe = Spalt für die Murmel
+  // {type:'nagelbrett', at, yaw?, breite?, hoehe?, abstand?, tiefe?}
+  nagelbrett: {
+    geo(d) {
+      const yaw = (d.yaw || 0) * DEG, F = fwdOf(yaw), Rt = rightOf(yaw), W = d.breite ?? 10, H = d.hoehe ?? 14, gap = d.tiefe ?? 1.3;
+      return { yaw, q: quatYawPitch(yaw, 0), F, Rt, W, H, gap, C: add(d.at, scale(F, gap / 2)), bottom: d.at[1] - H };
+    },
+    solids(d) {
+      const { q, F, Rt, W, H, gap, C, bottom } = FALLEN.nagelbrett.geo(d), top = d.at[1], open = 1.4; // unten offen zum Hinausrollen
+      const wall = (off, y0, y1, half, look, extra = {}) => ({ pos: add(add(C, scale(F, off)), [0, (y0 + y1) / 2 - C[1], 0]), half: [half[0], (y1 - y0) / 2, half[1]], quat: q, look, ...extra });
+      return [
+        wall(gap / 2 + 0.15, bottom + open, top + 2.5, [W / 2 + 0.3, 0.15], 'nagelwand'),
+        wall(-gap / 2 - 0.1, bottom + open, top, [W / 2 + 0.3, 0.1], 'glas', { clear: true }),
+        ...[-1, 1].map(k => ({ pos: add(add(C, scale(Rt, k * (W / 2 + 0.15))), [0, (bottom + top + 2.5) / 2 - C[1], 0]), half: [0.15, (top + 2.5 - bottom) / 2, gap / 2 + 0.25], quat: q, look: 'wall' }))
+      ];
+    },
+    init(el, g) {
+      const C0 = g.C, { Rt, W, H, C, bottom } = FALLEN.nagelbrett.geo(el), a = el.abstand ?? 1.7, top = el.at[1];
+      const body = new C0.Body({ mass: 0, material: g.matFor('nagel') });
+      el.pins = [];
+      for (let r = 0, y = top - 1.8; y > bottom + 2.4; r++, y -= a * 0.8) {
+        // symmetrisch zur Mitte, versetzt; zur Seitenwand bleibt mehr Platz als die Murmel breit ist (sonst klemmt sie)
+        const lim = W / 2 - 1.35, x0 = r % 2 ? a / 2 : 0, k0 = Math.floor((lim + x0) / a);
+        for (let x = x0 - k0 * a; x <= lim + 1e-6; x += a) {
+          // wie von Hand eingeschlagen: leicht versetzt, damit die Murmel nie genau auf einer Nagelspitze balanciert
+          const j = Math.sin((x + 3.7) * 12.9898 + y * 78.233) * 43758.5453, jit = (j - Math.floor(j) - 0.5) * 0.3;
+          const p = add(add(C, scale(Rt, x + jit)), [0, y - C[1], 0]);
+          body.addShape(new C0.Sphere(0.2), new C0.Vec3(p[0] - C[0], p[1] - C[1], p[2] - C[2]));
+          el.pins.push(p);
+        }
+      }
+      body.position.set(...C);
+      body.collisionFilterGroup = 1; body.collisionFilterMask = 2 | 4; body.userData = {};
+      g.world.addBody(body);
+    },
+    view(el, v) {
+      // Nägel: Schaft quer durch den Spalt, runder Kopf vorne
+      const T = v.THREE, { yaw, F, gap } = FALLEN.nagelbrett.geo(el), n = el.pins.length;
+      const shaft = new T.InstancedMesh(new T.CylinderGeometry(0.13, 0.13, gap + 0.3, 8).rotateX(Math.PI / 2), new T.MeshPhongMaterial({ color: 0xB0B7C0, shininess: 120 }), n);
+      const head = new T.InstancedMesh(new T.CylinderGeometry(0.3, 0.3, 0.08, 16).rotateX(Math.PI / 2), new T.MeshPhongMaterial({ color: 0xD7DCE2, shininess: 160 }), n);
+      const m = new T.Matrix4(), q = new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), yaw), one = new T.Vector3(1, 1, 1), p = new T.Vector3();
+      el.pins.forEach((pin, i) => {
+        shaft.setMatrixAt(i, m.compose(p.set(...pin), q, one));
+        head.setMatrixAt(i, m.compose(p.set(...add(pin, scale(F, -gap / 2 - 0.2))), q, one));
+      });
+      v.scene.add(shaft, head);
+    }
+  },
+
   // Rollende Felsen: kommen alle `every` Sekunden bei from herunter und rollen in Richtung dir (bergab).
-  // dir = Richtung [x, z] (Standard vorwärts -z), speed = Anfangstempo, r = Grösse
-  // {type:'felsen', from, dir?:[x,z], speed?, every?, r?, offset?}
+  // dir = Richtung [x, z] (Standard vorwärts -z), speed = Anfangstempo, r = Grösse, farbe (z. B. Kartoffeln, Äpfel)
+  // {type:'felsen', from, dir?:[x,z], speed?, every?, r?, offset?, farbe?}
   felsen: {
     init(el, g) {
       const C = g.C, r = el.r ?? 0.9;
@@ -250,7 +302,7 @@ export const FALLEN = {
       if (el.body.position.y < (g.level.killY ?? -8)) TYPES.felsen.park(el);
     },
     view(el, v) {
-      const T = v.THREE, m = new T.Mesh(new T.DodecahedronGeometry(el.r ?? 0.9, 1), new T.MeshLambertMaterial({ color: 0x8A7F72, flatShading: true }));
+      const T = v.THREE, m = new T.Mesh(new T.DodecahedronGeometry(el.r ?? 0.9, 1), new T.MeshLambertMaterial({ color: el.farbe ?? 0x8A7F72, flatShading: true }));
       m.castShadow = true; v.scene.add(m);
       return { tick() { m.position.copy(el.body.position); m.quaternion.copy(el.body.quaternion); } };
     }

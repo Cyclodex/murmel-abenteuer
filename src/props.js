@@ -10,7 +10,7 @@ const group = (T, ...kids) => { const g = new T.Group(); kids.forEach(k => g.add
 const cyl = (T, rt, rb, h, n = 24, ...rest) => new T.CylinderGeometry(rt, rb, h, n, ...rest);
 
 export const PROP_SIZE = {
-  apfel: [4, 4, 4], orange: [3.6, 3.6, 3.6], tomate: [3, 2.6, 3], tasse: [5, 5, 4], teekanne: [7, 6, 5], toaster: [6, 4.5, 3.5],
+  apfel: [4, 4, 4], orange: [3.6, 3.6, 3.6], tomate: [3, 2.6, 3], tasse: [5, 5, 4], teekanne: [7, 6, 5], toaster: [6, 4.1, 3.5],
   loeffel: [2.4, 0.6, 12], teller: [9, 0.6, 9], glas: [3.4, 6, 3.4], milch: [3.5, 7, 3.5], kaese: [4, 2.4, 4], salz: [1.6, 3.6, 1.6],
   flasche: [2.4, 7, 2.4], ente: [4, 4, 4.4], zahnbuerste: [1, 1, 11], becher: [3, 4, 3], seife: [4, 1.4, 2.6], shampoo: [2.6, 6, 1.8],
   blume: [3, 6, 3], zwerg: [3, 6, 3], giesskanne: [7, 5, 3], eimer: [4, 4, 4], schaufel: [1.6, 0.5, 9], burg: [9, 7, 9], baum: [6, 12, 6],

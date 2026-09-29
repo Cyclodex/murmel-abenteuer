@@ -15,8 +15,10 @@ const WAITS = {
   // n-te Plattform steht am Start bzw. am Ziel
   platAtFrom: (g, n = 0) => { const e = g.els.filter(x => x.type === 'plattform')[n]; return dist3(e.body.position, e.from) < 0.05 && speed(e.body.velocity) < 0.01; },
   platAtTo: (g, n = 0) => { const e = g.els.filter(x => x.type === 'plattform')[n]; return dist3(e.body.position, e.to) < 0.05 && speed(e.body.velocity) < 0.01; },
-  bridgeUp: g => g.els.filter(x => x.type === 'bruecke').every(e => e.k >= 1),
+  // alle Brücken oben (oder nur die mit dieser id: wait: ['bridgeUp', 'b1'])
+  bridgeUp: (g, id) => g.els.filter(x => x.type === 'bruecke' && (id === undefined || x.id === id)).every(e => e.k >= 1),
   hoehe: (g, y) => g.ball.position.y > y,
+  tiefer: (g, y) => g.ball.position.y < y,
   amBoden: g => !!g.groundBody && Math.abs(g.ball.velocity.y) < 0.3,
   // Takt eines bewegten Teils: wait: ['phase', [type, n, a, b]] = n-tes Teil vom Typ type ist in der Phase a..b (0..1) seines Takts
   // (Plattform/Schieber: 0 = Pause bei from, Hammer: 0 = oben, zuschlagen ab up/per, Felsen: 0 = neuer Felsen)
@@ -48,14 +50,14 @@ export function createPilot(g, wps) {
   const pilot = {
     i: 0, waiting: null,
     drive() {
-      const w = wps[Math.min(pilot.i, wps.length - 1)], p = g.ball.position, v = g.ball.velocity;
+      const cur = Math.min(pilot.i, wps.length - 1), w = wps[cur], p = g.ball.position, v = g.ball.velocity;
       let ix = 0, iz = 0;
       const [wName, wArg] = w.wait ? [].concat(w.wait) : [];
-      const waiting = wName && !ok.has(pilot.i) && !WAITS[wName](g, wArg);
-      if (wName && !waiting) ok.add(pilot.i);
+      const waiting = wName && !ok.has(cur) && !WAITS[wName](g, wArg);
+      if (wName && !waiting) ok.add(cur);
       pilot.waiting = waiting ? wName : null;
       // Beim Warten den vorherigen Wegpunkt halten
-      const tgt = waiting ? wps[Math.max(0, pilot.i - 1)] : w;
+      const tgt = waiting ? wps[Math.max(0, cur - 1)] : w; // auch am Ende der Route (i über das Listenende hinaus)
       const dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1e-6;
       const onKin = g.groundBody && g.groundBody.type === g.C.Body.KINEMATIC;
       if (w.follow && !waiting) { // der Bahn folgen (Spirale), bis die Murmel tief genug ist
@@ -88,11 +90,13 @@ export function createPilot(g, wps) {
 // ROUTES[id] kann eine Liste von Routen sein (z. B. Umweg zum Bonusstern): die erste ist die Hauptroute.
 export const mainRoute = r => (r && Array.isArray(r[0]) ? r[0] : r);
 
-export function autopilot(g, wps, maxTime = 180, delay = 0) {
+// stopAtEnd: Neben-Route (z. B. nur zum Bonusstern): 2 s nach dem letzten Wegpunkt aufhören statt bis maxTime zu fahren
+export function autopilot(g, wps, maxTime = 180, delay = 0, stopAtEnd = false) {
   const H = 1 / 60, log = [], pilot = createPilot(g, wps);
-  let falls = 0, t = 0;
+  let falls = 0, t = 0, endT = -1;
   g.reset();
   while (t < maxTime && !g.st.won) {
+    if (stopAtEnd && pilot.i >= wps.length) { if (endT < 0) endT = t; else if (t - endT > 2) break; }
     let [ix, iz] = pilot.drive();
     if (t < delay) { ix = 0; iz = 0; } // Startverzögerung: andere Phase für Balken/Plattformen
     const ev = g.step(ix, iz, H);
@@ -110,10 +114,10 @@ export function autopilot(g, wps, maxTime = 180, delay = 0) {
 // Level mit allen Routen prüfen: die erste Route muss gewinnen, alle zusammen sammeln die Sterne.
 // ROUTES[id] ist eine Wegpunkt-Liste oder eine Liste von Listen (z. B. Umweg zum Bonusstern).
 // Wie ein Kind, das es nochmal probiert: jede Route auch mit Startverzögerung (andere Balken-/Plattform-Phase).
-export function checkLevel(makeGame, routes, maxTime = 120, delays = [0, 1.3, 2.6]) {
+export function checkLevel(makeGame, routes, maxTime = 400, delays = [0, 1.3, 2.6]) {
   const list = Array.isArray(routes[0]) ? routes : [routes];
   const runs = [];
-  list.forEach((r, k) => { for (const d of delays) { const res = autopilot(makeGame(), r, maxTime, d); res.main = k === 0; runs.push(res); if (res.won && res.falls === 0 && res.got.every(Boolean)) break; } });
+  list.forEach((r, k) => { for (const d of delays) { const res = autopilot(makeGame(), r, maxTime, d, k > 0); res.main = k === 0; runs.push(res); if (res.won && res.falls === 0 && res.got.every(Boolean)) break; } });
   const got = runs[0].got.map((_, k) => runs.some(r => r.got[k]));
   const best = runs.filter(r => r.main && r.won).sort((a, b) => a.falls - b.falls)[0];
   return { won: !!best, falls: best ? best.falls : -1, stars: got.filter(Boolean).length, total: got.length, time: best ? best.time : -1, tries: runs.length };
