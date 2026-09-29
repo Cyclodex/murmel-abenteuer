@@ -1,7 +1,7 @@
 // Grafik mit three.js: baut die Szene aus den Spieldaten und zeichnet jedes Bild.
 import { TYPES } from './bauteile.js';
 import { R } from './game.js';
-import { THEMES, COLORS, canvasTex } from './themes.js';
+import { THEMES, COLORS, canvasTex, rnd } from './themes.js';
 import { createTrailFx } from './trails.js';
 
 export function createRenderer(THREE, canvas) {
