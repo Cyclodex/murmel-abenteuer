@@ -1,13 +1,15 @@
 // Spielstand im Browser speichern (localStorage). Ohne Speicher läuft alles weiter, nur ohne Merken.
-// Einstellungen (Steuerung, Stärke, Ton) gelten für alle, Sterne, Murmel, Spur und Sticker pro Spieler.
+// Einstellungen (Steuerung, Stärke, Ton) gelten für alle, Sterne, Bestzeiten, Murmel, Spur und Sticker pro Spieler.
+// Die Fahrten der Bestzeiten (Geistermurmel) liegen getrennt unter GHOST_KEY (grösser, dürfen verloren gehen).
 const KEY = 'murmel-abenteuer-v2';
+const GHOST_KEY = 'murmel-geist-v1';
 const OLD_KEY = 'murmel-abenteuer-v1'; // alter Spielstand ohne Spieler
 export const NAME_MAX = 16;
 
 const newPlayer = (name, from = {}) => ({
   id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
   name, done: from.done || {}, best: from.best || {}, skin: from.skin || 'standard',
-  stickers: from.stickers || {}, trail: from.trail || 'keine'
+  stickers: from.stickers || {}, trail: from.trail || 'keine', times: from.times || {}
 });
 
 function load(key) {
@@ -34,6 +36,8 @@ const stars = p => Object.values(p.best).reduce((a, b) => a + b, 0);
 export function createProgress() {
   const data = read();
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { /* kein Speicher */ } };
+  const ghosts = load(GHOST_KEY) || {}; // Spieler-ID -> Level-ID -> Aufnahme
+  const saveGhosts = () => { try { localStorage.setItem(GHOST_KEY, JSON.stringify(ghosts)); } catch (e) { /* kein Speicher oder voll */ } };
   const empty = newPlayer('');
   const player = () => data.players.find(p => p.id === data.current) || null;
   const me = () => player() || empty; // ohne Spieler (vor der Auswahl): leerer Spielstand
@@ -61,6 +65,11 @@ export function createProgress() {
     selectPlayer(id) { if (data.players.some(p => p.id === id)) { data.current = id; save(); } },
     // Level geschafft: merkt die beste Sternzahl
     finish(id, n) { const p = me(); p.done[id] = true; p.best[id] = Math.max(p.best[id] || 0, n); save(); },
+    // Bestzeit in Sekunden (0 = noch keine); setTime gibt true zurück, wenn die Zeit neu die beste ist
+    bestTime: id => me().times[id] || 0,
+    setTime(id, t) { const p = me(), old = p.times[id]; if (old && old <= t) return false; p.times[id] = +t.toFixed(2); save(); return true; },
+    ghost: id => (player() && ghosts[player().id] && ghosts[player().id][id]) || null,
+    setGhost(id, track) { const p = player(); if (!p) return; (ghosts[p.id] = ghosts[p.id] || {})[id] = track; saveGhosts(); },
     setSkin(id) { me().skin = id; save(); },
     get trail() { return me().trail; },
     setTrail(id) { me().trail = id; save(); },
@@ -72,6 +81,6 @@ export function createProgress() {
     setControl(c) { data.control = c; save(); },
     setPower(p) { data.power = p; save(); },
     setSound(m) { data.sound = m; save(); },
-    clear() { const p = me(); p.done = {}; p.best = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; save(); }
+    clear() { const p = me(); p.done = {}; p.best = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; p.times = {}; delete ghosts[p.id]; save(); saveGhosts(); }
   };
 }

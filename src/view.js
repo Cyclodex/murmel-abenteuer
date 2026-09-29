@@ -3,6 +3,7 @@ import { TYPES } from './bauteile.js';
 import { R, SURFACES } from './game.js';
 import { THEMES, COLORS, canvasTex, rnd } from './themes.js';
 import { createTrailFx } from './trails.js';
+import { ghostAt } from './ghost.js';
 
 export function createRenderer(THREE, canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -249,6 +250,30 @@ export function createView(THREE, renderer, game) {
   splash.schlamm.set({ shape: 'kugel', colors: [0x5B3A1E, 0x7D5A36, 0x4A2F18], size: 0.2, life: 0.5, every: 0.3, spread: 2.2, rise: 2.5, gravity: 12 });
   splash.pfuetze.set({ shape: 'kugel', colors: [0xBDEBFF, 0x7FC4F5, 0xFFFFFF], size: 0.18, life: 0.45, every: 0.2, spread: 2.5, rise: 3, gravity: 12, opacity: 0.8 });
 
+  // ---------- Geistermurmel: fährt die Bestzeit mit (src/ghost.js) ----------
+  let ghost = null;
+  const gp = [0, 0, 0], gLast = new THREE.Vector3(), gDelta = new THREE.Vector3(), gAxis = new THREE.Vector3(), gQ = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
+  const disposeObj = o => o.traverse(x => { if (x.geometry) x.geometry.dispose(); if (x.material) { if (x.material.map) x.material.map.dispose(); x.material.dispose(); } });
+  function setGhost(track, skin) {
+    if (ghost) { scene.remove(ghost.mesh); disposeObj(ghost.mesh); ghost = null; }
+    if (!track || !track.p || !track.p.length) return;
+    const b = createBallMesh(THREE);
+    if (skin) b.setSkin(skin);
+    b.mesh.castShadow = false;
+    b.mesh.traverse(x => { if (x.material) Object.assign(x.material, { transparent: true, opacity: 0.4, depthWrite: false }); });
+    scene.add(b.mesh);
+    ghost = { mesh: b.mesh, track, fresh: true };
+  }
+  function moveGhost() {
+    if (!ghost) return;
+    const p = ghostAt(ghost.track, game.time, gp), m = ghost.mesh;
+    m.position.set(p[0], p[1], p[2]);
+    // rollen: um die Achse quer zur Bewegung drehen (Sprünge wie Neustart nicht)
+    gDelta.subVectors(m.position, gLast); const d = gDelta.length();
+    if (!ghost.fresh && d > 1e-4 && d < 3) { gAxis.crossVectors(UP, gDelta).normalize(); m.quaternion.premultiply(gQ.setFromAxisAngle(gAxis, d / R)); }
+    gLast.copy(m.position); ghost.fresh = false;
+  }
+
   // ---------- Konfetti ----------
   const confetti = [];
   function burst(pos, n, colors) {
@@ -273,6 +298,7 @@ export function createView(THREE, renderer, game) {
     ballMesh.position.set(b.position.x, b.position.y, b.position.z);
     ballMesh.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
     for (const t of ticks) t(dt, game);
+    moveGhost();
     if (groundFx && groundFx.tick) groundFx.tick(dt, camera);
     trailFx.update(dt, ballMesh.position);
     for (const [name, fx] of Object.entries(splash)) fx.update(dt, ballMesh.position, !!game.groundBody && game.surface === SURFACES[name]);
@@ -316,6 +342,6 @@ export function createView(THREE, renderer, game) {
     });
   }
 
-  const view = { scene, camera, ballMesh, burst, render, resize, setSkin, setTrail: trailFx.set, trailFx, splash, ball, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
+  const view = { scene, camera, ballMesh, burst, render, resize, setSkin, setTrail: trailFx.set, trailFx, splash, ball, setGhost, get ghost() { return ghost && ghost.mesh; }, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
   return view;
 }

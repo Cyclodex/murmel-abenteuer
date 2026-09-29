@@ -12,6 +12,7 @@ import { buildAlbum } from './stickers.js';
 import { createCheer } from './cheer.js';
 import { createProgress } from './progress.js';
 import { angleDiff } from './math.js';
+import { createRecorder, formatTime } from './ghost.js';
 
 const $ = id => document.getElementById(id);
 const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
@@ -35,6 +36,7 @@ const trailNeed = t => (t.need.stars ? t.need.stars + '⭐' : t.need.stickers + 
 const currentTrail = () => { const t = TRAILS.find(k => k.id === progress.trail); return t && trailOpen(t) ? t : TRAILS[0]; };
 const ALBUM = buildAlbum(WORLDS);
 const cheer = createCheer($('cheerOv'), audio);
+const rec = createRecorder(); // Fahrt aufnehmen (für die Geistermurmel der Bestzeit)
 
 // Neu verdiente Sticker ins Album kleben, gibt sie zurück. bonus = Level-ID, in dem gerade der Bonusstern gesammelt wurde,
 // run = was in diesem Lauf passiert ist ({ dreckig, sauber })
@@ -75,9 +77,16 @@ function loadLevel(i) {
   view.setSkin(currentSkin());
   view.setTrail(currentTrail());
   view.resize();
-  game.reset();
+  game.reset(); rec.reset();
   camYaw = game.track.yaw;
+  showGhost();
   setupPilot();
+}
+
+// Geistermurmel der Bestzeit (falls vorhanden) mit der Murmel, mit der sie gefahren ist
+function showGhost() {
+  const gh = progress.ghost(LEVELS[levelIdx].id);
+  view.setGhost(gh, gh && (SKINS.find(s => s.id === gh.skin) || SKINS[0]));
 }
 
 function startLevel(i) {
@@ -93,7 +102,7 @@ function startLevel(i) {
 
 function restart() {
   if (pilot) pilot.i = 0;
-  game.reset(); camYaw = game.track.yaw; show('winOv', false); running = true;
+  game.reset(); rec.reset(); showGhost(); camYaw = game.track.yaw; show('winOv', false); running = true;
   if (input.mode === 'tilt') input.calibrate();
 }
 
@@ -240,9 +249,13 @@ function onWin() {
   running = false;
   const lv = LEVELS[levelIdx], before = progress.totalStars(), trailsBefore = TRAILS.filter(trailOpen);
   progress.finish(lv.id, game.st.stars);
+  // Bestzeit: neue Bestzeit speichert die Fahrt als Geistermurmel
+  const t = game.time, had = progress.bestTime(lv.id), fastest = progress.setTime(lv.id, t);
+  if (fastest) progress.setGhost(lv.id, rec.track(t, currentSkin().id));
+  $('winTime').textContent = `⏱ ${formatTime(t)}` + (fastest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
   const after = progress.totalStars();
   const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got) ? lv.id : null;
-  const stickers = syncStickers(bonus, { dreckig: game.dirtPeak >= 1, sauber: game.washed });
+  const stickers = syncStickers(bonus, { dreckig: game.dirtPeak >= 1, sauber: game.washed, geist: fastest && had > 0 });
   const fresh = SKINS.filter(s => skinNeed(s) > before && skinNeed(s) <= after);
   const freshTrails = TRAILS.filter(t => trailOpen(t) && !trailsBefore.includes(t));
   const news = [...fresh, ...freshTrails];
@@ -325,7 +338,12 @@ function loop(now) {
   let [sx, sz] = input.read();
   if (pilot && running) { const [ix, iz] = pilot.drive(); sx = ix * c - iz * s; sz = ix * s + iz * c; } // Welt -> Kamera
   game.brake = input.mode === 'tilt' || pilot ? 0 : 1.5; // Joystick: Bremshilfe beim Loslassen
-  if (running) for (const e of game.step(sx * c + sz * s, -sx * s + sz * c, dt)) onEvent(e);
+  if (running) {
+    for (const e of game.step(sx * c + sz * s, -sx * s + sz * c, dt)) onEvent(e);
+    if (running) rec.add(game.time, game.ball.position);
+    const tt = `⏱ ${formatTime(game.time)}`;
+    if ($('timer').textContent !== tt) $('timer').textContent = tt;
+  }
   const bv = game.ball.velocity;
   audio.roll(running ? Math.hypot(bv.x, bv.y, bv.z) : 0, !!game.groundBody, game.groundBody?.userData?.surface || 'normal');
   updatePilot();
