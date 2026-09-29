@@ -26,7 +26,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
 | `src/skins.js` | Murmel-Designs, ab wie vielen Sternen sie frei sind, Sprungkraft an Wand/Boden, Schwerkraft und Rollen (`ball: {wand, boden, schwere, rollen}`), optional Struktur (`bump`) |
 | `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |
-| `src/trails.js` | Spuren hinter der Murmel (freischaltbar über Sterne ⭐ oder Sticker 📒), Partikel-Pool als InstancedMesh |
+| `src/trails.js` | Spuren hinter der Murmel (freischaltbar über Sterne ⭐ oder Sticker 🏅), Partikel-Pool als InstancedMesh |
 | `src/stickers.js` | Sticker-Album: Sticker je Level/Welt werden aus `src/levels/index.js` erzeugt, dazu Extras |
 | `src/ghost.js` | Bestzeit: Fahrt aufnehmen (alle 0.1 s), Geistermurmel fährt beim nächsten Mal mit, Zeitformat |
 | `src/cheer.js` | Jubel beim Freischalten (Emojis, Konfetti, Klang `jubel`) |

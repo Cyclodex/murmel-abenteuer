@@ -632,7 +632,7 @@ test('Sticker werden vergeben, gespeichert und im Album gezeigt; Jubel erscheint
   await page.click('#btnAlbum');
   await expect(page.locator('#albumOv')).toBeVisible();
   const total = await page.evaluate(() => window.murmel.ALBUM.all.length);
-  await expect(page.locator('#albumCount')).toHaveText(`📒 7/${total}`);
+  await expect(page.locator('#albumCount')).toHaveText(`🏅 7/${total}`);
   await expect(page.locator('.sticker[data-sticker="lvl:ausflug"]')).toHaveClass(/got/);
   await expect(page.locator('.sticker[data-sticker="welt:uebung"]')).toHaveClass(/got/);
   await page.click('.tab[data-page="spielzimmer"]');
