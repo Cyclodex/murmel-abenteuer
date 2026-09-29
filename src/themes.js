@@ -178,21 +178,22 @@ export const THEMES = {
   },
 
   badezimmer: {
-    sky: 0xDFF3FA, fog: [50, 130], hemi: [0xffffff, 0x9ab8c8, 0.9],
-    walls: ['fliese-weiss', 'fliese-blau', 'fliese-weiss', 'fliese-mint'],
-    floor: t => { const tx = tiles(t.THREE, '#FFFFFF', '#E3F2FD', 4, '#90A4AE'); return t.lambert(0xffffff, { map: tx }); },
-    ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#E8D5B5', '#A08060') }),
+    // Kontrast: helle Bahn (Fliesen) über dunklem Mosaikboden, Wände in kräftigen Fliesenfarben
+    sky: 0xBFE6F2, fog: [50, 130], hemi: [0xffffff, 0x6a8aa0, 0.85],
+    walls: ['fliese-blau', 'fliese-petrol', 'fliese-blau', 'fliese-koralle'],
+    floor: t => { const tx = tiles(t.THREE, '#F4FCFD', '#8FDDEA', 4, '#3E8A9A'); return t.lambert(0xffffff, { map: tx }); },
+    ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#E8C89A', '#8A6440') }),
     pillars: ['fliese-weiss'],
-    bank: 0xB0BEC5,
+    bank: 0x78909C,
     props: [['ente'], ['ente', 0xFF8A65], ['shampoo'], ['shampoo', 0x26C6DA], ['becher'], ['seife'], ['zahnbuerste'], ['flasche', 0x80DEEA]],
     look(t, look) {
       const [k, c] = look.split('-');
-      if (k === 'fliese') return phong(t.THREE, { weiss: 0xFAFAFA, blau: 0x81D4FA, mint: 0xA5D6A7 }[c] ?? 0xFAFAFA, { shininess: 110, specular: 0x555555 });
+      if (k === 'fliese') return phong(t.THREE, { weiss: 0xFAFAFA, blau: 0x2F8FE0, petrol: 0x00897B, koralle: 0xFF7F6E }[c] ?? 0xFAFAFA, { shininess: 110, specular: 0x555555 });
       if (k === 'spiegel') return phong(t.THREE, 0xCFE8F3, { shininess: 200, specular: 0xffffff, emissive: 0x1a2a33 });
       return null;
     },
     ground(t, y) {
-      const tex = tiles(t.THREE, '#B3E5FC', '#FFFFFF', 2, '#78909C'); tex.repeat.set(50, 50); t.plane(tex, y);
+      const tex = tiles(t.THREE, '#2B5D8C', '#33709F', 2, '#1C3F61'); tex.repeat.set(50, 50); t.plane(tex, y);
       // Badvorleger
       const T = t.THREE, mat = new T.Mesh(new T.PlaneGeometry(30, 18), t.lambert(0xF48FB1)); mat.rotation.x = -Math.PI / 2; mat.position.set(-20, y + 0.05, -30); t.scene.add(mat);
       scatter(t, y, THEMES.badezimmer.props, 9);
