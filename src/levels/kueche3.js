@@ -19,7 +19,7 @@ export default {
     { type: 'wand', from: [15, 2, -32.7], to: [18, 2, -32.7] },
     { type: 'nische', at: [13.75, 2, -32.5], yaw: 0 },
     { type: 'checkpoint', at: [10, 2, -30], yaw: -90, size: [5, 3, 3] },
-    { type: 'band', from: [18, 2, -30], to: [30, 2, -30], width: 4, walls: 0.8, speed: 4 },
+    { type: 'band', from: [18, 2, -30], to: [30, 2, -30], width: 4, walls: 0.8 },
     { type: 'weg', from: [30, 2, -30], to: [40, 2, -30], width: 6, walls: 0.8, caps: 'end' },
     { type: 'ziel', at: [36, 2, -30] },
 

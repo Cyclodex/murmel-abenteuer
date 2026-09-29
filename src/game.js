@@ -18,7 +18,7 @@ export const SURFACES = {
 };
 
 // Sprungkraft der Murmel: Anteil der Aufprallgeschwindigkeit, der zurückkommt (Wand / Boden),
-// schwere = Faktor für die Schwerkraft nach unten (Mond < 1),
+// schwere = Faktor für die Schwerkraft nach unten (Mond, Pingpong < 1),
 // rollen = Faktor für das Abbremsen beim Rollen (< 1 = rollt weiter, z. B. Golfball)
 export const BALL = { wand: 0.5, boden: 0.25, schwere: 1, rollen: 1 };
 

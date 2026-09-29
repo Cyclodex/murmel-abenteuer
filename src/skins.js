@@ -7,6 +7,7 @@ export const SKINS = [
   { id: 'tennis', emoji: '🎾', need: 3, paint: pixels(tennis), ball: { wand: 0.75, boden: 0.7 } },
   { id: 'fussball', emoji: '⚽', need: 5, paint: pixels(fussball), ball: { wand: 0.75, boden: 0.5 } },
   { id: 'golf', emoji: '⛳', need: 7, paint: pixels(golf), bump: pixels(golfHoehe), ball: { wand: 0.8, boden: 0.3, rollen: 0.5 } },
+  { id: 'pingpong', emoji: '🏓', need: 9, paint: pixels(pingpong), ball: { wand: 0.85, boden: 0.85, schwere: 0.8 } },
   { id: 'flummi', emoji: '🔴', need: 8, paint: pixels(flummi), ball: { wand: 0.97, boden: 0.93 } },
   { id: 'melone', emoji: '🍉', need: 10, paint: pixels(melone), ball: { wand: 0.2, boden: 0.1 } },
   { id: 'basketball', emoji: '🏀', need: 12, paint: pixels(basketball), ball: { wand: 0.8, boden: 0.8 } },
@@ -86,6 +87,13 @@ function golf(x, y, z) {
 function golfHoehe(x, y, z) {
   const t = dimple(x, y, z), c = 255 * (t < 1 ? t * t : 1);
   return [c, c, c];
+}
+// orange mit feiner Naht am Äquator und rundem weissem Aufdruck mit dunklem Ring
+const LOGO = norm([0.8, 0.55, 0.25]);
+function pingpong(x, y, z) {
+  const k = LOGO[0] * x + LOGO[1] * y + LOGO[2] * z;
+  if (k > 0.955) return k > 0.97 ? [250, 245, 235] : k > 0.962 ? [60, 40, 30] : [250, 245, 235];
+  return Math.abs(y) < 0.03 ? [230, 115, 30] : [255, 140, 40];
 }
 function basketball(x, y, z) {
   const line = Math.abs(y) < 0.025 || Math.abs(z) < 0.025 || Math.abs(Math.abs(x) - 0.72) < 0.025;
