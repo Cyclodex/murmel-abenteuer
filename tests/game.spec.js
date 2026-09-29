@@ -212,12 +212,12 @@ test('Jedes Level hat eine Route und gehört zu einer Welt aus WELTEN', async ({
   expect(r.ohneRoute).toEqual([]);
 });
 
-for (const welt of WELTEN) {
-  test(`Autopilot ${welt}: alle Level mit jeder Stärke und jeder Murmel schaffbar, alle Sterne erreichbar`, async ({ page }) => {
-    test.setTimeout(600_000);
+for (const welt of WELTEN) for (const art of ['normal', 'schwer']) {
+  test(`Autopilot ${welt} ${art}: alle Level mit jeder Stärke und jeder Murmel schaffbar, alle Sterne erreichbar`, async ({ page }) => {
+    test.setTimeout(900_000);
     const errors = watchErrors(page);
     await page.goto('/');
-    const res = await page.evaluate(async welt => {
+    const res = await page.evaluate(async ([welt, art]) => {
       const { createGame } = await import('/src/game.js');
       const { WORLDS } = await import('/src/levels/index.js');
       const { checkLevel, ROUTES } = await import('/tests/autopilot.js');
@@ -225,7 +225,7 @@ for (const welt of WELTEN) {
       const { SKINS } = await import('/src/skins.js');
       const w = WORLDS.find(x => x.id === welt), out = [];
       if (!w) return out; // Welt (noch) nicht vorhanden
-      for (const L of [...w.levels, ...(w.hard || [])]) {
+      for (const L of art === 'normal' ? w.levels : w.hard || []) {
         const combos = [...POWERS.map(P => [P, SKINS[0]]), ...SKINS.slice(1).map(S => [POWERS[1], S])];
         for (const [P, S] of combos) {
           const r = checkLevel(() => { const g = createGame(CANNON, L, S.ball); g.tilt = P.tilt * Math.PI / 180; return g; }, ROUTES[L.id]);
@@ -233,7 +233,7 @@ for (const welt of WELTEN) {
         }
       }
       return out;
-    }, welt);
+    }, [welt, art]);
     for (const r of res) {
       expect(r.won, r.id).toBe(true);
       expect(r.falls, r.id).toBe(0);
