@@ -35,7 +35,7 @@ function geometry(THREE, shape) {
   return g;
 }
 
-// Partikel-Pool für die Spur. update(dt, ballPos) jedes Bild aufrufen.
+// Partikel-Pool für die Spur. update(dt, ballPos, emit?) jedes Bild aufrufen (emit = false: keine neuen Teilchen).
 export function createTrailFx(THREE, scene) {
   const parts = Array.from({ length: POOL }, () => ({ life: 0, max: 1, p: new THREE.Vector3(), v: new THREE.Vector3(), rot: 0, c: new THREE.Color() }));
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), col = new THREE.Color(1, 1, 1);
@@ -65,12 +65,12 @@ export function createTrailFx(THREE, scene) {
     p.c.setHex(trail.colors[colorIdx++ % trail.colors.length]);
   }
 
-  function update(dt, pos) {
+  function update(dt, pos, emitOn = true) {
     if (!trail) return;
     // neue Teilchen nach zurückgelegter Strecke (steht die Murmel, kommt nichts nach); Sprünge (Neustart) ignorieren
     if (hasLast) {
       const d = last.distanceTo(pos);
-      if (d < 3) dist += d;
+      if (d < 3 && emitOn) dist += d;
       while (dist >= trail.every) { dist -= trail.every; emit(pos); }
     }
     last.copy(pos); hasLast = true;

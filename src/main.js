@@ -36,12 +36,13 @@ const currentTrail = () => { const t = TRAILS.find(k => k.id === progress.trail)
 const ALBUM = buildAlbum(WORLDS);
 const cheer = createCheer($('cheerOv'), audio);
 
-// Neu verdiente Sticker ins Album kleben, gibt sie zurück. bonus = Level-ID, in dem gerade der Bonusstern gesammelt wurde
-function syncStickers(bonus = null) {
+// Neu verdiente Sticker ins Album kleben, gibt sie zurück. bonus = Level-ID, in dem gerade der Bonusstern gesammelt wurde,
+// run = was in diesem Lauf passiert ist ({ dreckig, sauber })
+function syncStickers(bonus = null, run = {}) {
   const fresh = [];
   for (let pass = 0, added = true; added && pass < 4; pass++) { // Extras hängen von anderen Stickern ab
     added = false;
-    const ctx = { bonus, skinsOpen: SKINS.filter(skinOpen).length, trailsOpen: TRAILS.filter(trailOpen).length };
+    const ctx = { ...run, bonus, skinsOpen: SKINS.filter(skinOpen).length, trailsOpen: TRAILS.filter(trailOpen).length };
     for (const st of ALBUM.all) if (!progress.hasSticker(st.id) && st.has(progress, ctx)) { progress.addSticker(st.id); fresh.push(st); added = true; }
   }
   if (fresh.length) progress.save();
@@ -238,7 +239,7 @@ function onWin() {
   progress.finish(lv.id, game.st.stars);
   const after = progress.totalStars();
   const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got) ? lv.id : null;
-  const stickers = syncStickers(bonus);
+  const stickers = syncStickers(bonus, { dreckig: game.dirtPeak >= 1, sauber: game.washed });
   const fresh = SKINS.filter(s => skinNeed(s) > before && skinNeed(s) <= after);
   const freshTrails = TRAILS.filter(t => trailOpen(t) && !trailsBefore.includes(t));
   const news = [...fresh, ...freshTrails];
@@ -255,13 +256,15 @@ function onWin() {
   setTimeout(() => { show('winOv'); show('joy', false); cheer.show(cheers); }, 900);
 }
 
-const VIBRATE = { boom: [80, 30, 40], roehre: 30, plopp: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
+const VIBRATE = { platsch: 40, boom: [80, 30, 40], roehre: 30, plopp: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
 function onEvent(e) {
   if (e === 'hit') { audio.sfx('hit', game.hitStrength); return; }
   if (e === 'tock') { audio.sfx('tock', game.tockIdx); return; }
   audio.sfx(e);
   if (VIBRATE[e]) buzz(VIBRATE[e]);
   if (e === 'star') view.burst(view.ballMesh.position, 12, [0xFFC928, 0xFFFFFF]);
+  if (e === 'platsch') view.burst(view.ballMesh.position, 16, [0x5B3A1E, 0x7D5A36]);
+  if (e === 'sauber') view.burst(view.ballMesh.position, 20, [0xFFFFFF, 0xBDEBFF, 0x7FC4F5]);
   if (e === 'bonus') { buzz([30, 30, 30]); view.burst(view.ballMesh.position, 30, [0xC77DFF, 0xFFC928, 0xFFFFFF]); }
   if (e === 'win') onWin();
   if (e === 'fall' && pilot) pilot.fell();

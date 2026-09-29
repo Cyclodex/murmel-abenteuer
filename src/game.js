@@ -10,12 +10,16 @@ const HIT_MIN = 1.5;      // ab dieser Geschwindigkeitsänderung (m/s) klackt es
 const BOUNCE_MIN = 0.8;   // ab dieser Aufprallgeschwindigkeit (m/s) prallt die Murmel ab
 
 // Oberflächen: friction für die Physik, bounce = wie stark sie den Abprall zurückgibt (Faktor),
-// grip = wie stark die Steuerung wirkt, drag = Abbremsen pro Sekunde (negativ = gleitet länger).
+// grip = wie stark die Steuerung wirkt, drag = Abbremsen pro Sekunde (negativ = gleitet länger),
+// dirt = macht die Murmel dreckig (pro m/s und Sekunde), wash = wäscht den Dreck ab (pro Meter, exponentiell).
 export const SURFACES = {
-  normal: { friction: 0.4, bounce: 1, grip: 1, drag: 0 },
-  eis: { friction: 0.02, bounce: 1, grip: 0.45, drag: -0.1 },
-  schlamm: { friction: 0.9, bounce: 0.2, grip: 1, drag: 2.2 }
+  normal: { friction: 0.4, bounce: 1, grip: 1, drag: 0, wash: 0.015 },
+  eis: { friction: 0.02, bounce: 1, grip: 0.45, drag: -0.1, wash: 0.04 },
+  schlamm: { friction: 0.9, bounce: 0.2, grip: 1, drag: 2.2, dirt: 0.15 },
+  pfuetze: { friction: 0.4, bounce: 0.3, grip: 1, drag: 0.8, wash: 1 }
 };
+const DIRT_STILL = 0.08; // so viel Dreck pro Sekunde auch im Stehen im Schlamm
+const WASH_WATER = 0.6;  // Unterwasser: Abwaschen pro Sekunde
 
 // Sprungkraft der Murmel: Anteil der Aufprallgeschwindigkeit, der zurückkommt (Wand / Boden),
 // schwere = Faktor für die Schwerkraft nach unten (Mond, Pingpong < 1),
@@ -59,7 +63,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
   const g = {
     C: CANNON, world, level, matFor, els: [], solids: [], checkpoints: [], switches: {},
     st: { stars: 0, starTotal: 0, cp: -1, won: false },
-    groundBody: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0,
+    groundBody: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0, dirt: 0, washK: 0,
     // Leichte Murmel (schwere < 1) nur in Welten mit normaler Schwerkraft; im Weltraum gilt die Level-Schwerkraft
     // gy = Schwerkraft des Levels für lose Teile (Dominos): ohne Kippen und ohne Murmel-Schwere
     ballProps, damping: DAMPING * (ballProps.rollen ?? 1), G: phys.schwerkraft ? gy : gy * (ballProps.schwere ?? 1), gy, lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
@@ -98,6 +102,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
   };
   g.reset = () => {
     Object.assign(g.st, { stars: 0, cp: -1, won: false });
+    Object.assign(g, { dirt: 0, dirtPeak: 0, dirty: false, washed: false, washK: 0 });
     g.switches = {}; acc = 0; g.time = 0; g.hitCool = 0.5; g.hitStrength = 0;
     g.track.yaw = (level.startYaw || 0) * Math.PI / 180;
     for (const el of g.els) TYPES[el.type].reset?.(el, g);
@@ -158,6 +163,21 @@ export function createGame(CANNON, level, ballProps = BALL) {
     }
   }
 
+  // Dreck (g.dirt 0..1): Schlamm macht die Murmel dreckig, Pfütze, Wasser und Wind (g.washK, von Bauteilen)
+  // waschen ihn ab, Rollen reibt ihn langsam ab. Events: 'platsch' = ganz dreckig, 'sauber' = wieder blitzblank.
+  function dirt(ev) {
+    const s = g.groundBody ? g.surface : null, sp = Math.hypot(ball.velocity.x, ball.velocity.z);
+    if (s && s.dirt) g.dirt = Math.min(1, g.dirt + (DIRT_STILL + s.dirt * sp) * H);
+    else if (g.dirt > 0) {
+      g.dirt *= Math.exp(-(g.washK + (water ? WASH_WATER : 0) + (s ? (s.wash || 0) * (sp + 0.5) : 0)) * H);
+      if (g.dirt < 0.03) g.dirt = 0;
+    }
+    g.washK = 0;
+    g.dirtPeak = Math.max(g.dirtPeak, g.dirt);
+    if (!g.dirty && g.dirt >= 0.8) { g.dirty = true; ev.push('platsch'); }
+    if (g.dirty && g.dirt === 0) { g.dirty = false; g.washed = true; ev.push('sauber'); }
+  }
+
   function substep(ix, iz, ev) {
     const grip = g.lock ? 0 : g.surface.grip; // lock: Röhre/Kanone steuern die Murmel
     world.gravity.set(Math.sin(g.tilt) * G * ix * grip, -g.G, Math.sin(g.tilt) * G * iz * grip);
@@ -176,6 +196,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
     // Bremshilfe (Joystick): ohne Eingabe am Boden sanft abbremsen
     if (g.brake && g.groundBody && Math.hypot(ix, iz) < 0.1 && Math.hypot(ball.velocity.x, ball.velocity.z) < 7) { const f = Math.exp(-g.brake * H); ball.velocity.x *= f; ball.velocity.z *= f; }
     for (const el of g.els) TYPES[el.type].step?.(el, g, H, ev);
+    dirt(ev);
     if (ball.position.y < killY) { g.spawn(spawnPoint()); ev.push('fall'); }
   }
 

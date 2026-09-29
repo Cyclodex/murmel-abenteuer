@@ -1,16 +1,20 @@
-// Garten 1: Gartenschlauch. Neu: Röhren (die Murmel fliegt durch den Schlauch).
+// Garten 1: Gartenschlauch. Neu: Röhren (die Murmel fliegt durch den Schlauch), Beet mit Schlamm und Pfütze (wäscht die Murmel).
 export default {
   id: 'g1', name: 'Gartenschlauch', emoji: '🐍', theme: 'garten',
   start: [0, 0, 2], killY: -8,
   parts: [
-    { type: 'weg', from: [0, 0, 6], to: [0, 0, -6], width: 5, walls: 0.8, caps: 'start' },
+    { type: 'weg', from: [0, 0, 6], to: [0, 0, 0], width: 5, walls: 0.8, caps: 'start' },
+    // Beet: Schlamm macht die Murmel dreckig
+    { type: 'weg', from: [0, 0, 0], to: [0, 0, -6], width: 5, walls: 0.8, surface: 'schlamm' },
     // Trichter zur Röhre: der Weg endet, nur der Schlauch führt weiter
     { type: 'weg', from: [0, 0, -6], to: [0, 0, -10], width: 2, walls: 0.8, caps: 'end' },
     { type: 'wand', from: [-2.7, 0, -6], to: [-1.2, 0, -6] },
     { type: 'wand', from: [1.2, 0, -6], to: [2.7, 0, -6] },
     { type: 'roehre', from: [0, 0, -8], yaw: 0, to: [0, 0, -26], toYaw: 0, bogen: 5 },
     // Landung, links eine Nische
-    { type: 'weg', from: [0, 0, -24], to: [0, 0, -36], width: 5 },
+    { type: 'weg', from: [0, 0, -24], to: [0, 0, -32], width: 5 },
+    // Pfütze wäscht den Dreck ab
+    { type: 'weg', from: [0, 0, -32], to: [0, 0, -36], width: 5, surface: 'pfuetze' },
     { type: 'wand', from: [2.7, 0, -24], to: [2.7, 0, -36] },
     { type: 'wand', from: [-2.7, 0, -24], to: [-2.7, 0, -29] },
     { type: 'wand', from: [-2.7, 0, -31.5], to: [-2.7, 0, -36] },

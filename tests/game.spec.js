@@ -379,6 +379,58 @@ test('Dominos fallen nicht vom Kippen um, nur wenn die Murmel sie trifft', async
   expect(r.u3).toEqual({ tiltUp: 6, hitUp: 0 });
 });
 
+test('Schlamm macht die Murmel dreckig, Pfütze und Wind waschen sie', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { LEVELS } = await import('/src/levels/index.js');
+    const { autopilot, mainRoute, ROUTES } = await import('/tests/autopilot.js');
+    // Gartenschlauch: durchs Beet (Schlamm), später durch die Pfütze
+    const g = createGame(CANNON, LEVELS.find(l => l.id === 'g1'));
+    const run = autopilot(g, mainRoute(ROUTES.g1));
+    const ev = run.log.filter(x => /platsch|sauber/.test(x)).map(x => x.split('@')[0]);
+    // Wind bläst den Dreck weg (Pusteblume, Aufwind)
+    const w = createGame(CANNON, LEVELS.find(l => l.id === 'g2')); w.reset();
+    const up = w.els.find(e => e.type === 'wind' && e.up);
+    w.dirt = 1; w.dirty = true; w.spawn([up.at[0], up.at[1] + 1, up.at[2]]);
+    for (let i = 0; i < 90; i++) w.step(0, 0, 1 / 60);
+    // Stehen auf normalem Boden wäscht fast nichts ab
+    const s = createGame(CANNON, LEVELS[0]); s.reset(); s.dirt = 1;
+    for (let i = 0; i < 120; i++) s.step(0, 0, 1 / 60);
+    return { won: run.won, ev, peak: g.dirtPeak, washed: g.washed, wind: w.dirt, still: s.dirt };
+  });
+  expect(r.won).toBe(true);
+  expect(r.ev).toEqual(['platsch', 'sauber']);
+  expect(r.peak).toBe(1);
+  expect(r.washed).toBe(true);
+  expect(r.wind).toBeLessThan(0.1);
+  expect(r.still).toBeGreaterThan(0.95);
+});
+
+test('Dreckige Murmel: Flecken auf der Kugel, Spritzer, Sticker 🐷 und 🧼', async ({ page }) => {
+  const errors = watchErrors(page);
+  await play(page, 'g1');
+  // im Beet stehen und rollen: dreckig, Spritzer fliegen
+  await page.keyboard.down('ArrowUp');
+  await page.waitForFunction(() => window.murmel.game.dirt >= 1, null, { timeout: 15_000 });
+  await page.keyboard.up('ArrowUp');
+  expect(await page.evaluate(() => window.murmel.view.ball.dirtLevel)).toBe(1);
+  expect(await page.evaluate(() => window.murmel.view.splash.schlamm.count)).toBeGreaterThan(0);
+  // gewaschen ins Ziel: beide Sticker
+  await page.evaluate(() => { window.murmel.game.dirt = 0; window.murmel.game.washed = true; });
+  await winLevel(page, 1);
+  const st = (await saved(page)).stickers;
+  expect(st['x:dreck']).toBe(true);
+  expect(st['x:sauber']).toBe(true);
+  await page.click('#cheerOv');
+  // sauber ins Ziel: kein Dreck-Sticker für einen neuen Spieler
+  await page.click('#mapBtn'); await page.click('#btnPlayer'); await newPlayer(page, 'Sauber');
+  await page.click('.lvl[data-level="ausflug"]');
+  await winLevel(page, 1);
+  expect((await saved(page)).stickers['x:dreck']).toBeUndefined();
+  expect(errors).toEqual([]);
+});
+
 test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {
@@ -448,18 +500,19 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
     out.rollenEis = await render(a => a.roll(6, true, 'eis'), 1);
+    out.rollenPfuetze = await render(a => a.roll(6, true, 'pfuetze'), 1);
     out.rollenLuft = await render(a => a.roll(6, false, 'normal'), 1);
     out.aus = await render(a => { a.setMode('aus'); a.sfx('win'); });
     for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser']) out['musik_' + song] = await render(a => a.music(song), 1);
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'hitStark', 'rollen', 'rollenEis', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }

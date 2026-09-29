@@ -107,6 +107,7 @@ export const EXTRA = {
       if (inside) {
         const a = (el.strength ?? (el.up ? 16 : 8)) * h, v = g.ball.velocity;
         v.x += el.dir[0] * a; v.y += el.dir[1] * a; v.z += el.dir[2] * a;
+        g.washK += 3; // Wind bläst den Dreck weg
         if (!el.inside) ev.push('wind');
       }
       el.inside = inside;

@@ -64,7 +64,8 @@ export const SONGS = {
 const ROLL = {
   normal: { f0: 220, fv: 70, q: 0.9, vol: 0.17, rumble: 1 },
   eis: { f0: 1800, fv: 160, q: 2.5, vol: 0.14, rumble: 0.2 },
-  schlamm: { f0: 110, fv: 25, q: 0.7, vol: 0.15, rumble: 1.4 }
+  schlamm: { f0: 110, fv: 25, q: 0.7, vol: 0.15, rumble: 1.4 },
+  pfuetze: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 }
 };
 
 export function createAudio(opts = {}) {
@@ -147,6 +148,9 @@ export function createAudio(opts = {}) {
     magnet: t => { tone(220, t, 0.4, 0.2, 'sawtooth', 440); tone(880, t + 0.05, 0.3, 0.1, 'sine', 1760); },
     laden: t => { for (let i = 0; i < 4; i++) tone(midi(60 + i * 4), t + i * 0.18, 0.1, 0.25, 'square'); },
     boom: t => { hiss(t, 0.5, 1.0, 'lowpass', 900, 150, 0.7); tone(90, t, 0.4, 0.9, 'sine', 35); bell(midi(96), t + 0.1, 0.1, 0.4); },
+    // Dreck: ganz dreckig (Matsch-Platsch) und wieder blitzblank (Glitzer)
+    platsch: t => { hiss(t, 0.35, 0.8, 'lowpass', 700, 120, 0.8); tone(200, t, 0.25, 0.5, 'sine', 60); },
+    sauber: t => { [84, 91, 96, 103].forEach((n, i) => bell(midi(n), t + i * 0.07, 0.15, 0.45)); hiss(t, 0.4, 0.08, 'highpass', 8000); },
     tock: (t, i = 0) => { tone(midi(72 + Math.min(i, 12) * 2), t, 0.07, 0.5, 'triangle'); hiss(t, 0.02, 0.3, 'highpass', 3000); },
     // Jubel beim Freischalten: Trommelwirbel, Fanfare, Glitzer
     jubel: t => {
