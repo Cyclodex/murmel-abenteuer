@@ -2,7 +2,7 @@
 // neue Level bekommen ihre Sticker also automatisch.
 //   pro Level: geschafft (Level-Emoji), alle Sterne 🌟, Bonusstern 💎 (nur wenn das Level einen hat)
 //   pro Welt:  alle Level geschafft 🏆, alle schweren Versionen geschafft 💀
-//   Extras:    erste Murmel 🎨, erste Spur 💫, alle Welt-Sticker 👑, ganz dreckig ins Ziel 🐷, wieder blitzblank gewaschen 🧼,
+//   Extras:    erste Murmel 🔮, erste Spur 💫, alle Welt-Sticker 👑, ganz dreckig ins Ziel 🐷, wieder blitzblank gewaschen 🧼,
 //              schneller als die eigene Geistermurmel 👻
 // has(p, ctx) prüft, ob der Sticker verdient ist (p = Spielstand, ctx = { skinsOpen, trailsOpen, bonus, dreckig, sauber, geist }).
 const stars = lv => lv.parts.filter(p => p.type === 'stern');
@@ -24,7 +24,7 @@ export function buildAlbum(WORLDS) {
   const worldIds = pages.flatMap(pg => pg.stickers.map(s => s.id));
   pages.push({
     id: 'extras', emoji: '🎁', stickers: [
-      { id: 'x:murmel', emoji: '🎨', has: (p, c) => c.skinsOpen > 1 },
+      { id: 'x:murmel', emoji: '🔮', has: (p, c) => c.skinsOpen > 1 },
       { id: 'x:spur', emoji: '💫', has: (p, c) => c.trailsOpen > 1 },
       { id: 'x:krone', emoji: '👑', has: p => worldIds.every(id => p.hasSticker(id)) },
       { id: 'x:dreck', emoji: '🐷', has: (p, c) => !!c.dreckig },
