@@ -500,6 +500,51 @@ test('Echte Dinge: durch die Pfanne, Herdplatte hüpft, Abfluss im Lavabo, Spren
   expect(sl.dirt).toBeLessThan(0.1);
 });
 
+test('Badezimmer: Schiffchen-Trampolin trifft mit jeder Murmel, ins Badewasser fallen, Wasserstrahl wäscht, Toilette spült', async ({ page }) => {
+  await page.goto('/');
+  const bad = [{ type: 'wanne', at: [0, -2, -10], size: [6, 22] },
+    { type: 'schiff', at: [0, -2, -3], size: [4, 5], trampolin: { vorne: 1.5, ziel: [0, -1.5, -13], time: 1 } }, { type: 'schiff', at: [0, -2, -13], size: [4, 5] }];
+  // Trampolin auf dem Schiff: Flug wird für die Schwerkraft jeder Murmel ausgerechnet, sie landet auf dem nächsten Schiff
+  const r = await page.evaluate(async parts => {
+    const { createGame } = await import('/src/game.js');
+    const { SKINS } = await import('/src/skins.js');
+    return SKINS.map(S => {
+      const g = createGame(CANNON, { id: 't', start: [0, -0.5, -4.5], killY: -8, parts }, S.ball); g.reset();
+      const ev = [];
+      for (let i = 0; i < 60 * 3; i++) ev.push(...g.step(0, 0, 1 / 60).filter(e => e !== 'hit'));
+      return { id: S.id, ev, z: g.ball.position.z, y: g.ball.position.y };
+    });
+  }, bad);
+  for (const x of r) {
+    expect(x.ev, x.id).toEqual(['jump']);
+    expect(Math.abs(x.z + 13), x.id).toBeLessThan(2.5);
+    expect(x.y, x.id).toBeGreaterThan(-2);
+  }
+  // neben die Schiffchen ins Wasser: spritzt, zurück zum Start
+  const nass = await fahre(page, bad, [2.2, 0, -8], 1.5);
+  expect(nass.ev.slice(0, 2)).toEqual(['spritz', 'fall']);
+  // Wasserstrahl aus dem Hahn wäscht die dreckige Murmel beim Durchrollen
+  const strahl = await fahre(page, [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -12], width: 3, walls: 0.5, caps: 'end' }, { type: 'strahl', at: [0, 3, -3], unten: 0, hahn: true }],
+    [0, 0, 2], 3, [0, -0.5], 'g.dirt = 1; g.dirty = true;');
+  expect(strahl.ev).toEqual(expect.arrayContaining(['spritz', 'sauber']));
+  expect(strahl.dirt).toBe(0);
+  // Toilette: in die Schüssel fallen = Ziel, dann wird gespült
+  const klo = await fahre(page, [{ type: 'klo', at: [0, 0, 0] }, { type: 'ziel', at: [0, 0, 0] }], [1, 3, 0], 2);
+  expect(klo.ev).toEqual(['win', 'spuel']);
+  // Fynns Badezimmer: im Matsch dreckig, im Wasserstrahl am Lavabo wieder sauber, dann Abfluss, Schiffchen, Toilette
+  const lv = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { LEVELS } = await import('/src/levels/index.js');
+    const { autopilot, mainRoute, ROUTES } = await import('/tests/autopilot.js');
+    const g = createGame(CANNON, LEVELS.find(l => l.id === 'b1'));
+    const run = autopilot(g, mainRoute(ROUTES.b1));
+    return { won: run.won, peak: g.dirtPeak, ev: run.log.map(x => x.split('@')[0]).filter(e => /platsch|sauber|gurgel|plopp|win/.test(e)) };
+  });
+  expect(lv.won).toBe(true);
+  expect(lv.peak).toBe(1);
+  expect(lv.ev).toEqual(['platsch', 'sauber', 'gurgel', 'plopp', 'win']);
+});
+
 test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {
@@ -569,7 +614,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
@@ -581,7 +626,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }

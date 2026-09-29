@@ -245,7 +245,7 @@ export const FALLEN = {
         const b = el.body, dir = el.dir || [0, -1], d = norm([dir[0], 0, dir[1]]), sp = el.speed ?? 3;
         b.type = 1; b.position.set(el.from[0], el.from[1] + (el.r ?? 0.9), el.from[2]);
         b.velocity.set(d[0] * sp, 0, d[2] * sp); b.angularVelocity.set(0, 0, 0); b.wakeUp && b.wakeUp();
-        ev.push('rumpel');
+        if (Math.hypot(g.ball.position.x - el.from[0], g.ball.position.z - el.from[2]) < 25) ev.push('rumpel'); // nur in der Nähe hörbar
       }
       if (el.body.position.y < (g.level.killY ?? -8)) TYPES.felsen.park(el);
     },

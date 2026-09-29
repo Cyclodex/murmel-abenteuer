@@ -111,6 +111,8 @@ export function createGame(CANNON, level, ballProps = BALL) {
     const p = ball.position;
     g.squashT = SQUASH_T; g.squashPos = [p.x, p.y, p.z]; g.squashNew = true; g.lock = true;
   };
+  // Runtergefallen (unter killY oder z. B. ins Badewasser): am Checkpoint neu einsetzen
+  g.fall = ev => { g.spawn(spawnPoint()); ev.push('fall'); };
   g.reset = () => {
     Object.assign(g.st, { stars: 0, cp: -1, won: false });
     Object.assign(g, { dirt: 0, dirtPeak: 0, dirty: false, washed: false, washK: 0, squashT: 0, squashNew: false });
@@ -216,7 +218,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
     if (g.brake && g.groundBody && Math.hypot(ix, iz) < 0.1 && Math.hypot(ball.velocity.x, ball.velocity.z) < 7) { const f = Math.exp(-g.brake * H); ball.velocity.x *= f; ball.velocity.z *= f; }
     for (const el of g.els) TYPES[el.type].step?.(el, g, H, ev);
     dirt(ev);
-    if (ball.position.y < killY) { g.spawn(spawnPoint()); ev.push('fall'); }
+    if (ball.position.y < killY) g.fall(ev);
   }
 
   // ix/iz: Eingabe in Welt-Richtung (-1..1), x = rechts, z = nach hinten
