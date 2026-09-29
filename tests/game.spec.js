@@ -341,6 +341,32 @@ test('Band gegen die Fahrtrichtung dreht die Kamera nicht um', async ({ page }) 
   expect(Math.abs(d)).toBeLessThan(0.01);
 });
 
+test('Dominos fallen nicht vom Kippen um, nur wenn die Murmel sie trifft', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { SKINS } = await import('/src/skins.js');
+    const { LEVELS } = await import('/src/levels/index.js');
+    const out = {};
+    for (const id of ['k3', 'u3']) {
+      const L = LEVELS.find(l => l.id === id);
+      const dom = g => g.els.find(e => e.type === 'domino');
+      const up = g => dom(g).bodies.filter(b => b.quaternion.vmult(new CANNON.Vec3(0, 1, 0)).y > 0.9).length;
+      // Murmel steht vor den Dominos, Welt 3 s voll nach vorne gekippt (auch mit leichter Murmel)
+      const tilt = createGame(CANNON, L, SKINS.find(s => s.id === 'pingpong').ball); tilt.reset();
+      const [x, y, z] = dom(tilt).from;
+      for (let i = 0; i < 180; i++) { tilt.spawn([x, y + 1, z + 3]); tilt.step(0, -1, 1 / 60); }
+      // Murmel rollt hinein
+      const hit = createGame(CANNON, L); hit.reset(); hit.spawn([x, y + 1, z + 3]);
+      for (let i = 0; i < 60 * 4; i++) hit.step(0, -1, 1 / 60);
+      out[id] = { tiltUp: up(tilt), hitUp: up(hit) };
+    }
+    return out;
+  });
+  expect(r.k3).toEqual({ tiltUp: 6, hitUp: 0 });
+  expect(r.u3).toEqual({ tiltUp: 6, hitUp: 0 });
+});
+
 test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {

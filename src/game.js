@@ -61,7 +61,8 @@ export function createGame(CANNON, level, ballProps = BALL) {
     st: { stars: 0, starTotal: 0, cp: -1, won: false },
     groundBody: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0,
     // Leichte Murmel (schwere < 1) nur in Welten mit normaler Schwerkraft; im Weltraum gilt die Level-Schwerkraft
-    ballProps, damping: DAMPING * (ballProps.rollen ?? 1), G: phys.schwerkraft ? gy : gy * (ballProps.schwere ?? 1), lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
+    // gy = Schwerkraft des Levels für lose Teile (Dominos): ohne Kippen und ohne Murmel-Schwere
+    ballProps, damping: DAMPING * (ballProps.rollen ?? 1), G: phys.schwerkraft ? gy : gy * (ballProps.schwere ?? 1), gy, lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
   };
 
   level.parts.forEach((d, i) => {

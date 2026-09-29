@@ -276,6 +276,12 @@ export const EXTRA = {
         b.velocity.set(0, 0, 0); b.angularVelocity.set(0, 0, 0); b.wakeUp && b.wakeUp();
       }
     },
+    // Das Kippen verschiebt die Schwerkraft der ganzen Welt, gilt aber nur für die Murmel:
+    // Dominos bekommen die Gegenkraft, sonst fallen sie schon beim Anrollen ohne Berührung um.
+    pre(el, g) {
+      const gr = g.world.gravity;
+      for (const b of el.bodies) { b.force.x -= b.mass * gr.x; b.force.y += b.mass * (-gr.y - g.gy); b.force.z -= b.mass * gr.z; }
+    },
     step(el, g, h, ev) {
       el.bodies.forEach((b, i) => {
         if (!el.fallen[i] && Math.hypot(b.angularVelocity.x, b.angularVelocity.z) > 1.5) { el.fallen[i] = true; g.tockIdx = i; ev.push('tock'); }
