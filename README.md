@@ -27,7 +27,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/themes.js` | Aussehen der Welten (Boden, Wände, Himmel, Untergrund, Partikel) |
 | `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm, Pfütze), Dreck (`g.dirt`: Schlamm macht dreckig, Pfütze/Wind/Wasser waschen), Hangabtrieb bergab (`SLOPE_PUSH`), Bremshilfe nur in der Ebene |
 | `src/view.js` | three.js-Szene, Themen (Spielzimmer), Kamera |
-| `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen), Pfeiltasten, Stärken 🐢/🐇/🚀 (`POWERS`) |
+| `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen; Knopf 📱/🕹️ wechselt jederzeit), Pfeiltasten, Stärken 🐢/🐇/🚀 (`POWERS`) |
 | `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
 | `src/skins.js` | Murmel-Designs, ab wie vielen Sternen sie frei sind, Sprungkraft an Wand/Boden, Schwerkraft und Rollen (`ball: {wand, boden, schwere, rollen}`), optional Struktur (`bump`) |
 | `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |

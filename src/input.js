@@ -16,7 +16,7 @@ export function tiltToInput(deg, power) {
   return Math.sign(deg) * Math.min(1, a / (power.full - power.dead));
 }
 
-export function createInput({ area, joy, knob, onToast, onCalButton }) {
+export function createInput({ area, joy, knob, onToast, onCalButton, onMode = () => {} }) {
   let mode = 'joy', joyX = 0, joyZ = 0, tiltX = 0, tiltZ = 0, inX = 0, inZ = 0;
   let cal = null, lastOri = null, gotOri = false;
   let pointerId = null, ox = 0, oy = 0, power = POWERS[1];
@@ -77,7 +77,7 @@ export function createInput({ area, joy, knob, onToast, onCalButton }) {
   function calibrate(silent) { if (lastOri) cal = lastOri.slice(); if (!silent) onToast('🎯'); }
   window.addEventListener('orientationchange', () => setTimeout(() => { if (mode === 'tilt') calibrate(); }, 400));
 
-  function setMode(m) { mode = m; joy.classList.toggle('hidden', m === 'tilt'); onCalButton(m === 'tilt'); }
+  function setMode(m) { mode = m; joy.classList.toggle('hidden', m === 'tilt'); onCalButton(m === 'tilt'); onMode(m); }
 
   async function useTilt() {
     setMode('joy');
