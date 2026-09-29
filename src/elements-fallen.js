@@ -184,7 +184,7 @@ export const FALLEN = {
   fluss: {
     solids(d) {
       const dp = d.depth ?? 0.7, down = [0, -dp, 0];
-      const out = TYPES.weg.solids({ from: add(d.from, down), to: add(d.to, down), width: d.width ?? 4, walls: dp + (d.banks ?? 0.5), look: 'flussbett' });
+      const out = TYPES.weg.solids({ from: add(d.from, down), to: add(d.to, down), width: d.width ?? 4, walls: dp + (d.banks ?? 0.5), look: 'flussbett', surface: 'flussbett' });
       for (const o of out.slice(1)) o.look = 'ufer';
       return out;
     },
