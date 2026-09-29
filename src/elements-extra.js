@@ -46,7 +46,9 @@ export const EXTRA = {
       if (el.t >= 1) {
         el.t = -1; el.cool = 1.5; g.lock = false;
         setBall(g, el.P[3]);
-        const o = el.out ?? 5; g.ball.velocity.set(el.exitDir[0] * o, -1, el.exitDir[2] * o);
+        const o = el.out ?? 5, vx = el.exitDir[0] * o, vz = el.exitDir[2] * o;
+        // herausrutschen und dabei vorwärts rollen (sonst wirft der alte Drall von vor der Röhre die Murmel beim Aufsetzen zurück)
+        g.ball.velocity.set(vx, -1, vz); g.ball.angularVelocity.set(vz / R, 0, -vx / R);
         ev.push('plopp');
       } else setBall(g, bezier(el.P, el.t));
     },
@@ -249,12 +251,11 @@ export const EXTRA = {
         setBall(g, el.base); g.hitCool = 0.3;
         if (el.t > 0.8) {
           g.ball.position.set(...el.muzzle); g.ball.velocity.set(...el.v0);
-          g.ball.linearDamping = 0; // genau treffen
           el.state = 'flug'; el.t = 0; ev.push('boom');
         }
       } else if (el.state === 'flug') {
         if ((g.groundBody && el.t > 0.2) || el.t > 5 || !g.lock) {
-          g.lock = false; g.ball.linearDamping = g.damping; el.state = 'pause'; el.t = 0;
+          g.lock = false; el.state = 'pause'; el.t = 0;
         }
       } else if (el.state === 'pause' && el.t > 1.5) el.state = 'bereit';
     },

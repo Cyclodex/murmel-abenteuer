@@ -17,7 +17,7 @@ export default {
     { type: 'wand', from: [-10, 0, -13.7], to: [-13, 0, -12.7] },
     { type: 'weg', from: [-13, 0, -11], to: [-16, 0, -11], width: 3, walls: 0.8 },
     { type: 'checkpoint', at: [-7, 0, -11], yaw: 90, size: [5, 3, 3] },
-    { type: 'turbo', at: [-14.5, 0, -11], yaw: 90, size: [2.6, 2], speed: 13 },
+    { type: 'turbo', at: [-14.5, 0, -11], yaw: 90, size: [2.6, 2], speed: 11.5 },
     // Looping, Ausfahrt 5 m weiter rechts
     { type: 'looping', at: [-16, 0, -11], yaw: 90, radius: 3, width: 3, shift: 5 },
     { type: 'weg', from: [-16, 0, -16], to: [-24, 0, -16], width: 4, walls: 0.8 },

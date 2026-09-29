@@ -129,7 +129,7 @@ export const BAD = {
             const v = g.ball.velocity, k = tr.bremse ?? 0.3;
             v.x *= k; v.z *= k; g.ball.angularVelocity.set(v.z / R, 0, -v.x / R);
           }
-          g.lock = false; g.ball.linearDamping = g.damping; el.flug = 0;
+          g.lock = false; el.flug = 0;
         }
         return;
       }
@@ -143,7 +143,7 @@ export const BAD = {
         g.ball.position.set(...p);
         g.ball.velocity.set(vx, d[1] / T + 0.5 * g.G * T, vz);
         g.ball.angularVelocity.set(vz / R, 0, -vx / R);
-        g.ball.linearDamping = 0; g.lock = true; el.flug = 1e-6; el.cool = 0.6; ev.push('jump');
+        g.lock = true; el.flug = 1e-6; el.cool = 0.6; ev.push('jump');
       }
     },
     view(el, v) {

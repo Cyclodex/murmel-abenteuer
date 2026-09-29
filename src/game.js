@@ -10,15 +10,15 @@ const HIT_MIN = 1.5;      // ab dieser Geschwindigkeitsänderung (m/s) klackt es
 const BOUNCE_MIN = 0.8;   // ab dieser Aufprallgeschwindigkeit (m/s) prallt die Murmel ab
 
 // Oberflächen: friction für die Physik, bounce = wie stark sie den Abprall zurückgibt (Faktor),
-// grip = wie stark die Steuerung wirkt, drag = Abbremsen pro Sekunde (negativ = gleitet länger),
+// grip = wie stark die Steuerung wirkt, drag = Abbremsen pro Sekunde (negativ = gleitet länger), roll = Faktor Rollwiderstand,
 // dirt = macht die Murmel dreckig (pro m/s und Sekunde), wash = wäscht den Dreck ab (pro Meter, exponentiell).
 export const SURFACES = {
   normal: { friction: 0.4, bounce: 1, grip: 1, drag: 0, wash: 0.015 },
-  eis: { friction: 0.02, bounce: 1, grip: 0.45, drag: -0.1, wash: 0.04 },
+  eis: { friction: 0.02, bounce: 1, grip: 0.45, drag: -0.1, wash: 0.04, roll: 0.2 },
   schlamm: { friction: 0.9, bounce: 0.2, grip: 1, drag: 2.2, dirt: 0.15 },
   pfuetze: { friction: 0.4, bounce: 0.3, grip: 1, drag: 0.8, wash: 1 },
   sand: { friction: 0.7, bounce: 0.3, grip: 0.9, drag: 1.4, dirt: 0.03 },
-  seife: { friction: 0.02, bounce: 1, grip: 0.4, drag: -0.15, wash: 0.8 },
+  seife: { friction: 0.02, bounce: 1, grip: 0.4, drag: -0.15, wash: 0.8, roll: 0.2 },
   handtuch: { friction: 0.9, bounce: 0.1, grip: 1, drag: 1.8, wash: 0.3 },
   nagel: { friction: 0.3, bounce: 0.55, grip: 1, drag: 0 }, // Nägel der Nagelwand schlucken etwas Schwung
   flussbett: { friction: 0.4, bounce: 0.05, grip: 1, drag: 0, wash: 0.5 } // Grund im Fluss: Wasser schluckt den Aufprall
@@ -28,15 +28,19 @@ const WASH_WATER = 0.6;  // Unterwasser: Abwaschen pro Sekunde
 
 // Sprungkraft der Murmel: Anteil der Aufprallgeschwindigkeit, der zurückkommt (Wand / Boden),
 // schwere = Faktor für die Schwerkraft nach unten (Mond, Pingpong < 1),
-// rollen = Faktor für das Abbremsen beim Rollen (< 1 = rollt weiter, z. B. Golfball)
+// rollen = Faktor für Roll- und Luftwiderstand (< 1 = rollt weiter, z. B. Golfball)
 export const BALL = { wand: 0.5, boden: 0.25, schwere: 1, rollen: 1 };
 
 // Kollisionsgruppen: feste/bewegte Teile, Murmel, lose Teile (z. B. Dominos)
 export const GRP = { fest: 1, murmel: 2, lose: 4 };
-const DAMPING = 0.12;
+// Bremsen wie bei Neverball statt Dämpfung: Rollwiderstand bremst gleichmässig (rollen, m/s²) auf ebenem Boden,
+// ausser man gibt in Fahrtrichtung Gas. Dazu Luftwiderstand (luft · v², immer).
+// Schnell behält die Murmel so ihren Schwung, langsam bleibt sie sauber stehen.
+export const BREMSE = { rollen: 1, luft: 0.012 };
+const ROLL_FLAT = 0.9998; // Rollwiderstand nur auf ebenem Boden (Neigung < 1.1°), sonst bleibt sie an leichtem Gefälle liegen
 // Hangabtrieb: rollt die Murmel auf geneigten Bahnstücken (Weg, Rampe, Spirale, Fluss) bergab, zieht es sie zusätzlich
-// (Faktor der Hangkraft), sonst schlucken Rollen und Dämpfung einen grossen Teil davon und bergab wirkt zäh.
-const SLOPE_PUSH = 0.6;
+// (Faktor der Hangkraft), sonst schluckt das Rollen einen grossen Teil davon und bergab wirkt zäh.
+const SLOPE_PUSH = 0.3;
 const BRAKE_FLAT = 0.998; // Bremshilfe nur auf (fast) ebenem Boden (Neigung < 3.6°), bergab rollt die Murmel weiter
 
 export function createGame(CANNON, level, ballProps = BALL) {
@@ -75,7 +79,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
     groundBody: null, groundN: [0, 1, 0], touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0, dirt: 0, washK: 0,
     // Leichte Murmel (schwere < 1) nur in Welten mit normaler Schwerkraft; im Weltraum gilt die Level-Schwerkraft
     // gy = Schwerkraft des Levels für lose Teile (Dominos): ohne Kippen und ohne Murmel-Schwere
-    ballProps, damping: DAMPING * (ballProps.rollen ?? 1), G: phys.schwerkraft ? gy : gy * (ballProps.schwere ?? 1), gy, lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
+    ballProps, G: phys.schwerkraft ? gy : gy * (ballProps.schwere ?? 1), gy, lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
   };
 
   level.parts.forEach((d, i) => {
@@ -96,7 +100,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
   });
   for (const el of g.els) TYPES[el.type].init?.(el, g);
 
-  const ball = new CANNON.Body({ mass: 1, material: mBall, shape: new CANNON.Sphere(R), linearDamping: g.damping, angularDamping: 0.3 * (ballProps.rollen ?? 1) });
+  const ball = new CANNON.Body({ mass: 1, material: mBall, shape: new CANNON.Sphere(R), linearDamping: 0, angularDamping: 0 });
   ball.collisionFilterGroup = GRP.murmel; ball.collisionFilterMask = GRP.fest | GRP.lose;
   world.addBody(ball);
   g.ball = ball;
@@ -104,10 +108,13 @@ export function createGame(CANNON, level, ballProps = BALL) {
   const killY = level.killY ?? -8;
   const spawnPoint = () => add(g.st.cp < 0 ? level.start : g.checkpoints[g.st.cp].at, [0, 1, 0]);
   let acc = 0;
+  // Nach dem Abprall drückt cannon.js die leicht eingedrungene Murmel noch ein paar Schritte aus der Wand und gibt ihr
+  // dabei zusätzlich Schwung (Bowling kam je nach Tempo mit 0.1 bis 0.23 statt 0.1 zurück): kurz auf das Abpralltempo begrenzen.
+  let last = null; // { body, v = Abpralltempo, t = Restzeit }
 
   g.spawn = p => {
     ball.position.set(...p); ball.velocity.set(0, 0, 0); ball.angularVelocity.set(0, 0, 0);
-    g.groundBody = g.touchBody = null; g.lock = false; g.squashT = 0; ball.linearDamping = g.damping;
+    g.groundBody = g.touchBody = null; g.lock = false; g.squashT = 0; last = null;
   };
   // Zerquetscht (z. B. Hammer): Murmel bleibt kurz platt liegen, dann geht es am Checkpoint weiter.
   // Events: 'quetsch' sofort, 'zurueck' beim Neustart.
@@ -160,6 +167,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
   function bounce(vx, vy, vz) {
     const v = ball.velocity;
     let floorN = null, wallHit = false;
+    if (last && (last.t -= H) <= 0) last = null;
     for (const c of world.contacts) {
       let other = null, s = 1;
       if (c.bi === ball) { other = c.bj; s = -1; } else if (c.bj === ball) other = c.bi;
@@ -170,11 +178,15 @@ export function createGame(CANNON, level, ballProps = BALL) {
       const rx = vx - (ov ? ov.x : 0), ry = vy - (ov ? ov.y : 0), rz = vz - (ov ? ov.z : 0);
       const vn0 = rx * nx + ry * ny + rz * nz, floor = ny > 0.7;
       if (floor) floorN = [nx, ny, nz];
-      if (-vn0 < BOUNCE_MIN || -vn0 < 0.35 * Math.hypot(rx, ry, rz)) continue;
-      const e = (floor ? g.ballProps.boden : g.ballProps.wand) * (SURFACES[other.material && other.material.name] || SURFACES.normal).bounce * bounceF;
       const vn1 = (v.x - (ov ? ov.x : 0)) * nx + (v.y - (ov ? ov.y : 0)) * ny + (v.z - (ov ? ov.z : 0)) * nz;
+      if (-vn0 < BOUNCE_MIN || -vn0 < 0.35 * Math.hypot(rx, ry, rz)) {
+        if (last && last.body === other && vn1 > last.v) { const d = vn1 - last.v; v.x -= nx * d; v.y -= ny * d; v.z -= nz * d; }
+        continue;
+      }
+      const e = (floor ? g.ballProps.boden : g.ballProps.wand) * (SURFACES[other.material && other.material.name] || SURFACES.normal).bounce * bounceF;
       const dv = -e * vn0 - vn1;
-      if (dv > 0) { v.x += nx * dv; v.y += ny * dv; v.z += nz * dv; wallHit ||= !floor; }
+      v.x += nx * dv; v.y += ny * dv; v.z += nz * dv; wallHit ||= !floor;
+      last = { body: other, v: -e * vn0, t: 0.1 };
     }
     // Nach dem Wandabprall rollt die Murmel in die neue Richtung (sonst bremst der alte Drall sie sofort)
     if (wallHit && floorN) {
@@ -209,6 +221,32 @@ export function createGame(CANNON, level, ballProps = BALL) {
     v.x += dx * k; v.y += dy * k; v.z += dz * k;
   }
 
+  // Roll- und Luftwiderstand (siehe BREMSE). Nicht, solange Röhre, Kanone oder Schiffchen die Murmel steuern (lock).
+  function resist(ix, iz) {
+    if (g.lock) return;
+    const v = ball.velocity, w = ball.angularVelocity, k = g.ballProps.rollen ?? 1, gb = g.groundBody;
+    // Geschwindigkeit des Bodens (bewegte Plattform fährt mit)
+    let ox = 0, oy = 0, oz = 0;
+    if (gb && gb.type !== CANNON.Body.STATIC) {
+      tmpP.set(ball.position.x - g.groundN[0] * R, ball.position.y - g.groundN[1] * R, ball.position.z - g.groundN[2] * R);
+      gb.getVelocityAtWorldPoint(tmpP, tmpV); ox = tmpV.x; oy = tmpV.y; oz = tmpV.z;
+    }
+    const rel0 = Math.hypot(v.x - ox, v.y - oy, v.z - oz);
+    const fa = Math.max(0, 1 - BREMSE.luft * k * Math.hypot(v.x, v.y, v.z) * H);
+    v.x *= fa; v.y *= fa; v.z *= fa;
+    if (!gb) return;
+    // Rollwiderstand auf ebenem Boden, ausser man gibt in Fahrtrichtung Gas (beim Bremsen und Lenken hilft er)
+    const vh = Math.hypot(v.x - ox, v.z - oz), push = vh > 1e-6 ? (ix * (v.x - ox) + iz * (v.z - oz)) / vh : Math.hypot(ix, iz);
+    if (g.groundN[1] > ROLL_FLAT && push < 0.1) {
+      const rx = v.x - ox, ry = v.y - oy, rz = v.z - oz, rs = Math.hypot(rx, ry, rz), dv = BREMSE.rollen * k * (g.surface.roll ?? 1) * H;
+      const fr = rs > dv ? 1 - dv / rs : 0;
+      v.x = ox + rx * fr; v.y = oy + ry * fr; v.z = oz + rz * fr;
+    }
+    // am Boden dreht die Murmel passend langsamer, sonst holt der Drall das Tempo über die Reibung zurück
+    const fw = rel0 > 1e-6 ? Math.hypot(v.x - ox, v.y - oy, v.z - oz) / rel0 : 0;
+    w.x *= fw; w.y *= fw; w.z *= fw;
+  }
+
   function substep(ix, iz, ev) {
     const grip = g.lock ? 0 : g.surface.grip; // lock: Röhre/Kanone steuern die Murmel
     world.gravity.set(Math.sin(g.tilt) * G * ix * grip, -g.G, Math.sin(g.tilt) * G * iz * grip);
@@ -233,6 +271,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
     if (water) { const f = Math.exp(-water * H); ball.velocity.x *= f; ball.velocity.y *= f; ball.velocity.z *= f; }
     if (g.surface.drag) { const f = Math.exp(-g.surface.drag * H); ball.velocity.x *= f; ball.velocity.z *= f; }
     slope();
+    resist(ix, iz);
     // Bremshilfe (Joystick): ohne Eingabe auf ebenem Boden sanft abbremsen
     if (g.brake && g.groundBody && g.groundN[1] > BRAKE_FLAT && Math.hypot(ix, iz) < 0.1 && Math.hypot(ball.velocity.x, ball.velocity.z) < 7) { const f = Math.exp(-g.brake * H); ball.velocity.x *= f; ball.velocity.z *= f; }
     for (const el of g.els) TYPES[el.type].step?.(el, g, H, ev);

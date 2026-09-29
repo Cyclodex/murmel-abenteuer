@@ -8,13 +8,14 @@ const ROUND = 10;  // Sekunden, dann starten alle wieder oben
 const PUSH = 0.3;  // leichte Neigung nach vorne (Anteil der Kipp-Eingabe), damit sie in Schwung kommen
 
 // Treppe nach vorne (+z) hinunter, unten ein Auslauf mit Wand, die Murmeln prallen dort zurück
+// (Wand 3 m hoch: der Pingpong springt im Auslauf bis 3.6 m, über 1.5 m kam er hinaus)
 export function treppenLevel(n) {
   const w = n * LANE + 1.2, top = STEPS * RISE, parts = [];
   for (let k = 0; k < STEPS; k++) {
     const y = top - k * RISE, z0 = -STEPS * TREAD + k * TREAD;
     parts.push({ type: 'weg', from: [0, y, z0], to: [0, y, z0 + TREAD], width: w, walls: 1, thick: y + 1, caps: k === 0 ? 'start' : undefined });
   }
-  parts.push({ type: 'weg', from: [0, 0, 0], to: [0, 0, 10], width: w, walls: 1.5, thick: 1, caps: 'end' });
+  parts.push({ type: 'weg', from: [0, 0, 0], to: [0, 0, 10], width: w, walls: 3, thick: 1, caps: 'end' });
   return { id: 'treppe', name: 'Treppe', emoji: '🪜', theme: 'spielzimmer', start: [0, top, -STEPS * TREAD + 1], killY: -8, parts };
 }
 

@@ -271,7 +271,10 @@ test('Murmeln prallen je nach Art verschieden stark von der Wand ab', async ({ p
   expect(r.basketball.e).toBe(0.8);
   expect(r.bowling.e).toBe(0.1);
   expect(r.melone.e).toBe(0.2);
-  for (const id of ['standard', 'fussball', 'flummi', 'tennis', 'basketball']) expect(r[id].x, id).toBeLessThan(1);
+  for (const id of ['standard', 'fussball', 'flummi', 'tennis', 'basketball']) {
+    expect(r[id].vx, id).toBeLessThan(-0.5); // rollt noch zurück
+    expect(r[id].x, id).toBeLessThan(1.5);   // klar weg von der Wand (Berührung bei x = 2.5)
+  }
 });
 
 test('Golfball hüpft kaum und rollt weiter als die Standard-Murmel', async ({ page }) => {
@@ -477,7 +480,8 @@ test('Nagelwand: jede Murmel fällt hindurch, prallt an Nägeln ab und kommt unt
       const g = createGame(CANNON, { id: 't', start: [0, 14, 3], killY: -8, parts }, S.ball); g.reset();
       let hits = 0, unten = -1, xs = new Set();
       for (let i = 0; i < 60 * 15 && unten < 0; i++) {
-        hits += g.step(0, i < 60 ? -0.5 : 0, 1 / 60).filter(e => e === 'hit').length;
+        // oben bis über die Kante lenken (liegen lassen bremst sie sonst davor ab), dann nur noch fallen
+        hits += g.step(0, g.ball.position.z > -0.2 && g.ball.position.y > 13 ? -0.5 : 0, 1 / 60).filter(e => e === 'hit').length;
         if (g.ball.position.y < 1.5) unten = i / 60;
       }
       return { id: S.id, hits, unten, x: +g.ball.position.x.toFixed(1) };
@@ -527,8 +531,34 @@ test('Bergab zieht es: Rampe beschleunigt kräftig, Bremshilfe nur in der Ebene,
   // 10°-Rampe, 3 s: rollende Kugel ohne Verluste wäre 5/7 * g * sin(10°) * 3 s = 3.65 m/s
   expect(r.rampe).toBeGreaterThan(3.2);
   expect(Math.abs(r.rampeBremse - r.rampe)).toBeLessThan(0.01); // Bremshilfe bremst bergab nicht
-  expect(r.ebenBremse).toBeLessThan(r.eben - 1); // in der Ebene bremst sie weiter
+  expect(r.ebenBremse).toBeLessThan(r.eben - 0.5); // in der Ebene bremst sie weiter
   expect(r.fluss).toBeGreaterThan(5); // steiler Fluss: schneller als die Strömung (4 m/s)
+});
+
+test('Bremsen: langsam bleibt die Murmel bald stehen, schnell behält sie Schwung, leichtes Gefälle rollt', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const tan = d => Math.tan(d * Math.PI / 180);
+    const lauf = (parts, start, v0, sek, input = [0, 0]) => {
+      const g = createGame(CANNON, { id: 't', start, killY: -50, parts }); g.reset();
+      for (let i = 0; i < 30; i++) g.step(0, 0, 1 / 60);
+      g.ball.velocity.set(0, 0, -v0); g.ball.angularVelocity.set(-v0 / 0.5, 0, 0);
+      let t = 0, stand = null;
+      while (t < sek) { g.step(input[0], input[1], 1 / 60); t += 1 / 60; if (stand === null && g.ball.velocity.length() < 0.05) stand = t; }
+      return { v: g.ball.velocity.length(), stand };
+    };
+    const eben = [{ type: 'weg', from: [0, 0, 5], to: [0, 0, -300], width: 6 }];
+    return {
+      langsam: lauf(eben, [0, 0, 0], 3, 6).stand,                   // Kippen, keine Eingabe
+      schnell: lauf(eben, [0, 0, 0], 10, 2, [0.0, -0.3]).v,          // leicht weiter kippen: Luftwiderstand, kein Rollwiderstand
+      gefaelle: lauf([{ type: 'weg', from: [0, tan(3) * 105, 5], to: [0, 0, -100], width: 6 }], [0, tan(3) * 100, 0], 0, 3).v
+    };
+  });
+  expect(r.langsam).not.toBeNull();
+  expect(r.langsam).toBeLessThan(4);   // früher erst nach ~19 s
+  expect(r.schnell).toBeGreaterThan(9); // Schwung bleibt
+  expect(r.gefaelle).toBeGreaterThan(0.5); // 3° Gefälle: rollt von selbst los
 });
 
 test('Echte Dinge: durch die Pfanne, Herdplatte hüpft, Abfluss im Lavabo, Sprenger und Schlauch', async ({ page }) => {

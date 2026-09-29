@@ -30,9 +30,9 @@ export default {
     [
       { x: 0, z: -8, speed: 2 }, { x: 0, z: -10, speed: 1.5 }, { x: 0, z: -15, wait: ['hoehe', 6] },
       { x: 1.2, z: -19.5, speed: 2, r: 0.6 }, { x: 1.2, z: -27, speed: 4, wait: ['balkenWeg', [1.2, -21]] },
-      { x: 0, z: -30.5, speed: 2 }, { x: 0, z: -37, free: true, r: 2 }, { x: 0, z: -40.5, speed: 2 },
-      { x: 0, z: -49.5, free: true, r: 2 }, { x: 0, z: -50.5, speed: 2 }, { x: 0, z: -58.5, free: true, r: 2 },
-      { x: 0, z: -60, speed: 1.5 }, { x: 0, z: -65, wait: ['hoehe', 16] }, { x: 0, z: -66.5, speed: 2, r: 0.6 },
+      { x: 0, z: -30.5, speed: 2 }, { x: 0, z: -37, free: true, r: 2 }, { x: 0, z: -41.8, speed: 2, r: 0.6 },
+      { x: 0, z: -49.5, free: true, r: 2 }, { x: 0, z: -51.3, speed: 2, r: 0.6 }, { x: 0, z: -58.5, free: true, r: 2 },
+      { x: 0, z: -60.8, speed: 1.5 }, { x: 0, z: -65, wait: ['hoehe', 16] }, { x: 0, z: -66.5, speed: 2, r: 0.6 },
       { x: 0, z: -74, speed: 4, wait: ['phase', ['hammer', 0, 0.72, 0.85]] }, { x: 0, z: -77.5, speed: 2 },
       { x: 0, z: -111, speed: 5, wait: ['phase', ['felsen', 0, 0.1, 0.2]] }, { x: 0.5, z: -115, speed: 3 }, { x: 3, z: -116, speed: 3 },
       { x: 8, z: -116, speed: 3 }, { follow: true, bisY: -4.4, speed: 3 }, { x: 14, z: -116, speed: 3 }, { x: 19, z: -116 }
@@ -44,9 +44,9 @@ export default {
       { x: -10.5, z: -14.5, r: 0.4, wait: ['hoehe', 11.5] }, { x: -8.8, z: -14.5, speed: 1, r: 0.4 }, { x: -8.8, z: -14.5, r: 0.4, wait: 'amBoden' },
       { x: -2, z: -14.5, speed: 1.5, r: 0.5 },
       { x: 1.2, z: -19.5, speed: 2, r: 0.6 }, { x: 1.2, z: -27, speed: 4, wait: ['balkenWeg', [1.2, -21]] },
-      { x: 0, z: -30.5, speed: 2 }, { x: 0, z: -37, free: true, r: 2 }, { x: 0, z: -40.5, speed: 2 },
-      { x: 0, z: -49.5, free: true, r: 2 }, { x: 0, z: -50.5, speed: 2 }, { x: 0, z: -58.5, free: true, r: 2 },
-      { x: 0, z: -60, speed: 1.5 }, { x: 0, z: -65, wait: ['hoehe', 16] }, { x: 0, z: -66.5, speed: 2, r: 0.6 },
+      { x: 0, z: -30.5, speed: 2 }, { x: 0, z: -37, free: true, r: 2 }, { x: 0, z: -41.8, speed: 2, r: 0.6 },
+      { x: 0, z: -49.5, free: true, r: 2 }, { x: 0, z: -51.3, speed: 2, r: 0.6 }, { x: 0, z: -58.5, free: true, r: 2 },
+      { x: 0, z: -60.8, speed: 1.5 }, { x: 0, z: -65, wait: ['hoehe', 16] }, { x: 0, z: -66.5, speed: 2, r: 0.6 },
       { x: 0, z: -74, speed: 4, wait: ['phase', ['hammer', 0, 0.72, 0.85]] }, { x: 0, z: -77.5, speed: 2 },
       { x: 0, z: -111, speed: 5, wait: ['phase', ['felsen', 0, 0.1, 0.2]] }, { x: 0.5, z: -115, speed: 3 }, { x: 3, z: -116, speed: 3 },
       { x: 8, z: -116, speed: 3 }, { follow: true, bisY: -4.4, speed: 3 }, { x: 14, z: -116, speed: 3 }, { x: 19, z: -116 }
