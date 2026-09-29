@@ -49,14 +49,14 @@ export function createPilot(g, wps) {
   const pilot = {
     i: 0, waiting: null,
     drive() {
-      const w = wps[Math.min(pilot.i, wps.length - 1)], p = g.ball.position, v = g.ball.velocity;
+      const cur = Math.min(pilot.i, wps.length - 1), w = wps[cur], p = g.ball.position, v = g.ball.velocity;
       let ix = 0, iz = 0;
       const [wName, wArg] = w.wait ? [].concat(w.wait) : [];
-      const waiting = wName && !ok.has(pilot.i) && !WAITS[wName](g, wArg);
-      if (wName && !waiting) ok.add(pilot.i);
+      const waiting = wName && !ok.has(cur) && !WAITS[wName](g, wArg);
+      if (wName && !waiting) ok.add(cur);
       pilot.waiting = waiting ? wName : null;
       // Beim Warten den vorherigen Wegpunkt halten
-      const tgt = waiting ? wps[Math.max(0, pilot.i - 1)] : w;
+      const tgt = waiting ? wps[Math.max(0, cur - 1)] : w; // auch am Ende der Route (i über das Listenende hinaus)
       const dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1e-6;
       const onKin = g.groundBody && g.groundBody.type === g.C.Body.KINEMATIC;
       if (w.follow && !waiting) { // der Bahn folgen (Spirale), bis die Murmel tief genug ist
