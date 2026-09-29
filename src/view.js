@@ -1,6 +1,6 @@
 // Grafik mit three.js: baut die Szene aus den Spieldaten und zeichnet jedes Bild.
 import { TYPES } from './bauteile.js';
-import { R } from './game.js';
+import { R, SURFACES } from './game.js';
 import { THEMES, COLORS, canvasTex, rnd } from './themes.js';
 import { createTrailFx } from './trails.js';
 
@@ -16,6 +16,12 @@ const mudTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
   x.fillStyle = '#6B4A2B'; x.fillRect(0, 0, w, h);
   const r = rnd(3);
   for (let i = 0; i < 40; i++) { x.fillStyle = r() > 0.5 ? '#7D5A36' : '#57391F'; x.beginPath(); x.arc(r() * w, r() * h, 3 + r() * 8, 0, 7); x.fill(); }
+});
+const puddleTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  x.fillStyle = '#3F8FD8'; x.fillRect(0, 0, w, h);
+  const r = rnd(5);
+  x.strokeStyle = 'rgba(220,240,255,0.55)'; x.lineWidth = 2;
+  for (let i = 0; i < 14; i++) { const cx = r() * w, cy = r() * h, rr = 4 + r() * 14; x.beginPath(); x.ellipse(cx, cy, rr, rr * 0.6, 0, 0, 7); x.stroke(); }
 });
 const arrowTex = THREE => canvasTex(THREE, 64, 64, (x, w, h) => {
   x.fillStyle = '#FF7A00'; x.fillRect(0, 0, w, h);
@@ -41,6 +47,13 @@ function boxGeo(THREE, sx, sy, sz, tile = 2) {
 
 const BUMPS = new Map(); // Design -> fertig berechnete Bump-Map
 
+// Dreckflecken auf der Kugel: je dreckiger, desto mehr Flecken (t = ab welchem Dreck ein Fleck erscheint)
+const MUD = ['#5B3A1E', '#6B4A2B', '#4A2F18', '#7D5A36'];
+const BLOBS = (() => {
+  const r = rnd(11);
+  return Array.from({ length: 70 }, (_, i) => ({ x: r() * 256, y: 12 + r() * 104, rx: 5 + r() * 15, ry: 4 + r() * 9, a: r() * 3, t: 0.05 + i / 70 * 0.9, c: MUD[i % MUD.length] }));
+})();
+
 // Murmel-Kugel mit Design (Textur, Planetenring, Glanz, Struktur)
 export function createBallMesh(THREE) {
   const skinCanvas = document.createElement('canvas'); skinCanvas.width = 256; skinCanvas.height = 128;
@@ -48,13 +61,33 @@ export function createBallMesh(THREE) {
   // Bump-Map für Oberflächen mit Struktur (Golf-Dellen), feiner als die Farbe; je Design nur einmal berechnet
   const bumpCanvas = document.createElement('canvas'); bumpCanvas.width = 512; bumpCanvas.height = 256;
   const bumpTex = new THREE.CanvasTexture(bumpCanvas);
+  const baseCanvas = document.createElement('canvas'); baseCanvas.width = 256; baseCanvas.height = 128; // Design ohne Dreck
   const ballMat = new THREE.MeshPhongMaterial({ map: skinTex, shininess: 90 });
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 20), ballMat);
   mesh.castShadow = true;
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.85, 40), new THREE.MeshLambertMaterial({ color: 0xE8D5A8, side: THREE.DoubleSide }));
   ring.rotation.x = Math.PI / 2.4; mesh.add(ring);
+  let shiny = false, dirtLvl = 0;
+  // Design + Dreck in die Textur malen; Dreck matt macht die Kugel matt
+  function paint() {
+    const c = skinCanvas.getContext('2d'), k = dirtLvl / 20;
+    c.drawImage(baseCanvas, 0, 0);
+    if (k > 0) {
+      for (const b of BLOBS) if (b.t <= k) for (const dx of [-256, 0, 256]) { c.fillStyle = b.c; c.beginPath(); c.ellipse(b.x + dx, b.y, b.rx, b.ry, b.a, 0, 7); c.fill(); }
+      c.globalAlpha = k * 0.35; c.fillStyle = MUD[1]; c.fillRect(0, 0, 256, 128); c.globalAlpha = 1;
+    }
+    skinTex.needsUpdate = true;
+    ballMat.shininess = (shiny ? 200 : 90) * (1 - 0.85 * k);
+    ballMat.specular.setHex(shiny ? 0xFFF2B0 : 0x111111).multiplyScalar(1 - k);
+  }
+  // Dreck 0..1, in 20 Stufen (neu malen nur, wenn sich die Stufe ändert)
+  function setDirt(d) {
+    const lvl = Math.round(Math.max(0, Math.min(1, d || 0)) * 20);
+    if (lvl !== dirtLvl) { dirtLvl = lvl; paint(); }
+  }
   function setSkin(skin) {
-    skin.paint(skinCanvas.getContext('2d'), 256, 128); skinTex.needsUpdate = true;
+    skin.paint(baseCanvas.getContext('2d'), 256, 128);
+    shiny = !!skin.shiny; paint();
     ring.visible = !!skin.ring;
     if (skin.bump) {
       if (!BUMPS.has(skin)) { const c = document.createElement('canvas'); c.width = 512; c.height = 256; skin.bump(c.getContext('2d'), 512, 256); BUMPS.set(skin, c); }
@@ -62,9 +95,8 @@ export function createBallMesh(THREE) {
     }
     const bump = skin.bump ? bumpTex : null;
     if (ballMat.bumpMap !== bump) { ballMat.bumpMap = bump; ballMat.bumpScale = 0.02; ballMat.needsUpdate = true; }
-    ballMat.shininess = skin.shiny ? 200 : 90; ballMat.specular.setHex(skin.shiny ? 0xFFF2B0 : 0x111111);
   }
-  return { mesh, setSkin };
+  return { mesh, setSkin, setDirt, get dirtLevel() { return dirtLvl / 20; } };
 }
 
 export function createView(THREE, renderer, game) {
@@ -110,6 +142,7 @@ export function createView(THREE, renderer, game) {
     else if (look === 'ramp' || look === 'bridge') m = (cache.ramp = cache.ramp || theme.ramp(tools));
     else if (look === 'eis') m = new THREE.MeshPhongMaterial({ color: 0x8ED3F2, shininess: 60, specular: 0x88aacc });
     else if (look === 'schlamm') m = lambert(0xffffff, { map: mudTex(THREE) });
+    else if (look === 'pfuetze') m = new THREE.MeshPhongMaterial({ map: puddleTex(THREE), shininess: 120, specular: 0xCCE8FF });
     else if (look === 'band') m = lambert(0x3A3F47);
     else if (look === 'platform') m = new THREE.MeshPhongMaterial({ color: COLORS.gelb, shininess: 40 });
     else if (look === 'seesaw') m = new THREE.MeshPhongMaterial({ color: COLORS.orange, shininess: 40 });
@@ -211,6 +244,10 @@ export function createView(THREE, renderer, game) {
   scene.add(ballMesh);
 
   const trailFx = createTrailFx(THREE, scene); // Spur hinter der Murmel (src/trails.js)
+  // Spritzer im Schlamm und in der Pfütze (gleicher Partikel-Pool wie die Spuren)
+  const splash = { schlamm: createTrailFx(THREE, scene), pfuetze: createTrailFx(THREE, scene) };
+  splash.schlamm.set({ shape: 'kugel', colors: [0x5B3A1E, 0x7D5A36, 0x4A2F18], size: 0.2, life: 0.5, every: 0.3, spread: 2.2, rise: 2.5, gravity: 12 });
+  splash.pfuetze.set({ shape: 'kugel', colors: [0xBDEBFF, 0x7FC4F5, 0xFFFFFF], size: 0.18, life: 0.45, every: 0.2, spread: 2.5, rise: 3, gravity: 12, opacity: 0.8 });
 
   // ---------- Konfetti ----------
   const confetti = [];
@@ -238,6 +275,8 @@ export function createView(THREE, renderer, game) {
     for (const t of ticks) t(dt, game);
     if (groundFx && groundFx.tick) groundFx.tick(dt, camera);
     trailFx.update(dt, ballMesh.position);
+    for (const [name, fx] of Object.entries(splash)) fx.update(dt, ballMesh.position, !!game.groundBody && game.surface === SURFACES[name]);
+    ball.setDirt(game.dirt);
     for (let i = confetti.length - 1; i >= 0; i--) {
       const c = confetti[i];
       c.v.y -= 9.8 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += dt * 6; c.life -= dt;
@@ -277,6 +316,6 @@ export function createView(THREE, renderer, game) {
     });
   }
 
-  const view = { scene, camera, ballMesh, burst, render, resize, setSkin, setTrail: trailFx.set, trailFx, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
+  const view = { scene, camera, ballMesh, burst, render, resize, setSkin, setTrail: trailFx.set, trailFx, splash, ball, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
   return view;
 }
