@@ -61,7 +61,7 @@ export const EXTRA = {
     }
   },
 
-  // Förderband: Weg, der die Murmel in seine Richtung mitnimmt. grip = wie stark (pro Sekunde, Standard 4).
+  // Förderband: Weg, der die Murmel in seine Richtung mitnimmt. speed in m/s (Standard 8), grip = wie stark (pro Sekunde, Standard 10).
   // {type:'band', from, to, width, walls?, caps?, speed?, grip?}
   band: {
     solids(d) {
@@ -73,8 +73,8 @@ export const EXTRA = {
     step(el, g, h) {
       const u = g.groundBody && g.groundBody.userData;
       if (!u || u.band !== el) return;
-      const v = g.ball.velocity, al = v.x * el.dir[0] + v.y * el.dir[1] + v.z * el.dir[2], k = Math.min(1, (el.grip ?? 4) * h);
-      const dv = ((el.speed ?? 3) - al) * k;
+      const v = g.ball.velocity, al = v.x * el.dir[0] + v.y * el.dir[1] + v.z * el.dir[2], k = Math.min(1, (el.grip ?? 10) * h);
+      const dv = ((el.speed ?? 8) - al) * k;
       if (dv > 0) { v.x += el.dir[0] * dv; v.y += el.dir[1] * dv; v.z += el.dir[2] * dv; }
     },
     view(el, v) {
@@ -88,7 +88,7 @@ export const EXTRA = {
       const m = new T.Mesh(new T.PlaneGeometry(w, s.L), new T.MeshLambertMaterial({ map: tex }));
       m.quaternion.set(...s.q); m.rotateX(-Math.PI / 2);
       m.position.set(...add(s.mid, scale(s.up, 0.02))); v.scene.add(m);
-      return { tick(dt) { tex.offset.y = (tex.offset.y - dt * (el.speed ?? 3) / 1.5) % 1; } };
+      return { tick(dt) { tex.offset.y = (tex.offset.y - dt * (el.speed ?? 8) / 1.5) % 1; } };
     }
   },
 

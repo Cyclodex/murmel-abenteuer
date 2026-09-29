@@ -5,7 +5,7 @@ export default {
   start: [0, 0, 2], killY: -8,
   parts: [
     { type: 'weg', from: [0, 0, 6], to: [0, 0, -6], width: 5, walls: 0.8, caps: 'start' },
-    { type: 'band', from: [0, 0, -6], to: [0, 0, -18], width: 4, walls: 0.8, speed: 4 },
+    { type: 'band', from: [0, 0, -6], to: [0, 0, -18], width: 4, walls: 0.8 },
     // Teller mit Seetang-Rad
     { type: 'klotz', at: [0, -0.5, -24], size: [10, 1, 12] },
     { type: 'wand', from: [-5.2, 0, -18], to: [-5.2, 0, -30] },
