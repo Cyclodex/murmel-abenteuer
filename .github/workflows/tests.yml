@@ -1,0 +1,54 @@
+# Volle Playwright-Suite inkl. Autopilot durch alle Level. Dauert lange, deshalb nicht bei jedem PR:
+# nachts, wenn main in den letzten 25 Stunden einen neuen Commit bekommen hat, oder von Hand
+# (Actions -> "Tests (voll)" -> "Run workflow").
+name: Tests (voll)
+
+on:
+  schedule:
+    - cron: '17 1 * * *' # 01:17 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: tests-voll
+  cancel-in-progress: true
+
+jobs:
+  neu:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ "${{ github.event_name }}" = workflow_dispatch ] || [ $(( $(date +%s) - $(git log -1 --format=%ct) )) -lt 90000 ]; then
+            echo run=true >> "$GITHUB_OUTPUT"
+          else
+            echo "Kein neuer Commit auf main seit 25 Stunden, nichts zu testen."
+            echo run=false >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    needs: neu
+    if: needs.neu.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --shard=${{ matrix.shard }}/4
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 7

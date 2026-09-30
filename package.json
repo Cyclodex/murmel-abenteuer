@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node tests/server.js",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:schnell": "playwright test --grep-invert \"alle Level mit jeder\""
   },
   "devDependencies": {
     "@playwright/test": "1.56.1"
