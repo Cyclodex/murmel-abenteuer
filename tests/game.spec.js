@@ -134,7 +134,7 @@ test('Ziel-Animation: Hochflug über das ganze Level mit Strecke, Tippen zeigt d
   const errors = watchErrors(page);
   await play(page, 'ausflug');
   const base = await page.evaluate(() => { const v = window.murmel.view; return { far: v.camera.far, fog: v.scene.fog.far }; });
-  await page.waitForFunction(() => window.murmel.game.time > 0.5);
+  await page.waitForFunction(() => window.murmel.game.time > 1.5); // Aufnahme alle 0.1 s: genug Punkte für die Strecke
   await page.evaluate(() => window.murmel.game.spawn([0, 5, -69]));
   await page.waitForFunction(() => window.murmel.view.cinemaT > 0);
   await expect(page.locator('#winOv')).toBeHidden(); // erst der Zielmoment
