@@ -1,5 +1,6 @@
 // Spielstand im Browser speichern (localStorage). Ohne Speicher läuft alles weiter, nur ohne Merken.
-// Einstellungen (Steuerung, Stärke, Ton) gelten für alle, Sterne, Bestzeiten, Punkte, Murmel, Spur und Sticker pro Spieler.
+// Einstellungen (Steuerung, Stärke, Ton) gelten für alle, Sterne, Bonussterne, Bestzeiten, Punkte, Murmel, Spur und Sticker pro Spieler.
+// bonus = Level, in denen der Bonusstern schon einmal ins Ziel gebracht wurde.
 // runs = pro Level die Fahrt mit den meisten Punkten { stars, total, time, falls, power, score } (siehe score.js).
 // Die Fahrten der Bestzeiten (Geistermurmel) liegen getrennt unter GHOST_KEY (grösser, dürfen verloren gehen).
 const KEY = 'murmel-abenteuer-v2';
@@ -7,10 +8,14 @@ const GHOST_KEY = 'murmel-geist-v1';
 const OLD_KEY = 'murmel-abenteuer-v1'; // alter Spielstand ohne Spieler
 export const NAME_MAX = 16;
 
+// Sticker gab es früher pro Level (lvl:, sterne:, bonus:): weglassen, gesammelte Bonussterne nach bonus übernehmen
+const OLD_STICKER = /^(lvl|sterne|bonus):/;
+const pick = (o, keep) => Object.fromEntries(Object.entries(o || {}).filter(([k]) => keep(k)));
+const oldBonus = st => Object.fromEntries(Object.keys(st || {}).filter(k => k.startsWith('bonus:')).map(k => [k.slice(6), true]));
 const newPlayer = (name, from = {}) => ({
   id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-  name, done: from.done || {}, best: from.best || {}, skin: from.skin || 'standard',
-  stickers: from.stickers || {}, trail: from.trail || 'keine', times: from.times || {}, runs: from.runs || {}
+  name, done: from.done || {}, best: from.best || {}, bonus: { ...oldBonus(from.stickers), ...from.bonus }, skin: from.skin || 'standard',
+  stickers: pick(from.stickers, k => !OLD_STICKER.test(k)), trail: from.trail || 'keine', times: from.times || {}, runs: from.runs || {}
 });
 
 function load(key) {
@@ -64,8 +69,9 @@ export function createProgress() {
       return p;
     },
     selectPlayer(id) { if (data.players.some(p => p.id === id)) { data.current = id; save(); } },
-    // Level geschafft: merkt die beste Sternzahl
-    finish(id, n) { const p = me(); p.done[id] = true; p.best[id] = Math.max(p.best[id] || 0, n); save(); },
+    hasBonus: id => !!me().bonus[id],
+    // Level geschafft: merkt die beste Sternzahl und ob der Bonusstern dabei war
+    finish(id, n, bonus = false) { const p = me(); p.done[id] = true; p.best[id] = Math.max(p.best[id] || 0, n); if (bonus) p.bonus[id] = true; save(); },
     run: id => me().runs[id] || null,
     // Fahrt mit Punkten: gibt true zurück, wenn sie mehr Punkte hat als die bisher beste in diesem Level
     setRun(id, r) { const p = me(), old = p.runs[id]; if (old && old.score >= r.score) return false; p.runs[id] = r; save(); return true; },
@@ -78,13 +84,12 @@ export function createProgress() {
     get trail() { return me().trail; },
     setTrail(id) { me().trail = id; save(); },
     hasSticker: id => !!me().stickers[id],
-    stickerCount: () => Object.keys(me().stickers).length,
     // Sticker ins Album kleben (ohne Speichern; danach save() aufrufen)
     addSticker(id) { me().stickers[id] = true; },
     save,
     setControl(c) { data.control = c; save(); },
     setPower(p) { data.power = p; save(); },
     setSound(m) { data.sound = m; save(); },
-    clear() { const p = me(); p.done = {}; p.best = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; p.times = {}; p.runs = {}; delete ghosts[p.id]; save(); saveGhosts(); }
+    clear() { const p = me(); p.done = {}; p.best = {}; p.bonus = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; p.times = {}; p.runs = {}; delete ghosts[p.id]; save(); saveGhosts(); }
   };
 }

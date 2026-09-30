@@ -37,10 +37,10 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/skins.js` | Murmel-Designs, ab wie vielen Sternen sie frei sind, Sprungkraft an Wand/Boden, Schwerkraft, Rollen und Dichte (`ball: {wand, boden, schwere, rollen, dichte}`, dichte in g/cm³: unter 1 schwimmt die Murmel im Fluss), optional Struktur (`bump`) |
 | `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter, werfen unterwegs Dominos um und prallen unten an eine Glaswand (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |
 | `src/trails.js` | Spuren hinter der Murmel (freischaltbar über Sterne ⭐ oder Sticker 🏅), Partikel-Pool als InstancedMesh |
-| `src/stickers.js` | Sticker-Album: Sticker je Level/Welt werden aus `src/levels/index.js` erzeugt, dazu Extras |
+| `src/stickers.js` | Sticker-Album: pro Welt 🏆 🌟 💎 💀 (aus `src/levels/index.js` erzeugt), dazu Extras; Antippen im Album erklärt den Sticker |
 | `src/ghost.js` | Bestzeit: Fahrt aufnehmen (alle 0.1 s), Geistermurmel fährt beim nächsten Mal mit, Zeitformat |
 | `src/cheer.js` | Jubel beim Freischalten (Emojis, Konfetti, Klang `jubel`) |
-| `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne, Bestzeiten, beste Fahrt mit Punkten, Murmel, Spur und Sticker pro Spieler; Einstellungen für alle; Geister-Fahrten getrennt (`murmel-geist-v1`) |
+| `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne, Bestzeiten, beste Fahrt mit Punkten, Murmel, Spur, Bonussterne und Sticker pro Spieler; Einstellungen für alle; Geister-Fahrten getrennt (`murmel-geist-v1`) |
 | `src/score.js` | Punkte einer Fahrt (pro Level höchstens 2050: Sterne-Anteil 1000, Zeit gegen die Richtzeit bis 750, ohne Absturz 300, je Absturz 100 weniger) und Rangliste nach Punkten (Stärke wird nur angezeigt) |
 | `src/levels/richtzeiten.js` | Richtzeit pro Level für die Punkte (Autopilot, Stärke normal, Standard-Murmel), erzeugt mit `node tests/richtzeiten.mjs [id ...]` |
 | `src/online.js` | Online-Rangliste über Supabase (nur `fetch`, 3 s Timeout, Fehler still): neue Rekorde mit Geist-Aufnahme senden (ohne Netz in localStorage `murmel-online-v1` vormerken, später nachsenden), Rangliste holen, Geist laden. Auf localhost aus (Tests: localStorage `murmel-online` = `an`) |
