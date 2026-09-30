@@ -12,6 +12,7 @@
 //                           in jede Richtung sehen (bestimmt den Abstand), clear: nur was höchstens so weit vor look
 //                           liegt, wird gezeichnet (alles näher bei der Kamera fällt weg)}
 // Winkel in Level-Daten sind in Grad. yaw 0 = nach vorne (-z), positiv = nach links drehen.
+import { buildCheckpoint } from './checkpoint-figuren.js';
 import { DEG, quatYawPitch, rotate, add, scale, lerp3, yawOf, toLocal, fwdOf, rightOf, ease, mulQ } from './math.js';
 
 const R = 0.5; // Murmel-Radius
@@ -222,7 +223,8 @@ export const TYPES = {
   },
 
   // Checkpoint: Zone auf einer Fläche (at = Punkt auf der Oberfläche, dort wird neu gestartet).
-  // {type:'checkpoint', at, size?:[b,h,t], yaw?}
+  // side = Figur nur rechts (1) oder links (-1) vom Weg (sonst dort, wo Platz ist), figur = andere Figur als die der Welt
+  // {type:'checkpoint', at, size?:[b,h,t], yaw?, side?, figur?}
   checkpoint: {
     init(el, g) { el.order = g.checkpoints.push(el) - 1; },
     reset(el) { el.active = false; },
@@ -235,18 +237,8 @@ export const TYPES = {
         g.st.cp = el.order; ev.push('cp');
       }
     },
-    view(el, v) {
-      const T = v.THREE, size = el.size || [6, 3, 3], q = quatYawPitch((el.yaw || 0) * DEG, 0);
-      const base = add(el.at, rotate(q, [size[0] / 2 - 0.3, 0, 0]));
-      const pole = new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 1.6, 8), v.mats.pole);
-      pole.position.set(base[0], base[1] + 0.8, base[2]);
-      const flagMat = new T.MeshLambertMaterial({ color: 0xBBBBBB });
-      const flag = new T.Mesh(new T.BoxGeometry(0.05, 0.45, 0.65), flagMat);
-      const fo = add(base, rotate(q, [0, 1.35, 0.33]));
-      flag.position.set(...fo); flag.quaternion.set(...q);
-      v.scene.add(pole, flag);
-      return { tick() { flagMat.color.setHex(el.active ? 0x3BB273 : 0xBBBBBB); } };
-    }
+    // Zielband und Figur je Welt (src/checkpoint-figuren.js), nur Grafik
+    view(el, v) { return buildCheckpoint(v, el, TYPES); }
   },
 
   // Trampolin: Rechteck auf dem Boden. {type:'trampolin', at, size:[b,t], yaw?, jump?, push?, tempo?}

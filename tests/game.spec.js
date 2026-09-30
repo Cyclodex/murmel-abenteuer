@@ -806,6 +806,28 @@ test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
   expect(r.pos).toEqual([0, 2.5, -28]);
 });
 
+test('Checkpoint: Figur je Welt schläft, jubelt beim Erreichen, Band reisst, Neustart setzt zurück', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  const cp = () => page.evaluate(() => ({ ...window.murmel.view.scene.getObjectByName('checkpoint').userData }));
+  const welten = { ausflug: 'zwerg', sz2: 'springteufel', g1: 'zwerg', k1: 'toaster', b1: 'ente', w1: 'astronaut', u1: 'oktopus', v1: 'geysir' };
+  for (const [id, figur] of Object.entries(welten)) {
+    await page.evaluate(i => { const m = window.murmel; m.startLevel(m.LEVELS.findIndex(l => l.id === i)); }, id);
+    await expect.poll(cp, { message: id }).toMatchObject({ figur, zustand: 'schlaf', band: 'ganz' });
+    // Murmel auf den ersten Checkpoint setzen und dort festhalten
+    await page.evaluate(() => {
+      const g = window.murmel.game, a = g.checkpoints[0].at;
+      window.__halt = setInterval(() => { g.ball.position.set(a[0], a[1] + 0.5, a[2]); g.ball.velocity.set(0, 0, 0); }, 4);
+    });
+    await expect.poll(cp, { message: id }).toMatchObject({ zustand: 'jubel' });
+    await expect.poll(cp, { message: id, timeout: 10000 }).toMatchObject({ zustand: 'winken', band: 'gerissen' });
+    await page.evaluate(() => { clearInterval(window.__halt); window.murmel.game.reset(); });
+    await expect.poll(cp, { message: id }).toMatchObject({ zustand: 'schlaf', band: 'ganz' });
+  }
+  expect(errors).toEqual([]);
+});
+
 test('Kippen: Kennlinie der drei Stärken', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {
