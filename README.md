@@ -34,7 +34,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen; Knopf 📱/🕹️ wechselt jederzeit), Pfeiltasten, Stärken 🐢/🐇/🚀 (`POWERS`) |
 | `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
 | `src/skins.js` | Murmel-Designs, ab wie vielen Sternen sie frei sind, Sprungkraft an Wand/Boden, Schwerkraft, Rollen und Dichte (`ball: {wand, boden, schwere, rollen, dichte}`, dichte in g/cm³: unter 1 schwimmt die Murmel im Fluss), optional Struktur (`bump`) |
-| `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |
+| `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter, unten prallen sie an eine Glaswand und stossen eine Domino-Kette an (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |
 | `src/trails.js` | Spuren hinter der Murmel (freischaltbar über Sterne ⭐ oder Sticker 🏅), Partikel-Pool als InstancedMesh |
 | `src/stickers.js` | Sticker-Album: Sticker je Level/Welt werden aus `src/levels/index.js` erzeugt, dazu Extras |
 | `src/ghost.js` | Bestzeit: Fahrt aufnehmen (alle 0.1 s), Geistermurmel fährt beim nächsten Mal mit, Zeitformat |

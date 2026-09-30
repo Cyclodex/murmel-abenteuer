@@ -319,7 +319,8 @@ test('Treppe: alle Murmeln kommen unten an, der Flummi springt am höchsten', as
   expect(by.basketball.up).toBeGreaterThan(by.standard.up);
 });
 
-test('Menüs zeigen die Treppe im Hintergrund, Knopf 🪜 zeigt sie im Vollbild', async ({ page }) => {
+test('Menüs zeigen die Treppe im Hintergrund, Knopf 🪜 zeigt sie im Vollbild, die Dominos fallen um', async ({ page }) => {
+  test.setTimeout(120_000); // bis die erste Murmel an der Glaswand ist: 5 s Spielzeit, im Container gut 12 s
   const errors = watchErrors(page);
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.backdrop);
@@ -328,6 +329,8 @@ test('Menüs zeigen die Treppe im Hintergrund, Knopf 🪜 zeigt sie im Vollbild'
   await page.click('#btnTreppe');
   await expect(page.locator('#mapOv')).toBeHidden();
   await page.waitForFunction(() => window.murmel.treppe.treppe.time > 0.5);
+  expect(await page.evaluate(() => window.murmel.treppe.dominos.started)).toBe(false);
+  await page.waitForFunction(() => window.murmel.treppe.dominos.started, null, { timeout: 90_000 }); // erste Murmel an der Scheibe
   await page.click('#treppeBack');
   await page.click('.lvl[data-level="ausflug"]');
   expect(await page.evaluate(() => window.murmel.backdrop)).toBe(false);
