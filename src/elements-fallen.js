@@ -1,10 +1,9 @@
 // Fallen und Hindernisse für schwere Level: Feld mit Löchern, Falltür, Schieber, Hammer (quetscht),
 // Treppe, Fluss, rollende Felsen. Gleiche Schnittstelle wie in elements.js.
-import { DEG, quatYawPitch, rotate, add, sub, scale, lerp3, toLocal, fwdOf, rightOf, ease } from './math.js';
-import { TYPES, segment, track, kinematicBody, driveTo, ballPos } from './elements.js';
+import { DEG, quatYawPitch, rotate, add, sub, dot, scale, lerp3, toLocal, fwdOf, rightOf, ease } from './math.js';
+import { TYPES, segment, track, kinematicBody, driveTo, ballPos, norm } from './elements.js';
 
 const R = 0.5;
-const norm = v => { const l = Math.hypot(...v) || 1; return scale(v, 1 / l); };
 const WATER_DRAG = 2; // Wasserwiderstand im Fluss (siehe fluss.step)
 // Quaternionen multiplizieren (a danach b in lokalen Achsen)
 const mulQ = (a, b) => [
@@ -278,6 +277,17 @@ export const FALLEN = {
         head.setMatrixAt(i, m.compose(p.set(...add(pin, scale(F, -gap / 2 - 0.2))), q, one));
       });
       v.scene.add(shaft, head);
+      // Kamera von vorne durch das Glas, folgt der Murmel nach unten; Wege und Säulen davor blendet sie aus
+      const { Rt, W, H, C, bottom } = FALLEN.nagelbrett.geo(el), top = el.at[1], fit = Math.min(4, H / 2), side = Math.max(0, W / 2 + 0.5 - fit);
+      const dir = norm(add(scale(F, -1), [0, 0.2, 0]));
+      return {
+        cam(p) {
+          const rel = sub(p, C), l = dot(rel, Rt), f = dot(rel, F);
+          if (Math.abs(l) > W / 2 + 0.5 || f < -gap / 2 - 1 || f > gap / 2 + 0.5 || p[1] < bottom + R + 0.3 || p[1] > top + 1) return null;
+          const x = Math.max(-side, Math.min(side, l)), y = Math.max(bottom + 2, Math.min(top - 1, p[1] - 1));
+          return { look: add(add(C, scale(Rt, x)), [0, y - C[1], 0]), dir, fit, clear: gap / 2 + 1.5 };
+        }
+      };
     }
   },
 
