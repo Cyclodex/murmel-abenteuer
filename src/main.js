@@ -380,9 +380,9 @@ function setupPilot() {
   const ray = new CANNON.RaycastResult();
   marks = wps.map(w => {
     if (w.x === undefined) return null; // „der Bahn folgen“ hat keinen Ort
-    // Boden unter dem Wegpunkt suchen
+    // Boden unter dem Wegpunkt suchen (von oberhalb der höchsten Bahn: Ausflug startet auf 60 m)
     ray.reset();
-    game.world.raycastClosest(new CANNON.Vec3(w.x, 40, w.z), new CANNON.Vec3(w.x, -20, w.z), { collisionFilterMask: 1, skipBackfaces: true }, ray);
+    game.world.raycastClosest(new CANNON.Vec3(w.x, 100, w.z), new CANNON.Vec3(w.x, -20, w.z), { collisionFilterMask: 1, skipBackfaces: true }, ray);
     const m = new THREE.Mesh(new THREE.TorusGeometry(w.r ?? 1.2, 0.07, 6, 32), new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
     m.rotation.x = Math.PI / 2;
     m.position.set(w.x, (ray.hasHit ? ray.hitPointWorld.y : 0) + 0.06, w.z);

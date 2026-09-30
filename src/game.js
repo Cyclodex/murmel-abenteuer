@@ -123,6 +123,8 @@ export function createGame(CANNON, level, ballProps = BALL) {
       const body = new CANNON.Body({ mass: 0, material: matFor(s.surface), shape: new CANNON.Box(new CANNON.Vec3(...s.half)) });
       body.position.set(...s.pos);
       body.quaternion.set(...s.quat);
+      // AABB wurde im Konstruktor am Ursprung berechnet, cannon.js aktualisiert sie für feste Körper nie (Raycasts brauchen sie)
+      body.aabbNeedsUpdate = true;
       body.collisionFilterGroup = GRP.fest; body.collisionFilterMask = GRP.murmel | GRP.lose;
       body.userData = s;
       world.addBody(body);
