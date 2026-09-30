@@ -1,7 +1,9 @@
-// Küche 3: Keksdose. Kekse umwerfen, durch den Strohhalm, aufs Band.
+// Küche 3: Keksdose. Kekse umwerfen, durch den Strohhalm, aufs Band, durch den Küchentrichter in die Schüssel.
+const T = [39.2, -0.35, -40.5]; // Trichter: Mitte des Lochs (Bande oben bei y = 4.1, Anlauf bei 5)
+const SY = -5;                  // Schüssel darunter: Höhe des Bodens
 export default {
   id: 'k3', name: 'Keksdose', emoji: '🍪', theme: 'kueche',
-  start: [0, 0, 2], killY: -8,
+  start: [0, 0, 2], killY: -10,
   parts: [
     { type: 'weg', from: [0, 0, 6], to: [0, 0, -6], width: 5, walls: 0.8, caps: 'start' },
     { type: 'weg', from: [0, 0, -6], to: [0, 0, -20], width: 5, walls: 0.8 },
@@ -19,15 +21,23 @@ export default {
     { type: 'wand', from: [15, 2, -32.7], to: [18, 2, -32.7] },
     { type: 'nische', at: [13.75, 2, -32.5], yaw: 0 },
     { type: 'checkpoint', at: [10, 2, -30], yaw: -90, size: [5, 3, 3] },
-    { type: 'band', from: [18, 2, -30], to: [30, 2, -30], width: 4, walls: 0.8 },
-    { type: 'weg', from: [30, 2, -30], to: [40, 2, -30], width: 6, walls: 0.8, caps: 'end' },
-    { type: 'ziel', at: [36, 2, -30] },
+    // Band hoch, Anlauf und schräg über den Rand in den Küchentrichter, darunter fängt eine Schüssel die Murmel auf
+    { type: 'band', from: [18, 2, -30], to: [30, 5, -30], width: 4, walls: 0.8 },
+    { type: 'weg', from: [30, 5, -30], to: [34, 5, -30], width: 3.2, walls: 0.6 },
+    { type: 'checkpoint', at: [32, 5, -30], yaw: -90, size: [3.2, 3, 2] },
+    { type: 'weg', from: [34, 5, -30], to: [T[0], 5, -33], width: 3.2, walls: 0.6 },
+    { type: 'trichter', at: T, R: 6, h: 3.5, loch: 0.9, rim: 1.2, farbe: 0xB0BEC5 },
+    { type: 'schuessel', at: [T[0], SY, T[2]], r: 2, R: 4.5, h: 2, rim: 0.5, art: 'schuessel', offen: [-90] },
+    { type: 'weg', from: [T[0] + 1.9, SY, T[2]], to: [T[0] + 14, SY, T[2]], width: 3, walls: 0.8, caps: 'end' },
+    { type: 'checkpoint', at: [T[0] + 7, SY, T[2]], yaw: -90, size: [3, 3, 2] },
+    { type: 'ziel', at: [T[0] + 11, SY, T[2]] },
 
     { type: 'stern', at: [0, 0.9, -2] },
     { type: 'stern', at: [0, 0.9, -18] },
     { type: 'stern', at: [2.88, 4.15, -27.13] },
-    { type: 'stern', at: [24, 2.9, -30] },
-    { type: 'stern', at: [33, 2.9, -30] },
+    { type: 'stern', at: [24, 4.4, -30] },
+    // unter dem Trichterloch: nur wer durch den Trichter fällt, holt ihn
+    { type: 'stern', at: [T[0], SY + 2.4, T[2]] },
     { type: 'stern', at: [13.75, 2.9, -35], bonus: true }
   ]
 };

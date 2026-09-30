@@ -1,11 +1,11 @@
-// Garten 3: Baumhaus. Neu: Spirale um den Stamm, Dominos (Blumentöpfe), Magnet.
+// Garten 3: Baumhaus. Neu: Rutschbahn als Spirale um den Stamm, Dominos (Blumentöpfe), Magnet.
 export default {
   id: 'g3', name: 'Baumhaus', emoji: '🏡', theme: 'garten',
   start: [0, 10, 2], killY: -8,
   parts: [
     { type: 'weg', from: [0, 10, 6], to: [0, 10, -4], width: 4, walls: 0.8, caps: 'start' },
-    // Spirale: 2 Runden, 8 m runter
-    { type: 'spirale', at: [0, 10, -4], yaw: 0, turn: 720, radius: 5, rise: -8, width: 4, walls: 0.8 },
+    // Rutschbahn: 2 Runden um den Stamm, 8 m runter
+    { type: 'rinne', at: [0, 10, -4], yaw: 0, turn: 720, radius: 5, rise: -8, r: 1.6, bogen: 80, farbe: 0xFFCA28 },
     { type: 'klotz', at: [5, 1, -4], size: [2.4, 20, 2.4], look: 'stamm', deko: true },
     { type: 'weg', from: [0, 2, -4], to: [0, 2, -12], width: 4, walls: 0.8 },
     { type: 'checkpoint', at: [0, 2, -8], size: [4, 3, 3] },
