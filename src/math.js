@@ -46,3 +46,16 @@ export function toLocal(p, c, yaw) {
   const dx = p[0] - c[0], dz = p[2] - c[2], cs = Math.cos(yaw), sn = Math.sin(yaw);
   return [dx * cs - dz * sn, p[1] - c[1], dx * sn + dz * cs];
 }
+
+// Überlappen sich zwei gedrehte Quader (Mitte, halbe Kantenlängen, Quaternion)? Trennachsen-Test.
+export function boxesOverlap(ca, ha, qa, cb, hb, qb) {
+  const ea = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map(v => rotate(qa, v)), eb = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map(v => rotate(qb, v));
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const d = sub(cb, ca), axes = [...ea, ...eb];
+  for (const a of ea) for (const b of eb) { const c = cross(a, b); if (dot(c, c) > 1e-9) axes.push(c); }
+  for (const n of axes) {
+    const r = ea.reduce((s, e, i) => s + ha[i] * Math.abs(dot(e, n)), 0) + eb.reduce((s, e, i) => s + hb[i] * Math.abs(dot(e, n)), 0);
+    if (Math.abs(dot(d, n)) > r) return false;
+  }
+  return true;
+}

@@ -3,11 +3,11 @@
 const JOY_RADIUS = 50; // Pixel bis zum vollen Ausschlag
 
 // Stärke der Steuerung: tilt = maximale Neigung der Bahn (Grad),
-// full = ab so viel Grad Handyneigung wirkt es voll, dead = Totzone in Grad.
+// full = ab so viel Grad Handyneigung wirkt es voll, dead = Totzone in Grad. name = Beschriftung auf der Karte.
 export const POWERS = [
-  { id: 'sanft', emoji: '🐢', tilt: 25, full: 20, dead: 2 },
-  { id: 'normal', emoji: '🐇', tilt: 40, full: 16, dead: 1 },
-  { id: 'extrem', emoji: '🚀', tilt: 55, full: 12, dead: 1 }
+  { id: 'sanft', emoji: '🐢', name: 'Langsam', tilt: 25, full: 20, dead: 2 },
+  { id: 'normal', emoji: '🐇', name: 'Mittel', tilt: 40, full: 16, dead: 1 },
+  { id: 'extrem', emoji: '🚀', name: 'Schnell', tilt: 55, full: 12, dead: 1 }
 ];
 
 // Handyneigung (Grad) -> Eingabe -1..1

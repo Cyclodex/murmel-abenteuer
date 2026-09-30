@@ -254,7 +254,7 @@ test('Alter Spielstand geht an den ersten neuen Spieler', async ({ page }) => {
   await page.click('#startJoy');
   await newPlayer(page, 'Mia');
   await expect(page.locator('#mapStars')).toHaveText('⭐ 4');
-  await expect(page.locator('#btnPower')).toHaveText('🚀');
+  await expect(page.locator('#btnPower')).toHaveText('🚀Schnell');
   await page.click('#btnPlayer');
   await newPlayer(page, 'Leo');
   await expect(page.locator('#mapStars')).toHaveText('⭐ 0');
@@ -1118,24 +1118,24 @@ test('Stärke und Ton umschalten, wird gespeichert', async ({ page }) => {
   await page.goto('/');
   await page.click('#startJoy');
   await newPlayer(page, 'Test');
-  await expect(page.locator('#btnPower')).toHaveText('🐇');
+  await expect(page.locator('#btnPower')).toHaveText('🐇Mittel');
   await page.click('#btnPower');
-  await expect(page.locator('#btnPower')).toHaveText('🚀');
+  await expect(page.locator('#btnPower')).toHaveText('🚀Schnell');
   await page.click('.lvl[data-level="sz1"]');
   expect(await page.evaluate(() => +(window.murmel.game.tilt * 180 / Math.PI).toFixed(1))).toBe(55);
   await page.click('#btnHome');
-  await expect(page.locator('#btnSound')).toHaveText('🔊');
+  await expect(page.locator('#btnSound')).toHaveText('🔊Ton an');
   await page.click('#btnSound');
-  await expect(page.locator('#btnSound')).toHaveText('🎵❌');
+  await expect(page.locator('#btnSound')).toHaveText('🔉Ohne Musik');
   await page.click('#btnSound');
-  await expect(page.locator('#btnSound')).toHaveText('🔇');
+  await expect(page.locator('#btnSound')).toHaveText('🔇Ton aus');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v2')));
   expect(saved.power).toBe('extrem');
   expect(saved.sound).toBe('aus');
   await page.reload();
   await page.click('#startJoy');
-  await expect(page.locator('#btnPower')).toHaveText('🚀');
-  await expect(page.locator('#btnSound')).toHaveText('🔇');
+  await expect(page.locator('#btnPower')).toHaveText('🚀Schnell');
+  await expect(page.locator('#btnSound')).toHaveText('🔇Ton aus');
   expect(errors).toEqual([]);
 });
 
@@ -1224,9 +1224,9 @@ test('Steuerung wechseln: im Spiel und auf der Karte, wird gespeichert', async (
   await expect(page.locator('#btnCal')).toBeHidden();
   // auf der Karte: Joystick bleibt unsichtbar, Knopf zeigt den Modus
   await page.tap('#btnHome');
-  await expect(page.locator('#mapControl')).toHaveText('🕹️');
+  await expect(page.locator('#mapControl')).toHaveText('🕹️Joystick');
   await page.click('#mapControl');
-  await expect(page.locator('#mapControl')).toHaveText('📱');
+  await expect(page.locator('#mapControl')).toHaveText('📱Kippen');
   await expect(page.locator('#joy')).toBeHidden();
   expect(errors).toEqual([]);
 });

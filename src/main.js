@@ -59,10 +59,12 @@ function syncStickers(run = {}) {
   return fresh;
 }
 
+// Karten-Knopf: Symbol und Text darunter
+function label(id, emoji, name) { const b = $(id); b.firstChild.textContent = emoji; b.lastChild.textContent = name; }
 // Steuerung im Spiel/auf der Karte zeigen: Knopf-Symbol = aktueller Modus, Joystick nur im Spiel sichtbar
 function syncControl() {
-  const emoji = input.mode === 'tilt' ? '📱' : '🕹️';
-  $('btnControl').textContent = emoji; $('mapControl').textContent = emoji;
+  const tilt = input.mode === 'tilt', emoji = tilt ? '📱' : '🕹️';
+  $('btnControl').textContent = emoji; label('mapControl', emoji, tilt ? 'Kippen' : 'Joystick');
   show('joy', input.mode === 'joy' && !$('hud').classList.contains('hidden'));
 }
 const input = createInput({
@@ -156,9 +158,10 @@ function showMap() {
   syncStickers(); // schon verdiente Sticker nachtragen (alter Spielstand, anderer Spieler), ohne Jubel
   $('mapStars').textContent = `⭐ ${progress.totalStars()}`;
   $('btnPlayer').textContent = `👤 ${progress.player().name}`;
-  $('btnPower').textContent = power().emoji;
+  label('btnPower', power().emoji, power().name);
   syncControl();
-  $('btnSound').textContent = (SOUND_MODES.find(m => m.id === audio.mode) || SOUND_MODES[0]).emoji;
+  const sound = SOUND_MODES.find(m => m.id === audio.mode) || SOUND_MODES[0];
+  label('btnSound', sound.emoji, sound.name);
   audio.music('karte');
   const box = $('worlds'); box.textContent = '';
   // pro Welt eine Reihe; hat ein offenes Level eine schwere Version, ist die Kachel diagonal geteilt:
@@ -312,12 +315,12 @@ $('albumBack').onclick = showMap;
 $('btnPower').onclick = () => {
   const p = POWERS[(POWERS.indexOf(power()) + 1) % POWERS.length];
   progress.setPower(p.id); input.setPower(p); if (game) game.tilt = p.tilt * Math.PI / 180;
-  $('btnPower').textContent = p.emoji; audio.sfx('tap');
+  label('btnPower', p.emoji, p.name); audio.sfx('tap');
 };
-// Ton umschalten: 🔊 alles -> ohne Musik -> 🔇
+// Ton umschalten: 🔊 alles -> 🔉 ohne Musik -> 🔇
 $('btnSound').onclick = () => {
   const m = SOUND_MODES[(SOUND_MODES.findIndex(x => x.id === audio.mode) + 1) % SOUND_MODES.length];
-  progress.setSound(m.id); audio.setMode(m.id); $('btnSound').textContent = m.emoji; audio.sfx('tap');
+  progress.setSound(m.id); audio.setMode(m.id); label('btnSound', m.emoji, m.name); audio.sfx('tap');
 };
 $('skinBack').onclick = showMap;
 $('btnPlayer').onclick = () => { audio.sfx('tap'); showPlayers(); };
