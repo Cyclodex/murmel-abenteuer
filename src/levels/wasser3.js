@@ -18,7 +18,7 @@ export default {
     // Muscheln (Dominos)
     { type: 'weg', from: [0, 0, -30], to: [0, 0, -44], width: 5, walls: 0.8 },
     { type: 'checkpoint', at: [0, 0, -32], size: [5, 3, 3] },
-    { type: 'domino', from: [0, 0, -35], to: [0, 0, -41], count: 6, size: [3.6, 1.8, 0.3] },
+    { type: 'domino', from: [0, 0, -35], to: [0, 0, -41], count: 4, quer: 3 },
     // Röhre zur Schatztruhe
     { type: 'weg', from: [0, 0, -44], to: [0, 0, -48], width: 2, walls: 0.8, caps: 'end' },
     { type: 'wand', from: [-2.7, 0, -44], to: [-1.2, 0, -44] },

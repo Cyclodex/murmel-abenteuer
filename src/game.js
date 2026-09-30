@@ -75,6 +75,11 @@ export function createGame(CANNON, level, ballProps = BALL) {
   world.solver.iterations = 12;
 
   const mBall = new CANNON.Material('ball');
+  // Lose Teile (Dominos): Murmel greift wie auf normalem Boden. Auf dem Boden haften sie stark: Stösst die Murmel einen
+  // schmalen Stein unten an, soll er kippen statt wegzurutschen (Kippen ab F = m·g·(t/2)/0.5, Rutschen ab F = Reibung·m·g).
+  const mLose = new CANNON.Material('lose');
+  world.addContactMaterial(new CANNON.ContactMaterial(mLose, mBall, { friction: SURFACES.normal.friction, restitution: 0 }));
+  world.addContactMaterial(new CANNON.ContactMaterial(mLose, mLose, { friction: 0.8, restitution: 0 }));
   const surfaceMat = {};
   const matFor = name => {
     const key = SURFACES[name] ? name : 'normal';
@@ -82,6 +87,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
       const s = SURFACES[key];
       surfaceMat[key] = new CANNON.Material(key);
       world.addContactMaterial(new CANNON.ContactMaterial(surfaceMat[key], mBall, { friction: s.friction, restitution: 0 }));
+      world.addContactMaterial(new CANNON.ContactMaterial(surfaceMat[key], mLose, { friction: 0.8, restitution: 0 }));
     }
     return surfaceMat[key];
   };
@@ -98,8 +104,8 @@ export function createGame(CANNON, level, ballProps = BALL) {
   };
 
   const g = {
-    C: CANNON, world, level, matFor, els: [], solids: [], checkpoints: [], switches: {},
-    st: { stars: 0, starTotal: 0, cp: -1, won: false },
+    C: CANNON, world, level, matFor, mLose, els: [], solids: [], checkpoints: [], switches: {},
+    st: { stars: 0, starTotal: 0, cp: -1, won: false, falls: 0 }, // falls = Abstürze (runtergefallen, zerquetscht)
     groundBody: null, groundN: [0, 1, 0], rundN: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0, dirt: 0, washK: 0,
     // Leichte Murmel (schwere < 1) nur in Welten mit normaler Schwerkraft; im Weltraum gilt die Level-Schwerkraft
     // gy = Schwerkraft des Levels für lose Teile (Dominos): ohne Kippen und ohne Murmel-Schwere
@@ -172,12 +178,12 @@ export function createGame(CANNON, level, ballProps = BALL) {
   g.squash = () => {
     if (g.squashT > 0) return;
     const p = ball.position;
-    g.squashT = SQUASH_T; g.squashPos = [p.x, p.y, p.z]; g.squashNew = true; g.lock = true;
+    g.st.falls++; g.squashT = SQUASH_T; g.squashPos = [p.x, p.y, p.z]; g.squashNew = true; g.lock = true;
   };
   // Runtergefallen (unter killY oder z. B. ins Badewasser): am Checkpoint neu einsetzen
-  g.fall = ev => { respawn(); ev.push('fall'); };
+  g.fall = ev => { g.st.falls++; respawn(); ev.push('fall'); };
   g.reset = () => {
-    Object.assign(g.st, { stars: 0, cp: -1, won: false });
+    Object.assign(g.st, { stars: 0, cp: -1, won: false, falls: 0 });
     Object.assign(g, { dirt: 0, dirtPeak: 0, dirty: false, washed: false, washK: 0, squashT: 0, squashNew: false });
     g.switches = {}; acc = 0; g.time = 0; g.hitCool = 0.5; g.hitStrength = 0;
     g.track.yaw = (level.startYaw || 0) * Math.PI / 180;

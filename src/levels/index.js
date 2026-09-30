@@ -30,6 +30,10 @@ import kuecheS from './schwer/kueche.js';
 import weltraumS from './schwer/weltraum.js';
 import unterwasserS from './schwer/unterwasser.js';
 import vulkanS from './schwer/vulkan.js';
+import { PRUEFSTAND } from './pruefstand/index.js';
+
+// Prüfstand (ein Level pro Bauteil, für Tests) nur mit ?pruefstand in der Adresse als eigene Welt
+const PRUEF = typeof location !== 'undefined' && new URLSearchParams(location.search).has('pruefstand');
 
 export const WORLDS = [
   { id: 'uebung', name: 'Übung', emoji: '🌳', levels: [ausflug], hard: uebungS },
@@ -40,7 +44,8 @@ export const WORLDS = [
   { id: 'weltraum', name: 'Weltraum', emoji: '🚀', levels: [w1, w2, w3], hard: weltraumS },
   { id: 'unterwasser', name: 'Unterwasser', emoji: '🌊', levels: [u1, u2, u3], hard: unterwasserS },
   // Profi-Welt: erst ab need Sternen offen
-  { id: 'vulkan', name: 'Vulkan', emoji: '🌋', need: 50, levels: [v1, v2, v3], hard: vulkanS }
+  { id: 'vulkan', name: 'Vulkan', emoji: '🌋', need: 50, levels: [v1, v2, v3], hard: vulkanS },
+  ...(PRUEF ? [{ id: 'pruefstand', name: 'Prüfstand', emoji: '🔧', levels: PRUEFSTAND }] : [])
 ];
 
 export const LEVELS = WORLDS.flatMap(w => [...w.levels, ...(w.hard || [])]);

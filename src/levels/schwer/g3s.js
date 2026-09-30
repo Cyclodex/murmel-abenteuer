@@ -27,7 +27,7 @@ export default {
     // Blumentöpfe als Dominos
     { type: 'weg', from: [0, -3, -44], to: [0, -3, -62], width: 5, walls: 0.8 },
     { type: 'checkpoint', at: [0, -3, -46], size: [5, 3, 3] },
-    { type: 'domino', from: [0, -3, -51], to: [0, -3, -58], count: 7, size: [3.6, 1.8, 0.3] },
+    { type: 'domino', from: [0, -3, -51], to: [0, -3, -58.6], count: 5, quer: 3 },
     { type: 'weg', from: [0, -3, -62], to: [0, -3, -66], width: 5, walls: 0.8 },
     { type: 'checkpoint', at: [0, -3, -64], size: [5, 3, 3] },
     // Maulwurf-Wiese: links im Zickzack zwischen den Löchern (kurz), rechts am Rand mit Hämmern und Magnet (lang)

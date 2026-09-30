@@ -1,5 +1,6 @@
 // Spielstand im Browser speichern (localStorage). Ohne Speicher läuft alles weiter, nur ohne Merken.
-// Einstellungen (Steuerung, Stärke, Ton) gelten für alle, Sterne, Bestzeiten, Murmel, Spur und Sticker pro Spieler.
+// Einstellungen (Steuerung, Stärke, Ton) gelten für alle, Sterne, Bestzeiten, Punkte, Murmel, Spur und Sticker pro Spieler.
+// runs = pro Level die Fahrt mit den meisten Punkten { stars, total, time, falls, power, score } (siehe score.js).
 // Die Fahrten der Bestzeiten (Geistermurmel) liegen getrennt unter GHOST_KEY (grösser, dürfen verloren gehen).
 const KEY = 'murmel-abenteuer-v2';
 const GHOST_KEY = 'murmel-geist-v1';
@@ -9,7 +10,7 @@ export const NAME_MAX = 16;
 const newPlayer = (name, from = {}) => ({
   id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
   name, done: from.done || {}, best: from.best || {}, skin: from.skin || 'standard',
-  stickers: from.stickers || {}, trail: from.trail || 'keine', times: from.times || {}
+  stickers: from.stickers || {}, trail: from.trail || 'keine', times: from.times || {}, runs: from.runs || {}
 });
 
 function load(key) {
@@ -32,6 +33,8 @@ function read() {
 }
 
 const stars = p => Object.values(p.best).reduce((a, b) => a + b, 0);
+// Beste Fahrten als Zeilen für die Rangliste (gleiche Form wie später die Online-Rangliste, #9)
+const rows = p => Object.entries(p.runs).map(([level, r]) => ({ name: p.name, level, score: r.score, power: r.power }));
 
 export function createProgress() {
   const data = read();
@@ -48,11 +51,9 @@ export function createProgress() {
     get skin() { return me().skin; },
     isDone: id => !!me().done[id],
     best: id => me().best[id] || 0,
-    totalStars: () => stars(me()),
-    // Rangliste: alle Spieler nach Sternen (gesamt oder für ein Level)
-    ranking: levelId => data.players
-      .map(p => ({ id: p.id, name: p.name, stars: levelId ? p.best[levelId] || 0 : stars(p) }))
-      .sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name)),
+    totalStars: (p = me()) => stars(p),
+    // Zeilen aller Spieler für ranking() in score.js
+    rows: () => data.players.flatMap(rows),
     // Neuer Spieler (oder vorhandener mit gleichem Namen) wird der aktuelle
     addPlayer(name) {
       name = String(name || '').trim().replace(/\s+/g, ' ').slice(0, NAME_MAX);
@@ -65,6 +66,9 @@ export function createProgress() {
     selectPlayer(id) { if (data.players.some(p => p.id === id)) { data.current = id; save(); } },
     // Level geschafft: merkt die beste Sternzahl
     finish(id, n) { const p = me(); p.done[id] = true; p.best[id] = Math.max(p.best[id] || 0, n); save(); },
+    run: id => me().runs[id] || null,
+    // Fahrt mit Punkten: gibt true zurück, wenn sie mehr Punkte hat als die bisher beste in diesem Level
+    setRun(id, r) { const p = me(), old = p.runs[id]; if (old && old.score >= r.score) return false; p.runs[id] = r; save(); return true; },
     // Bestzeit in Sekunden (0 = noch keine); setTime gibt true zurück, wenn die Zeit neu die beste ist
     bestTime: id => me().times[id] || 0,
     setTime(id, t) { const p = me(), old = p.times[id]; if (old && old <= t) return false; p.times[id] = +t.toFixed(2); save(); return true; },
@@ -81,6 +85,6 @@ export function createProgress() {
     setControl(c) { data.control = c; save(); },
     setPower(p) { data.power = p; save(); },
     setSound(m) { data.sound = m; save(); },
-    clear() { const p = me(); p.done = {}; p.best = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; p.times = {}; delete ghosts[p.id]; save(); saveGhosts(); }
+    clear() { const p = me(); p.done = {}; p.best = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; p.times = {}; p.runs = {}; delete ghosts[p.id]; save(); saveGhosts(); }
   };
 }
