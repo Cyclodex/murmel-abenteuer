@@ -133,26 +133,35 @@ function showMap() {
   $('btnSound').textContent = (SOUND_MODES.find(m => m.id === audio.mode) || SOUND_MODES[0]).emoji;
   audio.music('karte');
   const box = $('worlds'); box.textContent = '';
-  // pro Welt eine Reihe, darunter die schweren Versionen (💀)
-  const levelRow = (list, icon, title, cls, lockText) => {
-    const row = document.createElement('div'); row.className = cls;
-    row.innerHTML = `<div class="wicon" title="${title}">${icon}</div><div class="levels"></div>`;
-    list.forEach((lv, k) => {
-      const i = LEVELS.indexOf(lv), open = isOpen(i), total = lv.parts.filter(p => p.type === 'stern').length;
-      const b = document.createElement('button');
-      b.className = 'lvl' + (progress.isDone(lv.id) ? ' done' : '');
-      b.disabled = !open; b.dataset.level = lv.id;
-      b.setAttribute('aria-label', lv.name);
-      b.innerHTML = open ? `<span>${lv.emoji}</span><span class="s">${starRow(progress.best(lv.id), total)}</span>` : `<span>🔒</span><span class="s">${lockText(k)}</span>`;
-      b.onclick = () => { audio.sfx('tap'); startLevel(i); };
-      row.lastChild.appendChild(b);
+  // pro Welt eine Reihe; hat ein offenes Level eine schwere Version, ist die Kachel diagonal geteilt:
+  // oben links das normale Level, unten rechts das schwere (🔒, bis das normale geschafft ist)
+  const tile = (lv, cls, label, html) => {
+    const i = LEVELS.indexOf(lv), b = document.createElement('button');
+    b.className = cls + (progress.isDone(lv.id) ? ' done' : '');
+    b.disabled = !isOpen(i); b.dataset.level = lv.id;
+    b.setAttribute('aria-label', label); b.title = label;
+    b.innerHTML = html;
+    b.onclick = () => { audio.sfx('tap'); startLevel(i); };
+    return b;
+  };
+  const stars = lv => `<span class="s">⭐${progress.best(lv.id)}</span>`;
+  for (const w of WORLDS) {
+    const row = document.createElement('div'); row.className = 'world';
+    row.innerHTML = `<div class="wicon" title="${w.name}">${w.emoji}</div><div class="levels"></div>`;
+    w.levels.forEach((lv, k) => {
+      const hard = (w.hard || []).find(h => h.schwer === lv.id);
+      if (!isOpen(LEVELS.indexOf(lv))) {
+        // gesperrte Welt: so viele Sterne braucht es
+        row.lastChild.appendChild(tile(lv, 'lvl', lv.name, `<span>🔒</span><span class="s">${k === 0 && !worldOpen(w) ? `${w.need}⭐` : k + 1}</span>`));
+        return;
+      }
+      const normal = tile(lv, 'lvl', lv.name, `<span>${lv.emoji}</span>${stars(lv)}`);
+      if (!hard) { row.lastChild.appendChild(normal); return; }
+      const pair = document.createElement('div'); pair.className = 'pair';
+      pair.append(normal, tile(hard, 'lvl hard', `💀 ${hard.name}`, isOpen(LEVELS.indexOf(hard)) ? `<span>${hard.emoji}</span>${stars(hard)}` : '<span>🔒</span>'));
+      row.lastChild.appendChild(pair);
     });
     box.appendChild(row);
-  };
-  for (const w of WORLDS) {
-    // gesperrte Welt: so viele Sterne braucht es
-    levelRow(w.levels, w.emoji, w.name, 'world', k => (k === 0 && !worldOpen(w) ? `${w.need}⭐` : k + 1));
-    if (w.hard && w.hard.length) levelRow(w.hard, '💀', w.name + ' schwer', 'world hard', k => `💀${k + 1}`);
   }
   show('mapOv');
   online.sync(); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen

@@ -950,18 +950,21 @@ test('Karte im Querformat: oberste Knöpfe und letzte Welt erreichbar', async ({
   await expect(page.locator('#hud')).toBeVisible();
 });
 
-test('Schwere Versionen: 💀-Reihe, offen nach dem normalen Level, Sticker 💀', async ({ page }) => {
+test('Schwere Versionen: diagonal geteilte Kachel, offen nach dem normalen Level, Sticker 💀', async ({ page }) => {
   const errors = watchErrors(page);
   await play(page, 'ausflug');
   await page.click('#btnHome');
-  await expect(page.locator('.world.hard .lvl[data-level="ausflugs"]')).toBeDisabled();
-  await expect(page.locator('.lvl[data-level="ausflugs"]')).toContainText('💀1');
-  await page.click('.lvl[data-level="ausflug"]');
+  const hard = page.locator('.pair .lvl.hard[data-level="ausflugs"]');
+  await expect(hard).toBeDisabled();
+  await expect(hard).toContainText('🔒');
+  await expect(page.locator('.pair .lvl[data-level="ausflug"]')).toContainText('⭐0');
+  await page.click('.lvl[data-level="ausflug"]'); // Mitte der Kachel = normales Level
   await winLevel(page, 5);
   await page.click('#cheerOv').catch(() => {});
   await page.click('#mapBtn');
-  await expect(page.locator('.lvl[data-level="ausflugs"]')).toBeEnabled();
-  await page.click('.lvl[data-level="ausflugs"]');
+  await expect(page.locator('.lvl[data-level="ausflug"]')).toContainText('⭐5');
+  await expect(hard).toBeEnabled();
+  await hard.click({ position: { x: 75, y: 75 } }); // schwere Hälfte unten rechts
   await expect(page.locator('#hud')).toBeVisible();
   await winLevel(page, 7);
   expect((await saved(page)).stickers['profi:uebung']).toBe(true);
