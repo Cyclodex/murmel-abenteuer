@@ -7,7 +7,7 @@ export default {
   parts: [
     { type: 'weg', from: [0, 0, 6], to: [0, 0, -6], width: 5, walls: 0.8, caps: 'start' },
     { type: 'weg', from: [0, 0, -6], to: [0, 0, -20], width: 5, walls: 0.8 },
-    { type: 'domino', from: [0, 0, -9], to: [0, 0, -15], count: 6, size: [3.6, 1.8, 0.3] },
+    { type: 'domino', from: [0, 0, -9], to: [0, 0, -15], count: 4, quer: 3 },
     // Strohhalm
     { type: 'weg', from: [0, 0, -20], to: [0, 0, -24], width: 2, walls: 0.8, caps: 'end' },
     { type: 'wand', from: [-2.7, 0, -20], to: [-1.2, 0, -20] },

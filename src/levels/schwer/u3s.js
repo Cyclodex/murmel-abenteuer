@@ -45,7 +45,7 @@ export default {
     { type: 'checkpoint', at: [0, 0, -82], size: [5, 3, 3] },
     // Muschel-Dominos
     { type: 'weg', from: [0, 0, -84], to: [0, 0, -98], width: 5, walls: 0.8 },
-    { type: 'domino', from: [0, 0, -87], to: [0, 0, -95], count: 6, size: [3.6, 1.8, 0.3] },
+    { type: 'domino', from: [0, 0, -87], to: [0, 0, -95], count: 5, quer: 3 },
     // Röhre hinauf in die Schatzkammer
     { type: 'weg', from: [0, 0, -98], to: [0, 0, -102], width: 2, walls: 0.8, caps: 'end' },
     { type: 'wand', from: [-2.7, 0, -98], to: [-1.2, 0, -98] },

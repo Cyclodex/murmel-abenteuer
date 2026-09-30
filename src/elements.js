@@ -91,9 +91,19 @@ export const TYPES = {
         const a = k * dphi, b = a + dphi, yaw = h0 - s * (a + b) / 2, q = quatYawPitch(yaw, 0);
         const chord = rad => 2 * rad * Math.sin(dphi / 2) + 0.06;
         if (rise) { // geneigtes Segment (Spirale)
-          const pa = add(P(a, r), [0, rise * a / T, 0]), pb = add(P(b, r), [0, rise * b / T, 0]), sg = segment(pa, pb);
+          const H = (phi, rad) => add(P(phi, rad), [0, rise * phi / T, 0]);
+          const sg = segment(H(a, r), H(b, r));
           const L = rad => chord(rad) / Math.cos(sg.pitch);
-          out.push({ pos: add(sg.mid, scale(sg.up, -th / 2)), half: [w / 2, th / 2, L(r + w / 2) / 2], quat: sg.q, look: d.look || d.surface || 'ramp', surface: d.surface, track: track(sg) });
+          // Boden in Streifen quer zur Fahrt, jeder mit der Neigung für seinen Radius: aussen ist der Weg länger und flacher.
+          // Ein Brett über die ganze Breite mit der Neigung der Mitte stand aussen an jeder Naht um einige cm über dem
+          // vorigen (Radius 4, 1 m weiter aussen, 8 m pro Runde: 5 cm), die Murmel sprang dort von Stufe zu Stufe.
+          // Belag 'spirale' bremst etwas, sonst wird die Murmel in engen Spiralen zu schnell für die Kurve.
+          const nl = Math.max(1, Math.round(w / 1.2)), lw = w / nl;
+          for (let j = 0; j < nl; j++) {
+            const rad = r + s * (w / 2 - lw * (j + 0.5)), sl = segment(H(a, rad), H(b, rad));
+            out.push({ pos: add(sl.mid, scale(sl.up, -th / 2)), half: [lw / 2, th / 2, chord(rad + lw / 2) / Math.cos(sl.pitch) / 2], quat: sl.q,
+              look: d.look || d.surface || 'ramp', surface: d.surface || 'spirale', track: track(sg) });
+          }
           if (wh > 0) for (const k2 of [-1, 1]) out.push({ pos: add(add(sg.mid, scale(sg.right, k2 * (w / 2 + 0.2))), scale(sg.up, wh / 2)), half: [0.2, wh / 2, L(r - k2 * s * (w / 2 + 0.2)) / 2], quat: sg.q, look: 'wall' });
           continue;
         }

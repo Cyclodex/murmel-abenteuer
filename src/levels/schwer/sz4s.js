@@ -24,6 +24,10 @@ export default {
     // Platz, dann Trichter auf ein schmales Brett mit Hammer
     { type: 'weg', from: [2, 3, -49], to: [2, 3, -55], width: 16 },
     { type: 'checkpoint', at: [2, 3, -52], size: [16, 3, 3] },
+    // einzelne Dominosteine stehen herum
+    { type: 'domino', at: [6.5, 3, -50.5], yaw: 25 },
+    { type: 'domino', at: [-4.5, 3, -52.5], yaw: -20 },
+    { type: 'domino', at: [8.5, 3, -53.5], yaw: 10 },
     { type: 'weg', from: [2, 3, -55], to: [2, 3, -63], width: 6 },
     { type: 'wand', from: [-1.2, 3, -55], to: [-1.2, 3, -59] },
     { type: 'wand', from: [5.2, 3, -55], to: [5.2, 3, -59] },

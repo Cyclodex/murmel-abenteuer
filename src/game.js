@@ -25,7 +25,8 @@ export const SURFACES = {
   keramik: { friction: 0.3, bounce: 1, grip: 1, drag: 0.9, wash: 0.5 }, // nasses Lavabo: hart (Bälle springen), ein Wasserfilm bremst etwas
   kunststoff: { friction: 0.3, bounce: 1, grip: 1, drag: 0 }, // Kugelbahn: Rinne
   rohr: { friction: 0.3, bounce: 1, grip: 0, drag: 0 }, // geschlossenes Rohr (Abfluss): drinnen lenkt man nicht
-  trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 } // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
+  trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 }, // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
+  spirale: { friction: 0.4, bounce: 1, grip: 1, drag: 0.3, wash: 0.015 } // Boden von Spirale und geneigter Kurve: bremst etwas, sonst zu schnell für die Kurve
 };
 const DIRT_STILL = 0.08; // so viel Dreck pro Sekunde auch im Stehen im Schlamm
 const WASH_WATER = 0.6;  // Unterwasser: Abwaschen pro Sekunde
@@ -74,6 +75,11 @@ export function createGame(CANNON, level, ballProps = BALL) {
   world.solver.iterations = 12;
 
   const mBall = new CANNON.Material('ball');
+  // Lose Teile (Dominos): Murmel greift wie auf normalem Boden. Auf dem Boden haften sie stark: Stösst die Murmel einen
+  // schmalen Stein unten an, soll er kippen statt wegzurutschen (Kippen ab F = m·g·(t/2)/0.5, Rutschen ab F = Reibung·m·g).
+  const mLose = new CANNON.Material('lose');
+  world.addContactMaterial(new CANNON.ContactMaterial(mLose, mBall, { friction: SURFACES.normal.friction, restitution: 0 }));
+  world.addContactMaterial(new CANNON.ContactMaterial(mLose, mLose, { friction: 0.8, restitution: 0 }));
   const surfaceMat = {};
   const matFor = name => {
     const key = SURFACES[name] ? name : 'normal';
@@ -81,6 +87,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
       const s = SURFACES[key];
       surfaceMat[key] = new CANNON.Material(key);
       world.addContactMaterial(new CANNON.ContactMaterial(surfaceMat[key], mBall, { friction: s.friction, restitution: 0 }));
+      world.addContactMaterial(new CANNON.ContactMaterial(surfaceMat[key], mLose, { friction: 0.8, restitution: 0 }));
     }
     return surfaceMat[key];
   };
@@ -97,7 +104,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
   };
 
   const g = {
-    C: CANNON, world, level, matFor, els: [], solids: [], checkpoints: [], switches: {},
+    C: CANNON, world, level, matFor, mLose, els: [], solids: [], checkpoints: [], switches: {},
     st: { stars: 0, starTotal: 0, cp: -1, won: false, falls: 0 }, // falls = Abstürze (runtergefallen, zerquetscht)
     groundBody: null, groundN: [0, 1, 0], rundN: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0, dirt: 0, washK: 0,
     // Leichte Murmel (schwere < 1) nur in Welten mit normaler Schwerkraft; im Weltraum gilt die Level-Schwerkraft
