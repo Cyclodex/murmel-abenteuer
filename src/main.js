@@ -14,6 +14,7 @@ import { createProgress } from './progress.js';
 import { angleDiff } from './math.js';
 import { createRecorder, formatTime } from './ghost.js';
 import { score, ranking } from './score.js';
+import { createOnline } from './online.js';
 
 const $ = id => document.getElementById(id);
 const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
@@ -37,7 +38,9 @@ const trailNeed = t => (t.need.stars ? t.need.stars + '⭐' : t.need.stickers + 
 const currentTrail = () => { const t = TRAILS.find(k => k.id === progress.trail); return t && trailOpen(t) ? t : TRAILS[0]; };
 const ALBUM = buildAlbum(WORLDS);
 const cheer = createCheer($('cheerOv'), audio);
-const rec = createRecorder(); // Fahrt aufnehmen (für die Geistermurmel der Bestzeit)
+const rec = createRecorder(); // Fahrt aufnehmen (für die Geistermurmel der Bestzeit und die Online-Rangliste)
+const online = createOnline(progress);
+let race = null; // { level, name, track }: Online-Geist, gegen den gerade gefahren wird (statt der eigenen Bestzeit)
 
 // Neu verdiente Sticker ins Album kleben, gibt sie zurück. bonus = Level-ID, in dem gerade der Bonusstern gesammelt wurde,
 // run = was in diesem Lauf passiert ist ({ dreckig, sauber })
@@ -94,14 +97,14 @@ function loadLevel(i) {
   setupPilot();
 }
 
-// Geistermurmel der Bestzeit (falls vorhanden) mit der Murmel, mit der sie gefahren ist
+// Geistermurmel der Bestzeit (falls vorhanden) mit der Murmel, mit der sie gefahren ist; oder der gewählte Online-Geist
 function showGhost() {
-  const gh = progress.ghost(LEVELS[levelIdx].id);
+  const id = LEVELS[levelIdx].id, gh = race && race.level === id ? race.track : progress.ghost(id);
   view.setGhost(gh, gh && (SKINS.find(s => s.id === gh.skin) || SKINS[0]));
 }
 
 function startLevel(i) {
-  backdrop = false;
+  backdrop = false; race = null;
   loadLevel(i);
   ['mapOv', 'winOv', 'skinOv', 'albumOv', 'startOv', 'playerOv'].forEach(id => show(id, false));
   show('hud'); show('joy', input.mode === 'joy');
@@ -152,6 +155,7 @@ function showMap() {
     if (w.hard && w.hard.length) levelRow(w.hard, '💀', w.name + ' schwer', 'world hard', k => `💀${k + 1}`);
   }
   show('mapOv');
+  online.sync(); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen
 }
 
 // ---------- Spieler ----------
@@ -166,6 +170,15 @@ function playerRanking() {
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 }
 
+// Lokale Fahrten und Online-Rangliste zusammen (pro Name und Level zählt in ranking() die beste)
+const allRows = () => [...progress.rows(), ...online.rows()];
+// Weltrangliste in der Spieler-Auswahl: die besten 10 nach Punkten über alle Level
+function showWorldRank() {
+  const rank = ranking(allRows()).slice(0, 10);
+  $('worldRank').textContent = ['🌍', ...rank.map(rankText)].join('\n');
+  show('worldRank', online.rows().length > 0);
+}
+
 function showPlayers() {
   backdrop = true;
   ['mapOv', 'startOv'].forEach(id => show(id, false));
@@ -177,6 +190,8 @@ function showPlayers() {
     b.onclick = () => { audio.sfx('tap'); progress.selectPlayer(r.id); showMap(); };
     list.appendChild(b);
   });
+  showWorldRank();
+  online.sync().then(ok => { if (ok && !$('playerOv').classList.contains('hidden')) showWorldRank(); });
   $('playerName').value = '';
   show('playerOv');
 }
@@ -287,6 +302,8 @@ function onWin() {
   const run = { stars: game.st.stars, total: game.st.starTotal, time: +t.toFixed(2), falls: game.st.falls, power: power().id };
   run.score = score({ level: lv.id, ...run });
   const hadRun = progress.run(lv.id), record = progress.setRun(lv.id, run);
+  // Neuer Rekord: mit Aufnahme in die Online-Rangliste, danach Rangliste neu zeigen
+  if (record) online.submit(progress.player().name, lv.id, run, rec.track(t, currentSkin().id)).then(ok => { if (ok && lv === LEVELS[levelIdx]) showWinRank(); });
   $('winScore').textContent = `🏆 ${run.score}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : ` · 🏆 ${hadRun.score}`);
   $('winTime').textContent = `⏱ ${formatTime(t)}` + (fastest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
   const after = progress.totalStars();
@@ -299,14 +316,31 @@ function onWin() {
   $('winUnlock').textContent = news.length ? '🔮 ' + news.map(s => s.emoji).join(' ') + ' 🆕' : '';
   show('winUnlock', news.length > 0);
   const cheers = [...news, ...stickers].map(x => x.emoji);
-  // Vergleich mit den anderen Spielern (beste Punkte in diesem Level, mit Stärke)
-  const rank = ranking(progress.rows(), lv.id);
-  $('winRank').textContent = rank.map(rankText).join('\n');
-  show('winRank', rank.length > 1);
+  showWinRank();
   show('nextBtn', levelIdx + 1 < LEVELS.length && isOpen(levelIdx + 1));
   view.burst(view.goal ? view.goal.position : view.ballMesh.position, 60, [0xFF5A8A, 0xFFC928, 0x3BB273, 0x2F6FEB]);
   setTimeout(() => { show('winOv'); show('joy', false); cheer.show(cheers); }, 900);
 }
+
+// Vergleich mit den anderen Spielern auf dem Gerät und online (beste Punkte in diesem Level, mit Stärke):
+// die besten 5 und der eigene Platz; Knopf 👻 fährt gegen die Aufnahme des Besten (ausser sich selbst)
+function showWinRank() {
+  const id = LEVELS[levelIdx].id, rank = ranking(allRows(), id), me = progress.player().name.toLowerCase();
+  const k = rank.findIndex(r => r.name.toLowerCase() === me);
+  $('winRank').textContent = [...rank.slice(0, 5), ...(k >= 5 ? [rank[k]] : [])].map(r => rankText(r, rank.indexOf(r))).join('\n');
+  show('winRank', rank.length > 1);
+  const has = name => online.rows().some(x => x.ghost && x.level === id && x.name.toLowerCase() === name.toLowerCase());
+  const i = rank.findIndex(r => r.name.toLowerCase() !== me && has(r.name)), best = rank[i];
+  $('winGhost').textContent = best ? `👻 ${MEDALS[i] || `${i + 1}.`} ${best.name}` : '';
+  $('winGhost').dataset.name = best ? best.name : '';
+  show('winGhost', !!best);
+}
+$('winGhost').onclick = async () => {
+  audio.sfx('tap');
+  const id = LEVELS[levelIdx].id, name = $('winGhost').dataset.name, track = name && await online.ghost(name, id);
+  if (!track) { toast('📡 ❌'); return; }
+  race = { level: id, name, track }; restart(); toast(`👻 ${name}`);
+};
 
 const VIBRATE = { quetsch: [120, 40, 60], klapp: 30, platsch: 40, spritz: 30, spuel: [40, 60, 40], boom: [80, 30, 40], roehre: 30, plopp: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
 function onEvent(e) {
@@ -394,5 +428,5 @@ requestAnimationFrame(loop);
 // Für Tests und zum Ausprobieren in der Konsole
 window.murmel = {
   get game() { return game; }, get running() { return running; }, get camYaw() { return camYaw; },
-  LEVELS, WORLDS, SKINS, TRAILS, ALBUM, cheer, progress, startLevel, showMap, audio, input, get view() { return view; }, treppe, get backdrop() { return backdrop; }
+  LEVELS, WORLDS, SKINS, TRAILS, ALBUM, cheer, progress, online, startLevel, showMap, audio, input, get view() { return view; }, treppe, get backdrop() { return backdrop; }
 };

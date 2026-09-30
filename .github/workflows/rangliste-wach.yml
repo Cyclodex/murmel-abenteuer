@@ -1,0 +1,21 @@
+# Online-Rangliste wach halten: Supabase pausiert Projekte im Gratis-Plan nach einer Woche ohne Anfragen.
+# Alle 3 Tage einmal die Rangliste abrufen. URL und Key (öffentlich) stehen in src/online.js.
+name: Rangliste wach halten
+
+on:
+  schedule:
+    - cron: '41 4 */3 * *' # 04:41 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          url=$(grep -oP "SUPABASE_URL = '\K[^']+" src/online.js)
+          key=$(grep -oP "const KEY = '\K[^']+" src/online.js)
+          code=$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$url/rest/v1/rpc/get_ranking" \
+            -H "apikey: $key" -H 'Content-Type: application/json' -d '{}')
+          echo "HTTP $code"
+          test "$code" = 200
