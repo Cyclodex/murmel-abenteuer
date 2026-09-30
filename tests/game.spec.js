@@ -442,16 +442,173 @@ test('Dreckige Murmel: Flecken auf der Kugel, Spritzer, Sticker 🐷 und 🧼', 
   expect(errors).toEqual([]);
 });
 
-// Kleine Testbahn fahren: liefert Ereignisse (ohne Klacken) und Endposition
-const fahre = (page, parts, start, sek, input = [0, 0], extra = '') => page.evaluate(async ([parts, start, sek, input, extra]) => {
+// Kleine Testbahn fahren: liefert Ereignisse (ohne Klacken), Endposition, Tempo und höchsten Punkt.
+// extra = Code vor der Fahrt (darf g.jeSchritt setzen: läuft nach jedem Schritt), nachher = Code danach, sein Wert kommt in aus.
+const fahre = (page, parts, start, sek, input = [0, 0], extra = '', nachher = '') => page.evaluate(async ([parts, start, sek, input, extra, nachher]) => {
   const { createGame } = await import('/src/game.js');
   const g = createGame(CANNON, { id: 't', start, killY: -8, parts }); g.reset();
   if (extra) new Function('g', extra)(g);
   const ev = [];
-  for (let i = 0; i < sek * 60; i++) for (const e of g.step(input[0], input[1], 1 / 60)) if (e !== 'hit') ev.push(e);
-  const p = g.ball.position;
-  return { ev, p: [p.x, p.y, p.z], dirt: g.dirt };
-}, [parts, start, sek, input, extra]);
+  let maxY = -Infinity;
+  for (let i = 0; i < sek * 60; i++) {
+    for (const e of g.step(input[0], input[1], 1 / 60)) if (e !== 'hit') ev.push(e);
+    g.jeSchritt?.(); maxY = Math.max(maxY, g.ball.position.y);
+  }
+  const p = g.ball.position, v = g.ball.velocity;
+  return { ev, p: [p.x, p.y, p.z], v: [v.x, v.y, v.z], maxY, dirt: g.dirt, aus: nachher ? new Function('g', nachher)(g) : undefined };
+}, [parts, start, sek, input, extra, nachher]);
+// Murmel rollt mit v m/s nach vorne (-z) los
+const schwung = v => `g.ball.velocity.set(0, 0, ${-v}); g.ball.angularVelocity.set(${-v / 0.5}, 0, 0);`;
+
+test('Grundteile: Wand und Klotz halten auf, Nische fängt, Deko ist nur mit fest im Weg', async ({ page }) => {
+  await page.goto('/');
+  const weg = { type: 'weg', from: [0, 0, 4], to: [0, 0, -20], width: 4 };
+  const quer = async (...teile) => (await fahre(page, [weg, ...teile], [0, 0, 2], 2, [0, 0], schwung(6))).p[2];
+  expect(await quer()).toBeLessThan(-7); // frei: rollt über z -5 hinaus
+  expect(await quer({ type: 'wand', from: [-2, 0, -5], to: [2, 0, -5] })).toBeGreaterThan(-4.5);   // prallt ab
+  expect(await quer({ type: 'klotz', at: [0, 0.5, -5], size: [4, 1, 1] })).toBeGreaterThan(-4.5);
+  expect(await quer({ type: 'klotz', at: [0, 0.5, -5], size: [4, 1, 1], deko: true })).toBeLessThan(-7); // nur Grafik
+  expect(await quer({ type: 'deko', form: 'wuerfel', at: [0, 0, -5] })).toBeLessThan(-7);
+  expect(await quer({ type: 'deko', form: 'wuerfel', at: [0, 0, -5], fest: true })).toBeGreaterThan(-4.5);
+  // seitlich vom Weg: ohne Nische fällt die Murmel hinunter, mit Nische bleibt sie in der Ecke
+  const seitlich = 'g.ball.velocity.set(5, 0, 0); g.ball.angularVelocity.set(0, 0, -10);';
+  expect((await fahre(page, [weg], [0, 0, -5], 2, [0, 0], seitlich)).ev).toContain('fall');
+  const n = await fahre(page, [weg, { type: 'nische', at: [2, 0, -5], yaw: -90 }], [0, 0, -5], 2, [0, 0], seitlich);
+  expect(n.ev).toEqual([]);
+  expect(n.p[0]).toBeGreaterThan(2.5);  // in der Nische (Rückwand bei x 5.5)
+  expect(n.p[1]).toBeCloseTo(0.5, 1);
+});
+
+test('Kurve, Spirale und Looping werden ohne Absturz durchfahren, der Looping braucht den Turbo', async ({ page }) => {
+  await page.goto('/');
+  // Rechtskurve um 90°: danach zeigt die Bahn (und die Kamera) nach +x
+  const k = await fahre(page, [{ type: 'weg', from: [0, 0, 4], to: [0, 0, 0], width: 4, walls: 0.8, caps: 'start' }, { type: 'kurve', at: [0, 0, 0], turn: 90, radius: 5, width: 4, walls: 0.8 },
+    { type: 'weg', from: [5, 0, -5], to: [20, 0, -5], width: 4, walls: 0.8, caps: 'end' }], [0, 0, 2], 3, [0, 0], schwung(6), 'return g.track.yaw');
+  expect(k.ev).toEqual([]);
+  expect(k.p[0]).toBeGreaterThan(5);
+  expect(k.aus).toBeCloseTo(-Math.PI / 2, 2);
+  // Spirale: eine Runde 6 m hinunter, unten geht es geradeaus weiter
+  const s = await fahre(page, [{ type: 'weg', from: [0, 6, 4], to: [0, 6, 0], width: 3, walls: 0.8, caps: 'start' }, { type: 'spirale', at: [0, 6, 0], turn: 360, rise: -6, radius: 4, width: 3, walls: 0.8 },
+    { type: 'weg', from: [0, 0, 0], to: [0, 0, -10], width: 3, walls: 0.8, caps: 'end' }], [0, 6, 2], 14, [0, 0], schwung(2));
+  expect(s.ev).toEqual([]);
+  expect(s.p[1]).toBeLessThan(1);
+  expect(s.p[2]).toBeLessThan(-2);
+  // Looping (Radius 3, Ausfahrt 5 m weiter rechts) mit Turbo davor: einmal ganz herum, oben bei 6 m
+  const loop = [{ type: 'weg', from: [0, 0, 8], to: [0, 0, 0], width: 3, walls: 0.8, caps: 'start' }, { type: 'turbo', at: [0, 0, 1.5], size: [2.6, 2], speed: 11.5 },
+    { type: 'looping', at: [0, 0, 0], radius: 3, width: 3, shift: 5 }, { type: 'weg', from: [5, 0, 0], to: [5, 0, -12], width: 4, walls: 0.8, caps: 'end' }];
+  const l = await fahre(page, loop, [0, 0, 6], 5, [0, -0.5]);
+  expect(l.ev).toEqual(['turbo']);
+  expect(l.maxY).toBeGreaterThan(5);
+  expect(Math.abs(l.p[0] - 5)).toBeLessThan(1); // auf dem Weg nach der Ausfahrt
+  expect(l.p[2]).toBeLessThan(-2);
+  const ohne = await fahre(page, loop.filter(d => d.type !== 'turbo'), [0, 0, 6], 5, [0, -0.5]);
+  expect(ohne.maxY).toBeLessThan(3); // kommt nicht hinauf, rollt zurück
+});
+
+test('Stern wird eingesammelt, Trampolin wirft hoch, Turbo beschleunigt in seine Richtung', async ({ page }) => {
+  await page.goto('/');
+  const weg = { type: 'weg', from: [0, 0, 4], to: [0, 0, -40], width: 4, walls: 0.8, caps: 'end' };
+  // zwei Sterne auf der Bahn (einer als Bonus), einer daneben
+  const st = await fahre(page, [weg, { type: 'stern', at: [0, 0.5, -3] }, { type: 'stern', at: [0, 0.5, -6], bonus: true }, { type: 'stern', at: [3, 0.5, -4] }],
+    [0, 0, 2], 3, [0, 0], schwung(4), 'return g.st');
+  expect(st.ev).toEqual(['star', 'bonus']);
+  expect(st.aus).toMatchObject({ stars: 2, starTotal: 3 });
+  // Trampolin (Sprung 11 m/s): über 5 m hoch, landet weiter vorne wieder auf der Bahn
+  const tr = await fahre(page, [weg, { type: 'trampolin', at: [0, 0, -3], size: [3, 2] }], [0, 0, -3], 3);
+  expect(tr.ev).toEqual(['jump']);
+  expect(tr.maxY).toBeGreaterThan(5);
+  expect(tr.p[1]).toBeCloseTo(0.5, 1);
+  expect(tr.p[2]).toBeLessThan(-8);
+  // Turbo: aus 3 m/s werden über 9 m/s; ohne Turbo rollt sie langsamer aus
+  const tu = await fahre(page, [weg, { type: 'turbo', at: [0, 0, 0] }], [0, 0, 2], 1, [0, 0], schwung(3));
+  expect(tu.ev).toEqual(['turbo']);
+  expect(tu.v[2]).toBeLessThan(-9);
+  expect((await fahre(page, [weg], [0, 0, 2], 1, [0, 0], schwung(3))).v[2]).toBeGreaterThan(-3);
+  // Richtung: yaw -90 schiebt die stehende Murmel nach +x
+  const quer = await fahre(page, [{ type: 'weg', from: [-10, 0, 0], to: [10, 0, 0], width: 4 }, { type: 'turbo', at: [0, 0, 0], yaw: -90 }], [0, 0, 0], 1);
+  expect(quer.v[0]).toBeGreaterThan(5);
+  expect(Math.abs(quer.v[2])).toBeLessThan(0.1);
+});
+
+test('Plattform trägt über die Lücke, Wippe kippt unter der Murmel und wieder zurück', async ({ page }) => {
+  await page.goto('/');
+  // Plattform fährt nach 1 s Pause in 2 s von z -2.5 nach -12.5, die Murmel darauf fährt ohne Steuern mit
+  const pl = [{ type: 'weg', from: [0, 0, 4], to: [0, 0, 0], width: 4 }, { type: 'plattform', from: [0, 0, -2.5], to: [0, 0, -12.5], size: [4, 4], time: 2, pause: 1 },
+    { type: 'weg', from: [0, 0, -15], to: [0, 0, -25], width: 4 }];
+  const p = await fahre(page, pl, [0, 0, -2.5], 3.5);
+  expect(p.ev).toEqual([]);
+  expect(p.p[2]).toBeCloseTo(-12.5, 0);
+  // Wippe (10°): Einfahrt unten, kippt nach vorne, sobald die Murmel über die Mitte rollt; ohne Murmel wieder zurück
+  const wi = [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -4], width: 4, walls: 0.8, caps: 'start' }, { type: 'wippe', at: [0, 0.695, -8], size: [4, 8], angle: 10 },
+    { type: 'weg', from: [0, 0, -12], to: [0, 0, -20], width: 4, walls: 0.8, caps: 'end' }];
+  const w = await fahre(page, wi, [0, 0, 2], 8, [0, -0.6], 'const w = g.els[1]; g.minA = w.a; g.jeSchritt = () => { g.minA = Math.min(g.minA, w.a); };',
+    'return [g.minA, g.els[1].a].map(a => Math.round(a * 180 / Math.PI));');
+  expect(w.ev).toEqual([]);
+  expect(w.aus).toEqual([-10, 10]); // ganz nach vorne gekippt, am Ende wieder in der Anfangslage
+  expect(w.p[2]).toBeLessThan(-12); // über die Wippe auf den Weg dahinter
+});
+
+test('Schalter hebt die Brücke, ohne passenden Schalter fällt die Murmel in die Lücke', async ({ page }) => {
+  await page.goto('/');
+  const bahn = [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -6], width: 4, walls: 0.8, caps: 'start' }, { type: 'bruecke', from: [0, 0, -6], to: [0, 0, -14], width: 4, id: 'b' },
+    { type: 'weg', from: [0, 0, -14], to: [0, 0, -24], width: 4, walls: 0.8, caps: 'end' }];
+  const hoehe = 'return g.els[1].body.position.y'; // Oberkante der Brücke, oben = 0
+  const mit = await fahre(page, [...bahn, { type: 'schalter', at: [0, 0, 1], id: 'b' }], [0, 0, 2], 7, [0, -0.4], '', hoehe);
+  expect(mit.ev).toEqual(['click', 'bridge']);
+  expect(mit.aus).toBeCloseTo(0, 2);
+  expect(mit.p[2]).toBeLessThan(-14); // über die Brücke gerollt
+  const ohne = await fahre(page, bahn, [0, 0, 2], 7, [0, -0.4], '', hoehe);
+  expect(ohne.ev).toEqual(['fall']);
+  expect(ohne.aus).toBeCloseTo(-6, 2); // bleibt unten
+  const falsch = await fahre(page, [...bahn, { type: 'schalter', at: [0, 0, 1], id: 'x' }], [0, 0, 2], 7, [0, -0.4], '', hoehe);
+  expect(falsch.ev).toEqual(['click', 'fall']);
+});
+
+test('Band trägt die Murmel mit, Balken schubst, Magnet zieht an oder stösst ab', async ({ page }) => {
+  await page.goto('/');
+  // Förderband (8 m/s): die stehende Murmel wird ohne Steuern mitgenommen, gegen das Band kommt sie mit wenig Kippen nicht an
+  const band = await fahre(page, [{ type: 'band', from: [0, 0, 4], to: [0, 0, -12], width: 4, walls: 0.8, caps: 'start' },
+    { type: 'weg', from: [0, 0, -12], to: [0, 0, -30], width: 4, walls: 0.8, caps: 'end' }], [0, 0, 2], 2);
+  expect(band.v[2]).toBeLessThan(-7);
+  expect(band.p[2]).toBeLessThan(-8);
+  const gegen = await fahre(page, [{ type: 'band', from: [0, 0, -12], to: [0, 0, 4], width: 4, walls: 0.8, caps: 'end' }], [0, 0, -4], 2, [0, -0.5]);
+  expect(gegen.p[2]).toBeGreaterThan(-4);
+  // Balken dreht sich (40°/s) und schubst die Murmel weg; steht er still, bleibt sie liegen
+  const feld = { type: 'weg', from: [0, 0, 10], to: [0, 0, -10], width: 20 };
+  const weg = async speed => { const r = await fahre(page, [feld, { type: 'balken', at: [0, 0, 0], length: 6, speed }], [2.5, 0, -1.5], 5); return Math.hypot(r.p[0] - 2.5, r.p[2] + 1.5); };
+  expect(await weg(40)).toBeGreaterThan(2);
+  expect(await weg(0)).toBeLessThan(0.1);
+  // Magnet (Reichweite 4 m): zieht die Murmel zu sich, mit negativer Stärke stösst er sie hinaus, ausserhalb wirkt er nicht
+  const zieht = await fahre(page, [feld, { type: 'magnet', at: [0, 0, 0] }], [2.5, 0, 0], 5);
+  expect(zieht.ev).toEqual(['magnet']);
+  expect(Math.hypot(zieht.p[0], zieht.p[2])).toBeLessThan(1); // pendelt um die Mitte aus (nach 4 s höchstens 0.5 m daneben)
+  const stoesst = await fahre(page, [feld, { type: 'magnet', at: [0, 0, 0], strength: -7 }], [1.5, 0, 0], 3);
+  expect(stoesst.ev).toEqual(['magnet']);
+  expect(stoesst.p[0]).toBeGreaterThan(4);
+  const weit = await fahre(page, [feld, { type: 'magnet', at: [0, 0, 0] }], [5, 0, 0], 3);
+  expect(weit.ev).toEqual([]);
+  expect(weit.p[0]).toBeCloseTo(5, 2);
+});
+
+test('Kanone schiesst die Murmel aufs Ziel, Dominos fallen nur, wenn die Murmel sie anstösst', async ({ page }) => {
+  await page.goto('/');
+  // Kanone lädt, schiesst nach 0.8 s und die Murmel landet beim Zielkreis auf der höheren Plattform
+  const k = await fahre(page, [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -8], width: 4, walls: 0.8, caps: 'both' }, { type: 'kanone', at: [0, 0, -5], target: [0, 3, -20], time: 1.5 },
+    { type: 'weg', from: [0, 3, -16], to: [0, 3, -30], width: 5, walls: 0.8, caps: 'both' }], [0, 0, 1], 6, [0, -0.5],
+    'const k = g.els[1]; g.jeSchritt = () => { if (!g.landung && k.state === \'pause\') g.landung = [g.ball.position.x, g.ball.position.z]; };', 'return g.landung');
+  expect(k.ev).toEqual(['laden', 'boom']);
+  expect(Math.hypot(k.aus[0], k.aus[1] + 20)).toBeLessThan(1.5);
+  expect(k.p[1]).toBeCloseTo(3.5, 1);
+  // Dominos: die Murmel rollt hinein, alle fünf fallen; ohne Anstoss stehen alle noch
+  const dom = [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -16], width: 4, walls: 0.8, caps: 'both' }, { type: 'domino', from: [0, 0, -4], to: [0, 0, -10], count: 5, size: [3, 1.8, 0.3] }];
+  const stehen = 'return g.els[1].bodies.filter(b => b.quaternion.vmult(new g.C.Vec3(0, 1, 0)).y > 0.9).length';
+  const um = await fahre(page, dom, [0, 0, 2], 5, [0, 0], schwung(5), stehen);
+  expect(um.ev).toEqual(['tock', 'tock', 'tock', 'tock', 'tock']);
+  expect(um.aus).toBe(0);
+  const still = await fahre(page, dom, [0, 0, 2], 5, [0, 0], '', stehen);
+  expect(still.ev).toEqual([]);
+  expect(still.aus).toBe(5);
+});
 
 test('Fallen: Hammer quetscht, Falltür klappt auf, Loch im Feld, Schieber schiebt weg', async ({ page }) => {
   await page.goto('/');
