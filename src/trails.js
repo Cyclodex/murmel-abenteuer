@@ -5,11 +5,11 @@
 export const TRAILS = [
   { id: 'keine', emoji: '🚫', need: {} },
   { id: 'funken', emoji: '✨', need: { stars: 3 }, shape: 'funke', colors: [0xFFE14D, 0xFFFFFF, 0xFFA726], size: 0.26, life: 0.6, every: 0.25, spread: 2.5, rise: 1, gravity: 4 },
-  { id: 'blasen', emoji: '🫧', need: { stickers: 3 }, shape: 'kugel', colors: [0xBDEBFF, 0xE3F6FF, 0xA0D8FF], size: 0.3, life: 1.6, every: 0.4, spread: 0.4, rise: 1.2, gravity: 0, opacity: 0.6 },
+  { id: 'blasen', emoji: '🫧', need: { stickers: 2 }, shape: 'kugel', colors: [0xBDEBFF, 0xE3F6FF, 0xA0D8FF], size: 0.3, life: 1.6, every: 0.4, spread: 0.4, rise: 1.2, gravity: 0, opacity: 0.6 },
   { id: 'sterne', emoji: '⭐', need: { stars: 12 }, shape: 'stern', colors: [0xFFC928, 0xFFE680], size: 0.55, life: 1.0, every: 0.45, spread: 0.8, rise: 1.5, gravity: 1 },
-  { id: 'regenbogen', emoji: '🌈', need: { stickers: 8 }, shape: 'kugel', colors: [0xE40303, 0xFF8C00, 0xFFED00, 0x008026, 0x004DFF, 0x750787], size: 0.34, life: 1.2, every: 0.15, spread: 0, rise: 0, gravity: 0 },
+  { id: 'regenbogen', emoji: '🌈', need: { stickers: 5 }, shape: 'kugel', colors: [0xE40303, 0xFF8C00, 0xFFED00, 0x008026, 0x004DFF, 0x750787], size: 0.34, life: 1.2, every: 0.15, spread: 0, rise: 0, gravity: 0 },
   { id: 'herzen', emoji: '💖', need: { stars: 22 }, shape: 'herz', colors: [0xFF5A8A, 0xFF8FB1, 0xE91E63], size: 0.5, life: 1.2, every: 0.5, spread: 0.5, rise: 1.3, gravity: 0 },
-  { id: 'feuer', emoji: '🔥', need: { stickers: 16 }, shape: 'funke', colors: [0xFF3D00, 0xFF9100, 0xFFD600], size: 0.36, life: 0.7, every: 0.15, spread: 0.8, rise: 2.5, gravity: -1 }
+  { id: 'feuer', emoji: '🔥', need: { stickers: 10 }, shape: 'funke', colors: [0xFF3D00, 0xFF9100, 0xFFD600], size: 0.36, life: 0.7, every: 0.15, spread: 0.8, rise: 2.5, gravity: -1 }
 ];
 
 const POOL = 90;

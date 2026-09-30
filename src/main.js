@@ -33,22 +33,22 @@ const ALL_STARS = LEVELS.reduce((n, l) => n + l.parts.filter(p => p.type === 'st
 const skinNeed = s => (s.need === 'alle' ? ALL_STARS : s.need);
 const skinOpen = s => progress.totalStars() >= skinNeed(s);
 const currentSkin = () => { const s = SKINS.find(k => k.id === progress.skin); return s && skinOpen(s) ? s : SKINS[0]; };
-const trailOpen = t => (t.need.stars ? progress.totalStars() >= t.need.stars : progress.stickerCount() >= (t.need.stickers || 0));
+const trailOpen = t => (t.need.stars ? progress.totalStars() >= t.need.stars : stickerCount() >= (t.need.stickers || 0));
 const trailNeed = t => (t.need.stars ? t.need.stars + '⭐' : t.need.stickers + '🏅');
 const currentTrail = () => { const t = TRAILS.find(k => k.id === progress.trail); return t && trailOpen(t) ? t : TRAILS[0]; };
 const ALBUM = buildAlbum(WORLDS);
+const stickerCount = () => ALBUM.all.filter(st => progress.hasSticker(st.id)).length;
 const cheer = createCheer($('cheerOv'), audio);
 const rec = createRecorder(); // Fahrt aufnehmen (für die Geistermurmel der Bestzeit und die Online-Rangliste)
 const online = createOnline(progress);
 let race = null; // { level, name, track }: Online-Geist, gegen den gerade gefahren wird (statt der eigenen Bestzeit)
 
-// Neu verdiente Sticker ins Album kleben, gibt sie zurück. bonus = Level-ID, in dem gerade der Bonusstern gesammelt wurde,
-// run = was in diesem Lauf passiert ist ({ dreckig, sauber })
-function syncStickers(bonus = null, run = {}) {
+// Neu verdiente Sticker ins Album kleben, gibt sie zurück. run = was in diesem Lauf passiert ist ({ dreckig, sauber, geist })
+function syncStickers(run = {}) {
   const fresh = [];
   for (let pass = 0, added = true; added && pass < 4; pass++) { // Extras hängen von anderen Stickern ab
     added = false;
-    const ctx = { ...run, bonus, skinsOpen: SKINS.filter(skinOpen).length, trailsOpen: TRAILS.filter(trailOpen).length };
+    const ctx = { ...run, skinsOpen: SKINS.filter(skinOpen).length, trailsOpen: TRAILS.filter(trailOpen).length };
     for (const st of ALBUM.all) if (!progress.hasSticker(st.id) && st.has(progress, ctx)) { progress.addSticker(st.id); fresh.push(st); added = true; }
   }
   if (fresh.length) progress.save();
@@ -70,6 +70,23 @@ const renderer = createRenderer(THREE, $('c'));
 input.setPower(power());
 
 let game = null, view = null, running = false, levelIdx = 0, camYaw = 0;
+// Kamerafahrt (view.cinema): Überflug beim Levelstart (nicht in automatischen Tests, ausser mit ?flug) und nach dem Gewinn;
+// Tippen auf das Bild überspringt sie
+const FLUG = !navigator.webdriver || new URLSearchParams(location.search).has('flug');
+const WIN_OV = 3, WIN_SKIP = 3.3; // Gewinn-Fenster nach 3 s (Hochflug ist bei 3.3 s oben)
+let intro = false, winShow = null, winT = 0;
+function stopCinema() {
+  intro = false; winShow = null; clearTimeout(winT);
+  if (view) view.cinema(null);
+}
+function endIntro() {
+  if (!intro) return;
+  stopCinema(); running = true;
+  if (input.mode === 'tilt') input.calibrate(true);
+}
+$('c').addEventListener('pointerdown', () => {
+  if (winShow) { view.cinemaSkip(WIN_SKIP); winShow(); } else endIntro();
+});
 
 // Level-Reihenfolge: erstes Level jeder Welt offen (bei Welten mit need erst ab so vielen Sternen),
 // danach freigeschaltet durch das vorherige
@@ -83,6 +100,7 @@ function isOpen(i) {
 }
 
 function loadLevel(i) {
+  stopCinema();
   if (view) view.dispose();
   levelIdx = i;
   game = createGame(CANNON, LEVELS[i], currentSkin().ball);
@@ -108,13 +126,14 @@ function startLevel(i) {
   loadLevel(i);
   ['mapOv', 'winOv', 'skinOv', 'albumOv', 'startOv', 'playerOv'].forEach(id => show(id, false));
   show('hud'); show('joy', input.mode === 'joy');
-  if (input.mode === 'tilt') input.calibrate(true);
-  running = true;
+  if (FLUG) { intro = true; running = false; view.cinema('intro'); } // endIntro() startet das Spiel
+  else { running = true; if (input.mode === 'tilt') input.calibrate(true); }
   toast(`${LEVELS[i].emoji} ${LEVELS[i].name}`);
   audio.music(LEVELS[i].theme || 'standard'); audio.sfx('start');
 }
 
 function restart() {
+  stopCinema();
   if (pilot) pilot.i = 0;
   game.reset(); rec.reset(); showGhost(); camYaw = game.track.yaw; show('winOv', false); running = true;
   if (input.mode === 'tilt') input.calibrate();
@@ -123,6 +142,7 @@ function restart() {
 // ---------- Karte ----------
 function starRow(have, total) { return '⭐'.repeat(have) + '☆'.repeat(Math.max(0, total - have)); }
 function showMap() {
+  stopCinema();
   running = false; backdrop = true;
   ['hud', 'joy', 'winOv', 'skinOv', 'albumOv', 'startOv', 'playerOv', 'treppeBack'].forEach(id => show(id, false));
   syncStickers(); // schon verdiente Sticker nachtragen (alter Spielstand, anderer Spieler), ohne Jubel
@@ -234,23 +254,29 @@ function showSkins() {
 }
 
 // ---------- Sticker-Album ----------
-let albumPage = 0;
-function showAlbum(k = albumPage) {
-  albumPage = k;
-  $('albumCount').textContent = `🏅 ${ALBUM.all.filter(st => progress.hasSticker(st.id)).length}/${ALBUM.all.length}`;
-  const tabs = $('albumTabs'); tabs.textContent = '';
-  ALBUM.pages.forEach((pg, i) => {
-    const b = document.createElement('button');
-    b.className = 'tab' + (i === k ? ' sel' : ''); b.textContent = pg.emoji; b.dataset.page = pg.id;
-    b.onclick = () => { audio.sfx('tap'); showAlbum(i); };
-    tabs.appendChild(b);
-  });
+// eine Zeile pro Welt; Antippen eines Stickers zeigt, wofür es ihn gibt
+const ALBUM_HINT = '👆 Tippe auf einen Sticker';
+function showAlbum() {
+  $('albumCount').textContent = `🏅 ${stickerCount()}/${ALBUM.all.length}`;
+  const info = $('albumInfo'); info.textContent = ALBUM_HINT;
   const grid = $('albumGrid'); grid.textContent = '';
-  for (const st of ALBUM.pages[k].stickers) {
-    const d = document.createElement('div'), got = progress.hasSticker(st.id);
-    d.className = 'sticker' + (got ? ' got' : ''); d.dataset.sticker = st.id;
-    d.innerHTML = got ? `<span>${st.emoji}</span>` : `<span>${st.emoji}</span><b>🔒</b>`;
-    grid.appendChild(d);
+  for (const r of ALBUM.rows) {
+    const row = document.createElement('div'); row.className = 'srow'; row.dataset.row = r.id;
+    row.innerHTML = `<div class="wicon">${r.emoji}</div><div class="list"></div>`;
+    for (const st of r.stickers) {
+      const b = document.createElement('button'), got = progress.hasSticker(st.id);
+      b.className = 'sticker' + (got ? ' got' : ''); b.dataset.sticker = st.id;
+      b.setAttribute('aria-label', st.text);
+      b.innerHTML = got ? `<span>${st.emoji}</span>` : `<span>${st.emoji}</span><b>🔒</b>`;
+      b.onclick = () => {
+        audio.sfx('tap');
+        grid.querySelectorAll('.sticker.sel').forEach(x => x.classList.remove('sel'));
+        b.classList.add('sel');
+        info.textContent = `${st.emoji} ${st.text}` + (got ? ' ✅' : '');
+      };
+      row.lastChild.appendChild(b);
+    }
+    grid.appendChild(row);
   }
   show('mapOv', false); show('albumOv');
 }
@@ -303,7 +329,8 @@ addEventListener('resize', () => { if (view) view.resize(); treppe.resize(); });
 function onWin() {
   running = false;
   const lv = LEVELS[levelIdx], before = progress.totalStars(), trailsBefore = TRAILS.filter(trailOpen);
-  progress.finish(lv.id, game.st.stars);
+  const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got);
+  progress.finish(lv.id, game.st.stars, bonus);
   // Bestzeit: neue Bestzeit speichert die Fahrt als Geistermurmel
   const t = game.time, had = progress.bestTime(lv.id), fastest = progress.setTime(lv.id, t);
   if (fastest) progress.setGhost(lv.id, rec.track(t, currentSkin().id));
@@ -316,8 +343,7 @@ function onWin() {
   $('winScore').textContent = `🏆 ${run.score}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : hadRun ? ` · 🏆 ${hadRun.score}` : '');
   $('winTime').textContent = `⏱ ${formatTime(t)}` + (fastest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
   const after = progress.totalStars();
-  const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got) ? lv.id : null;
-  const stickers = syncStickers(bonus, { dreckig: game.dirtPeak >= 1, sauber: game.washed, geist: fastest && had > 0 });
+  const stickers = syncStickers({ dreckig: game.dirtPeak >= 1, sauber: game.washed, geist: fastest && had > 0 });
   const fresh = SKINS.filter(s => skinNeed(s) > before && skinNeed(s) <= after);
   const freshTrails = TRAILS.filter(t => trailOpen(t) && !trailsBefore.includes(t));
   const news = [...fresh, ...freshTrails];
@@ -327,8 +353,10 @@ function onWin() {
   const cheers = [...news, ...stickers].map(x => x.emoji);
   showWinRank();
   show('nextBtn', levelIdx + 1 < LEVELS.length && isOpen(levelIdx + 1));
-  view.burst(view.goal ? view.goal.position : view.ballMesh.position, 60, [0xFF5A8A, 0xFFC928, 0x3BB273, 0x2F6FEB]);
-  setTimeout(() => { show('winOv'); show('joy', false); cheer.show(cheers); }, 900);
+  // Zielmoment, Hochflug über das Level mit der gefahrenen Strecke, dann das Gewinn-Fenster (Tippen: sofort)
+  view.cinema('win', { track: rec.track(t) });
+  winShow = () => { winShow = null; clearTimeout(winT); show('winOv'); show('joy', false); cheer.show(cheers); };
+  winT = setTimeout(winShow, WIN_OV * 1000);
 }
 
 // Vergleich mit den anderen Spielern auf dem Gerät und online (beste Punkte in diesem Level, mit Stärke):
@@ -351,7 +379,7 @@ $('winGhost').onclick = async () => {
   race = { level: id, name, track }; restart(); toast(`👻 ${name}`);
 };
 
-const VIBRATE = { quetsch: [120, 40, 60], klapp: 30, platsch: 40, spritz: 30, spuel: [40, 60, 40], boom: [80, 30, 40], roehre: 30, plopp: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
+const VIBRATE = { quetsch: [120, 40, 60], klapp: 30, platsch: 40, spritz: 30, spuel: [40, 60, 40], boom: [80, 30, 40], roehre: 30, plopp: 20, wieder: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
 function onEvent(e) {
   if (e === 'hit') { audio.sfx('hit', game.hitStrength); return; }
   if (e === 'tock') { audio.sfx('tock', game.tockIdx); return; }
@@ -361,6 +389,7 @@ function onEvent(e) {
   if (e === 'platsch') view.burst(view.ballMesh.position, 16, [0x5B3A1E, 0x7D5A36]);
   if (e === 'sauber') view.burst(view.ballMesh.position, 20, [0xFFFFFF, 0xBDEBFF, 0x7FC4F5]);
   if (e === 'bonus') { buzz([30, 30, 30]); view.burst(view.ballMesh.position, 30, [0xC77DFF, 0xFFC928, 0xFFFFFF]); }
+  if (e === 'wieder') view.plopp();
   if (e === 'win') onWin();
   if ((e === 'fall' || e === 'zurueck') && pilot) pilot.fell();
 }
@@ -413,6 +442,7 @@ function loop(now) {
   }
   // Kamera dreht weich mit der Bahn; Eingabe wirkt relativ zur Kamera
   camYaw += angleDiff(camYaw, game.track.yaw) * Math.min(1, dt * 3);
+  if (game.holdT > 0) camYaw = game.track.yaw; // nach dem Runterfallen: Blickrichtung am Checkpoint (die Kamera fliegt hin)
   const c = Math.cos(camYaw), s = Math.sin(camYaw);
   let [sx, sz] = input.read();
   if (pilot && running) { const [ix, iz] = pilot.drive(); sx = ix * c - iz * s; sz = ix * s + iz * c; } // Welt -> Kamera
@@ -425,6 +455,7 @@ function loop(now) {
   }
   const bv = game.ball.velocity;
   audio.roll(running ? Math.hypot(bv.x, bv.y, bv.z) : 0, !!game.groundBody, game.groundBody?.userData?.surface || 'normal');
+  if (intro && view.cinemaT >= view.INTRO_END) endIntro();
   updatePilot();
   $('stars').textContent = `⭐ ${game.st.stars}/${game.st.starTotal}`;
   view.render(dt, sx, sz, camYaw, power().tilt, input.mode === 'tilt' ? 1 : 0);

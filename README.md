@@ -31,16 +31,16 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/bauteile.js` | Sammelt alle Bauteil-Typen |
 | `src/themes.js` | Aussehen der Welten (Boden, Wände, Himmel, Untergrund, Partikel) |
 | `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm, Pfütze, Keramik, Kunststoff), Dreck (`g.dirt`: Schlamm macht dreckig, Pfütze/Wind/Wasser waschen), Hangabtrieb bergab (`SLOPE_PUSH`), Bremsen (`BREMSE`: Rollwiderstand gleichmässig in der Ebene, ausser beim Gasgeben in Fahrtrichtung; Luftwiderstand ∝ v²), Bremshilfe nur in der Ebene; runde Flächen (`rund`) geben den an den Nähten der Klötze verlorenen Schwung zurück und behalten Reibung auch an steilen Stellen; eigene Breitphase und Kontakt-Tabelle (schnell auch mit Hunderten Klötzen) |
-| `src/view.js` | three.js-Szene, Themen (Spielzimmer), Kamera (Bauteile wie Looping und Nagelwand können eine eigene Kamera liefern: `view()` gibt `cam(p)` zurück) |
+| `src/view.js` | three.js-Szene, Themen (Spielzimmer), Kamera (Bauteile wie Looping, Nagelwand und Klo können eine eigene Kamera liefern: `view()` gibt `cam(p)` zurück), Kamerafahrt `cinema()`: Überflug beim Levelstart und nach dem Gewinn Hochflug in die Weitsicht über das ganze Level mit der gefahrenen Strecke (Tippen überspringt; in Playwright-Tests nur mit `?flug`) |
 | `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen; Knopf 📱/🕹️ wechselt jederzeit), Pfeiltasten, Stärken 🐢/🐇/🚀 (`POWERS`) |
 | `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
 | `src/skins.js` | Murmel-Designs, ab wie vielen Sternen sie frei sind, Sprungkraft an Wand/Boden, Schwerkraft, Rollen und Dichte (`ball: {wand, boden, schwere, rollen, dichte}`, dichte in g/cm³: unter 1 schwimmt die Murmel im Fluss), optional Struktur (`bump`) |
 | `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter, werfen unterwegs Dominos um und prallen unten an eine Glaswand (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |
 | `src/trails.js` | Spuren hinter der Murmel (freischaltbar über Sterne ⭐ oder Sticker 🏅), Partikel-Pool als InstancedMesh |
-| `src/stickers.js` | Sticker-Album: Sticker je Level/Welt werden aus `src/levels/index.js` erzeugt, dazu Extras |
+| `src/stickers.js` | Sticker-Album: pro Welt 🏆 🌟 💎 💀 (aus `src/levels/index.js` erzeugt), dazu Extras; Antippen im Album erklärt den Sticker |
 | `src/ghost.js` | Bestzeit: Fahrt aufnehmen (alle 0.1 s), Geistermurmel fährt beim nächsten Mal mit, Zeitformat |
 | `src/cheer.js` | Jubel beim Freischalten (Emojis, Konfetti, Klang `jubel`) |
-| `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne, Bestzeiten, beste Fahrt mit Punkten, Murmel, Spur und Sticker pro Spieler; Einstellungen für alle; Geister-Fahrten getrennt (`murmel-geist-v1`) |
+| `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne, Bestzeiten, beste Fahrt mit Punkten, Murmel, Spur, Bonussterne und Sticker pro Spieler; Einstellungen für alle; Geister-Fahrten getrennt (`murmel-geist-v1`) |
 | `src/score.js` | Punkte einer Fahrt (pro Level höchstens 2050: Sterne-Anteil 1000, Zeit gegen die Richtzeit bis 750, ohne Absturz 300, je Absturz 100 weniger) und Rangliste nach Punkten (Stärke wird nur angezeigt) |
 | `src/levels/richtzeiten.js` | Richtzeit pro Level für die Punkte (Autopilot, Stärke normal, Standard-Murmel), erzeugt mit `node tests/richtzeiten.mjs [id ...]` |
 | `src/online.js` | Online-Rangliste über Supabase (nur `fetch`, 3 s Timeout, Fehler still): neue Rekorde mit Geist-Aufnahme senden (ohne Netz in localStorage `murmel-online-v1` vormerken, später nachsenden), Rangliste holen, Geist laden. Auf localhost aus (Tests: localStorage `murmel-online` = `an`) |
@@ -75,7 +75,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `klotz` | `at` (Mitte), `size: [b, h, t]`, `yaw`, `look` (`'lego-rot'`, `'klotz-blau'`, `'abc'` + `text`), `deko: true` = ohne Physik |
 | `nische` | `at` (Mitte der Öffnung am Wegrand), `yaw` (nach aussen), `width`, `depth` – Wand dort mit Lücke bauen |
 | `stern` | `at`, `bonus: true` (lila, versteckt), `r` (Sammelradius) |
-| `checkpoint` | `at` (Boden, dort geht es weiter), `size: [b, h, t]`, `yaw` |
+| `checkpoint` | `at` (Boden, dort geht es weiter), `size: [b, h, t]`, `yaw` (Fahrtrichtung: dorthin schaut die Kamera, wenn sie nach dem Runterfallen hinfliegt) |
 | `trampolin` | `at`, `size: [b, t]`, `jump`, `push` oder `tempo` (fester Schwung), `yaw` |
 | `turbo` | `at`, `size: [b, t]`, `yaw`, `speed` |
 | `plattform` | `from`, `to` (Mitte Oberkante), `size: [b, t]`, `yaw`, `time`, `pause`, `rim` |
@@ -110,7 +110,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `wanne` | `at` (Mitte der Wasseroberfläche), `size: [b, lang]`, `yaw`, `rim`, `depth`, `enten: [[x, z]]` – Badewanne, ins Wasser fallen = zurück zum Checkpoint |
 | `schiff` | `at` (Wasseroberfläche), `size: [b, lang]`, `yaw`, `deck`, `bob`, `to`/`time`/`pause`/`offset` (fährt wie die Plattform), `farbe`, `segel`, `surface` (Standard Frottee; `'normal'` = Holz, z. B. für eine Fähre), `trampolin: { vorne, size, ziel, time, bremse }` – springt immer genau auf `ziel` (Flug je Murmel ausgerechnet), Frottee-Deck fängt auf |
 | `strahl` | `at` (Auslauf oben), `unten` (y), `r`, `wash`, `push`, `hahn`, `yaw`, `lang` – Wasserstrahl, wäscht die Murmel |
-| `klo` | `at` (Schüsselboden), `yaw`, `r`, `R`, `h`, `rim`, `tief` (Rohr, Standard 3.5) – Toilette mit Deckel und Spülkasten, in der Mitte ein Loch mit geschlossenem Rohr darunter. `ziel` 2 m unter `at` ins Rohr legen: gewonnen, wenn die Murmel hinuntergespült ist; spült beim Gewinnen |
+| `klo` | `at` (Schüsselboden), `yaw`, `r`, `R`, `h`, `rim`, `tief` (Rohr, Standard 3.5) – Toilette mit Deckel und Spülkasten, in der Mitte ein Loch mit geschlossenem Rohr darunter. `ziel` 2 m unter `at` ins Rohr legen: gewonnen, wenn die Murmel hinuntergespült ist; spült, sobald die Murmel im Abfluss ist; Kamera 45° von oben, solange die Murmel über der Schüssel ist |
 
 Neues Hindernis erfinden: in `src/elements.js` einen Typ ergänzen (`solids`, `init`, `reset`, `pre`, `step`, `view`), danach kann es in jedem Level verwendet werden.
 Neues Bauteil: im Prüfstand (`src/levels/pruefstand/<gruppe>.js`) ein Mini-Level dafür anlegen, Route in `tests/routes/pruefstand/<gruppe>.js`; der Test „Prüfstand …“ fährt es bei jedem PR mit jeder Stärke und jeder Murmel.

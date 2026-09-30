@@ -129,9 +129,13 @@ export const EXTRA = {
       el.dir = el.up ? UP : fwdOf(el.yw);
     },
     reset(el) { el.inside = false; },
+    // bläst es am Punkt p? (auch für die Kamera: fällt die Murmel in den Wind, fliegt sie nicht frei)
+    feld(el, p) {
+      const l = toLocal(p, el.at, el.yw), [b, hh, t] = el.size;
+      return Math.abs(l[0]) < b / 2 && l[1] > 0 && l[1] < hh && Math.abs(l[2]) < t / 2;
+    },
     step(el, g, h, ev) {
-      const l = toLocal(ballPos(g), el.at, el.yw), [b, hh, t] = el.size;
-      const inside = Math.abs(l[0]) < b / 2 && l[1] > 0 && l[1] < hh && Math.abs(l[2]) < t / 2;
+      const inside = EXTRA.wind.feld(el, ballPos(g));
       if (inside) {
         const a = (el.strength ?? (el.up ? 16 : 8)) * h, v = g.ball.velocity;
         v.x += el.dir[0] * a; v.y += el.dir[1] * a; v.z += el.dir[2] * a;
