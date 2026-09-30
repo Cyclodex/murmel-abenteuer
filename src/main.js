@@ -70,6 +70,23 @@ const renderer = createRenderer(THREE, $('c'));
 input.setPower(power());
 
 let game = null, view = null, running = false, levelIdx = 0, camYaw = 0;
+// Kamerafahrt (view.cinema): Überflug beim Levelstart (nicht in automatischen Tests, ausser mit ?flug) und nach dem Gewinn;
+// Tippen auf das Bild überspringt sie
+const FLUG = !navigator.webdriver || new URLSearchParams(location.search).has('flug');
+const WIN_OV = 3, WIN_SKIP = 3.3; // Gewinn-Fenster nach 3 s (Hochflug ist bei 3.3 s oben)
+let intro = false, winShow = null, winT = 0;
+function stopCinema() {
+  intro = false; winShow = null; clearTimeout(winT);
+  if (view) view.cinema(null);
+}
+function endIntro() {
+  if (!intro) return;
+  stopCinema(); running = true;
+  if (input.mode === 'tilt') input.calibrate(true);
+}
+$('c').addEventListener('pointerdown', () => {
+  if (winShow) { view.cinemaSkip(WIN_SKIP); winShow(); } else endIntro();
+});
 
 // Level-Reihenfolge: erstes Level jeder Welt offen (bei Welten mit need erst ab so vielen Sternen),
 // danach freigeschaltet durch das vorherige
@@ -83,6 +100,7 @@ function isOpen(i) {
 }
 
 function loadLevel(i) {
+  stopCinema();
   if (view) view.dispose();
   levelIdx = i;
   game = createGame(CANNON, LEVELS[i], currentSkin().ball);
@@ -108,13 +126,14 @@ function startLevel(i) {
   loadLevel(i);
   ['mapOv', 'winOv', 'skinOv', 'albumOv', 'startOv', 'playerOv'].forEach(id => show(id, false));
   show('hud'); show('joy', input.mode === 'joy');
-  if (input.mode === 'tilt') input.calibrate(true);
-  running = true;
+  if (FLUG) { intro = true; running = false; view.cinema('intro'); } // endIntro() startet das Spiel
+  else { running = true; if (input.mode === 'tilt') input.calibrate(true); }
   toast(`${LEVELS[i].emoji} ${LEVELS[i].name}`);
   audio.music(LEVELS[i].theme || 'standard'); audio.sfx('start');
 }
 
 function restart() {
+  stopCinema();
   if (pilot) pilot.i = 0;
   game.reset(); rec.reset(); showGhost(); camYaw = game.track.yaw; show('winOv', false); running = true;
   if (input.mode === 'tilt') input.calibrate();
@@ -123,6 +142,7 @@ function restart() {
 // ---------- Karte ----------
 function starRow(have, total) { return '⭐'.repeat(have) + '☆'.repeat(Math.max(0, total - have)); }
 function showMap() {
+  stopCinema();
   running = false; backdrop = true;
   ['hud', 'joy', 'winOv', 'skinOv', 'albumOv', 'startOv', 'playerOv', 'treppeBack'].forEach(id => show(id, false));
   syncStickers(); // schon verdiente Sticker nachtragen (alter Spielstand, anderer Spieler), ohne Jubel
@@ -318,8 +338,10 @@ function onWin() {
   const cheers = [...news, ...stickers].map(x => x.emoji);
   showWinRank();
   show('nextBtn', levelIdx + 1 < LEVELS.length && isOpen(levelIdx + 1));
-  view.burst(view.goal ? view.goal.position : view.ballMesh.position, 60, [0xFF5A8A, 0xFFC928, 0x3BB273, 0x2F6FEB]);
-  setTimeout(() => { show('winOv'); show('joy', false); cheer.show(cheers); }, 900);
+  // Zielmoment, Hochflug über das Level mit der gefahrenen Strecke, dann das Gewinn-Fenster (Tippen: sofort)
+  view.cinema('win', { track: rec.track(t) });
+  winShow = () => { winShow = null; clearTimeout(winT); show('winOv'); show('joy', false); cheer.show(cheers); };
+  winT = setTimeout(winShow, WIN_OV * 1000);
 }
 
 // Vergleich mit den anderen Spielern auf dem Gerät und online (beste Punkte in diesem Level, mit Stärke):
@@ -416,6 +438,7 @@ function loop(now) {
   }
   const bv = game.ball.velocity;
   audio.roll(running ? Math.hypot(bv.x, bv.y, bv.z) : 0, !!game.groundBody, game.groundBody?.userData?.surface || 'normal');
+  if (intro && view.cinemaT >= view.INTRO_END) endIntro();
   updatePilot();
   $('stars').textContent = `⭐ ${game.st.stars}/${game.st.starTotal}`;
   view.render(dt, sx, sz, camYaw, power().tilt, input.mode === 'tilt' ? 1 : 0);
