@@ -151,6 +151,41 @@ export function createAudio(opts = {}) {
     fall: t => tone(900, t, 0.5, 0.2, 'triangle', 140),
     wieder: t => { tone(500, t, 0.08, 0.5, 'sine', 1200); tone(midi(79), t + 0.06, 0.12, 0.25, 'sine', midi(86)); }, // nach dem Runterfallen am Checkpoint eingeploppt
     cp: t => { bell(midi(79), t, 0.22, 0.5); bell(midi(86), t + 0.12, 0.22, 0.6); },
+    // Jubel der Checkpoint-Figuren (src/checkpoint-figuren.js), 'cp-' + Figur
+    'cp-zwerg': t => { // Hur-raa!
+      tone(midi(67), t, 0.14, 0.2, 'square', midi(71)); tone(midi(72), t + 0.18, 0.35, 0.2, 'square', midi(79));
+      [84, 88, 91].forEach((n, i) => bell(midi(n), t + 0.55 + i * 0.07, 0.15, 0.4));
+    },
+    'cp-springteufel': t => { // Deckel klackt, Boing, Spieluhr
+      hiss(t, 0.05, 0.5, 'bandpass', 1500, null, 1.5); tone(midi(60), t, 0.08, 0.3, 'square', midi(55));
+      tone(120, t + 0.06, 0.12, 0.6, 'sine', 700);
+      for (let i = 0; i < 5; i++) tone(700 - i * 60, t + 0.18 + i * 0.07, 0.07, 0.3 - i * 0.04, 'sine', 460 - i * 40);
+      [72, 76, 79, 84].forEach((n, i) => bell(midi(n + 12), t + 0.6 + i * 0.08, 0.15, 0.35));
+    },
+    'cp-toaster': t => { // Hebel, Plopp, Pling
+      hiss(t, 0.04, 0.5, 'highpass', 2500); tone(900, t, 0.05, 0.2, 'square', 600);
+      tone(400, t + 0.08, 0.1, 0.5, 'sine', 1300);
+      bell(midi(96), t + 0.35, 0.25, 0.8); bell(midi(103), t + 0.47, 0.15, 0.6);
+    },
+    'cp-ente': t => { // Quak, Quak, Quietsch
+      for (const d of [0, 0.22]) { tone(720, t + d, 0.15, 0.22, 'sawtooth', 420); hiss(t + d, 0.12, 0.25, 'bandpass', 1300, 900, 3); }
+      tone(1700, t + 0.5, 0.25, 0.25, 'sine', 2600); tone(2600, t + 0.75, 0.12, 0.15, 'sine', 1900);
+    },
+    'cp-astronaut': t => { // Funk-Piep-Piep, schwebender Akkord
+      tone(1320, t, 0.07, 0.18, 'square'); tone(1760, t + 0.12, 0.07, 0.18, 'square');
+      hiss(t + 0.22, 0.12, 0.12, 'bandpass', 2000, null, 2);
+      [64, 71, 76, 83].forEach(n => tone(midi(n), t + 0.35, 0.9, 0.06, 'sine', null, sfxBus, 0.15));
+      bell(midi(95), t + 0.5, 0.12, 0.8);
+    },
+    'cp-oktopus': t => { // Blubber-Blasen nach oben, Glockenspiel
+      for (let i = 0; i < 6; i++) tone(260 + i * 90, t + i * 0.07, 0.07, 0.3, 'sine', 700 + i * 150);
+      [79, 83, 86, 91].forEach((n, i) => bell(midi(n), t + 0.5 + i * 0.07, 0.14, 0.45));
+    },
+    'cp-geysir': t => { // Grollen, Dampf zischt hoch, Pling
+      tone(70, t, 0.5, 0.5, 'sine', 40); hiss(t, 0.3, 0.3, 'lowpass', 300, 150, 0.7);
+      hiss(t + 0.1, 0.7, 0.45, 'bandpass', 400, 3500, 1.2);
+      bell(midi(91), t + 0.8, 0.2, 0.6); bell(midi(98), t + 0.9, 0.15, 0.5);
+    },
     turbo: t => { hiss(t, 0.4, 1.0, 'bandpass', 400, 3500, 1.5); tone(180, t, 0.35, 0.3, 'sawtooth', 700); },
     click: t => { hiss(t, 0.03, 0.7, 'highpass', 2500); tone(1200, t, 0.04, 0.2, 'square', 900); tone(midi(72), t + 0.08, 0.2, 0.18, 'triangle'); },
     bridge: t => { tone(90, t, 1.3, 0.12, 'sawtooth', 200); hiss(t, 1.3, 0.08, 'lowpass', 300, 900); bell(midi(84), t + 1.4, 0.2, 0.6); },

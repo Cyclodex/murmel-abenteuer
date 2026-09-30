@@ -28,6 +28,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/elements-bahn.js` | Kugelbahn: Rinne (schmal = Rutsche, auch als Kurve/Spirale; breit = Halfpipe), Spiraltrichter; `ringSolids` baut runde Flächen (auch Schüsseln) aus Klötzen, `rohrSolids` ein geschlossenes Rohr (Abfluss, Klo) |
 | `src/elements-bad.js` | Badezimmer: Badewanne mit Wasser (hineinfallen = zurück zum Checkpoint), Schiffchen mit Trampolin, Wasserstrahl aus dem Hahn (wäscht), Toilette als Ziel |
 | `src/props.js` | Riesige Alltagsgegenstände aus einfachen Formen (Apfel, Tasse, Toaster, Ente, Zwerg, Sandburg …) |
+| `src/checkpoint-figuren.js` | Checkpoint-Grafik: Zielband, das beim Durchfahren reisst, und eine Figur je Welt (Springteufel, Gartenzwerg, Toaster, Quietscheente, Astronaut, Oktopus, Geysir), die schläft und beim Erreichen mit der Fahne und eigenem Jubel-Klang (`cp-<figur>` in `src/audio.js`) jubelt |
 | `src/bauteile.js` | Sammelt alle Bauteil-Typen |
 | `src/themes.js` | Aussehen der Welten (Boden, Wände, Himmel, Untergrund, Partikel) |
 | `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm, Pfütze, Keramik, Kunststoff), Dreck (`g.dirt`: Schlamm macht dreckig, Pfütze/Wind/Wasser waschen), Hangabtrieb bergab (`SLOPE_PUSH`), Bremsen (`BREMSE`: Rollwiderstand gleichmässig in der Ebene, ausser beim Gasgeben in Fahrtrichtung; Luftwiderstand ∝ v²), Bremshilfe nur in der Ebene; runde Flächen (`rund`) geben den an den Nähten der Klötze verlorenen Schwung zurück und behalten Reibung auch an steilen Stellen; eigene Breitphase und Kontakt-Tabelle (schnell auch mit Hunderten Klötzen) |
@@ -75,7 +76,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `klotz` | `at` (Mitte), `size: [b, h, t]`, `yaw`, `look` (`'lego-rot'`, `'klotz-blau'`, `'abc'` + `text`), `deko: true` = ohne Physik |
 | `nische` | `at` (Mitte der Öffnung am Wegrand), `yaw` (nach aussen), `width`, `depth` – Wand dort mit Lücke bauen |
 | `stern` | `at`, `bonus: true` (lila, versteckt), `r` (Sammelradius) |
-| `checkpoint` | `at` (Boden, dort geht es weiter), `size: [b, h, t]`, `yaw` (Fahrtrichtung: dorthin schaut die Kamera, wenn sie nach dem Runterfallen hinfliegt) |
+| `checkpoint` | `at` (Boden, dort geht es weiter), `size: [b, h, t]`, `yaw` (Fahrtrichtung: dorthin schaut die Kamera, wenn sie nach dem Runterfallen hinfliegt), `side` (Figur nur rechts 1 / links -1, sonst wo Platz ist), `figur` (andere Figur als die der Welt) |
 | `trampolin` | `at`, `size: [b, t]`, `jump`, `push` oder `tempo` (fester Schwung), `yaw` |
 | `turbo` | `at`, `size: [b, t]`, `yaw`, `speed` |
 | `plattform` | `from`, `to` (Mitte Oberkante), `size: [b, t]`, `yaw`, `time`, `pause`, `rim` |

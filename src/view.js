@@ -202,7 +202,7 @@ export function createView(THREE, renderer, game) {
   }
 
   const v = {
-    THREE, scene, goal: null,
+    THREE, scene, game, goal: null,
     mats: {
       pad: lambert(0xFF5A8A), star: lambert(0xFFC928, { emissive: 0x6a4a00 }), bonusStar: lambert(0xC77DFF, { emissive: 0x3a1060 }),
       goal: lambert(0x3BB273, { emissive: 0x1a5a30 }), goalFlag: lambert(0x3BB273), pole: lambert(0x8A8A8A), wall: lambert(0xA8743A)
