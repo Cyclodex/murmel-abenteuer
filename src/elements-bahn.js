@@ -1,6 +1,6 @@
 // Kugelbahn-Teile: Spiraltrichter und Rinne (schmal = Rutsche, breit = Halfpipe).
 // Physik aus vielen schmalen Klötzen (hide), Grafik als glatte Fläche. Gleiche Schnittstelle wie in elements.js.
-import { DEG, add, sub, scale, fwdOf, rightOf, quatYawPitch } from './math.js';
+import { DEG, add, sub, scale, fwdOf, rightOf, yawOf, quatYawPitch } from './math.js';
 import { segment } from './elements.js';
 
 const R = 0.5;
@@ -17,7 +17,8 @@ const mulQ = (a, b) => [
 
 // Drehkörper aus Ringen: prof = [[radius, höhe], ...] von innen nach aussen, c = Mitte unten.
 // Pro Winkelstück und Ring ein schräger Klotz (Oberkante = Fläche). skip(a) = Winkel a auslassen.
-export function ringSolids(c, prof, { n = 32, skip = () => false, surface, look = 'floor', th = 0.4 } = {}) {
+// innen:false = innen nicht verlängern (Loch in der Mitte, z. B. Abfluss: sonst wird es enger)
+export function ringSolids(c, prof, { n = 32, skip = () => false, surface, look = 'floor', th = 0.4, innen = true } = {}) {
   const out = [];
   for (let k = 0; k < n; k++) {
     const a = (k + 0.5) * 2 * Math.PI / n;
@@ -28,7 +29,7 @@ export function ringSolids(c, prof, { n = 32, skip = () => false, surface, look 
       // an den Enden 5 cm verlängern (keine Spalten), aber nur wo die Fläche nach aussen steiler wird (wie in einer
       // Schüssel): wird sie flacher (Trichter), ragte die Verlängerung als Grat über die nächste Fläche
       const steiler = j => j > 0 && j < prof.length - 1 && (prof[j + 1][1] - prof[j][1]) / (prof[j + 1][0] - prof[j][0]) > (prof[j][1] - prof[j - 1][1]) / (prof[j][0] - prof[j - 1][0]) + 1e-9;
-      const e0 = i === 0 || steiler(i) ? 0.05 : 0, e1 = i + 2 === prof.length || steiler(i + 1) ? 0.05 : 0;
+      const e0 = (i === 0 && innen) || steiler(i) ? 0.05 : 0, e1 = i + 2 === prof.length || steiler(i + 1) ? 0.05 : 0;
       const d = Math.hypot(1, m), q0 = [x0 - e0 / d, y0 - e0 * m / d], q1 = [x1 + e1 / d, y1 + e1 * m / d];
       const s = segment(add(c, add(scale(u, q0[0]), [0, q0[1], 0])), add(c, add(scale(u, q1[0]), [0, q1[1], 0])));
       const wid = 2 * x1 * Math.sin(Math.PI / n) + 0.1;
@@ -43,6 +44,95 @@ export function gapTest(offen, breite, radius, n) {
   const gaps = (offen || []).map(y => { const f = fwdOf(y * DEG); return Math.atan2(f[2], f[0]); });
   const half = breite / 2 / radius + Math.PI / n;
   return a => gaps.some(ga => Math.abs(Math.atan2(Math.sin(a - ga), Math.cos(a - ga))) < half);
+}
+
+// Abfluss: Loch (Radius r, grösser als die Murmel) mit abgesenktem, steilem Rand (tief unter dem Boden),
+// darunter beginnt das Rohr mit Innenradius r (schuessel/klo mit abfluss, roehre mit down)
+export const ABFLUSS = { r: 0.7, tief: 0.3 };
+
+// Quaternion aus drei Achsen (Spalten einer Drehmatrix: lokales x, y, z in Weltkoordinaten)
+function quatFromAxes(X, Y, Z) {
+  const [m00, m10, m20] = X, [m01, m11, m21] = Y, [m02, m12, m22] = Z, tr = m00 + m11 + m22;
+  if (tr > 0) { const s = 0.5 / Math.sqrt(tr + 1); return [(m21 - m12) * s, (m02 - m20) * s, (m10 - m01) * s, 0.25 / s]; }
+  if (m00 > m11 && m00 > m22) { const s = 2 * Math.sqrt(1 + m00 - m11 - m22); return [0.25 * s, (m01 + m10) / s, (m02 + m20) / s, (m21 - m12) / s]; }
+  if (m11 > m22) { const s = 2 * Math.sqrt(1 + m11 - m00 - m22); return [(m01 + m10) / s, 0.25 * s, (m12 + m21) / s, (m02 - m20) / s]; }
+  const s = 2 * Math.sqrt(1 + m22 - m00 - m11); return [(m02 + m20) / s, (m12 + m21) / s, 0.25 * s, (m10 - m01) / s];
+}
+// Vektor v um die Achse a (Länge 1) drehen (Rodrigues)
+const rotAxis = (v, a, ang) => {
+  const c = Math.cos(ang), s = Math.sin(ang), k = cross(a, v), d = a[0] * v[0] + a[1] * v[1] + a[2] * v[2];
+  return [v[0] * c + k[0] * s + a[0] * d * (1 - c), v[1] * c + k[1] * s + a[1] * d * (1 - c), v[2] * c + k[2] * s + a[2] * d * (1 - c)];
+};
+
+// Geschlossenes Rohr entlang einer Mittellinie (pts, beliebig im Raum, auch senkrecht): pro Stück ein Ring aus n Latten
+// (Innenradius ri). Die Latten sind an den Knicken auf Gehrung geschnitten (Innenfläche ohne Spalt und ohne Grat), der Ring
+// dreht sich von Stück zu Stück so wenig wie möglich mit (keine Verdrehung, die Latten liegen hintereinander).
+// So braucht es kein segment() mit Ersatz-yaw für senkrechte Stücke. zu = Boden am Ende (das Rohr ist dort geschlossen).
+// unten = Richtung (senkrecht zum ersten Stück), in der eine Latte mittig liegt (z. B. die Aussenseite des Bogens: dort rollt
+// die Murmel auf einer Latte statt in der Kerbe zwischen zweien). n = 24: Nähte 15°, die Murmel pendelt ruhig, der Nahtverlust wird zurückgegeben.
+export function rohrSolids(pts, { ri = 0.7, n = 24, th = 0.3, surface = 'rohr', zu = false, unten } = {}) {
+  const segs = [];
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const d = sub(pts[i + 1], pts[i]), L = Math.hypot(...d);
+    if (L > 1e-6) segs.push({ a: pts[i], L, T: scale(d, 1 / L) });
+  }
+  // Rahmen: U senkrecht zur Richtung, von Stück zu Stück um die Knickachse mitgedreht
+  const T0 = segs[0].T, u0 = unten || cross(T0, Math.abs(T0[0]) < 0.9 ? [1, 0, 0] : [0, 0, 1]), k0 = u0[0] * T0[0] + u0[1] * T0[1] + u0[2] * T0[2];
+  let U = norm(sub(u0, scale(T0, k0))); // genau senkrecht zum ersten Stück
+  segs.forEach((s, i) => {
+    if (i > 0) {
+      const P = segs[i - 1].T, ax = cross(P, s.T), sn = Math.hypot(...ax);
+      if (sn > 1e-9) U = norm(rotAxis(U, scale(ax, 1 / sn), Math.atan2(sn, P[0] * s.T[0] + P[1] * s.T[1] + P[2] * s.T[2])));
+    }
+    s.U = U; s.W = cross(s.T, U);
+    if (Math.abs(s.T[1]) < 0.7) { const yaw = yawOf(s.T[0], s.T[2]); s.tr = { yaw, mid: add(s.a, scale(s.T, s.L / 2)), right: rightOf(yaw) }; }
+  });
+  // Gehrung: Ebene durch den Knick mit Normale = mittlere Richtung
+  const miter = j => j === 0 ? segs[0].T : j === segs.length ? segs[segs.length - 1].T : norm(add(segs[j - 1].T, segs[j].T));
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const out = [], wid = 2 * ri * Math.tan(Math.PI / n) + 0.04;
+  segs.forEach((s, i) => {
+    const m0 = miter(i), m1 = miter(i + 1);
+    for (let k = 0; k < n; k++) {
+      const phi = k * 2 * Math.PI / n, d =add(scale(s.U, Math.cos(phi)), scale(s.W, Math.sin(phi))), off = scale(d, ri);
+      const s0 = -dot(off, m0) / dot(s.T, m0), s1 = s.L - dot(off, m1) / dot(s.T, m1);
+      const Y = scale(d, -1), X = cross(Y, s.T); // Oberseite der Latte zeigt zur Rohrmitte
+      // flache Stücke wie eine Bahn (Kamerarichtung, Hangabtrieb nur auf der untersten Latte), steile ohne
+      out.push({ pos: add(add(s.a, scale(d, ri + th / 2)), scale(s.T, (s0 + s1) / 2)), half: [wid / 2, th / 2, (s1 - s0) / 2 + 0.01], quat: quatFromAxes(X, Y, s.T), look: 'wall', surface, hide: true, rund: true, rohr: true, track: s.tr, pendel: k > 0 });
+    }
+  });
+  if (zu) { // Deckel am Ende
+    const s = segs[segs.length - 1], e = add(s.a, scale(s.T, s.L + th / 2)), Z = scale(s.U, -1);
+    out.push({ pos: e, half: [ri + th, th / 2, ri + th], quat: quatFromAxes(s.W, scale(s.T, -1), Z), look: 'floor', surface, hide: true });
+  }
+  return out;
+}
+// Mittellinie eines Abflussrohrs: von oben (top) steil hinunter (steil = Grad unter der Waagrechten, 80° = fast senkrecht),
+// im Bogen (Radius rb) in Richtung e (waagrecht, Länge 1) und gerade mit leichtem Gefälle (grad) bis end.
+// Das obere Stück ist leicht nach vorne geneigt: die Murmel fällt aus dem Loch an die Rückwand und gleitet an ihr in den
+// Bogen (senkrecht fiele sie in der Rohrmitte und prallte unter fast 30° auf den Bogen). Liefert Punkte (Bogen in 10°-Stücken).
+export function abflussPts(top, end, e, { rb = 4, grad = 3, steil = 80 } = {}) {
+  const D = (end[0] - top[0]) * e[0] + (end[2] - top[2]) * e[2], H = top[1] - end[1]; // waagrecht in Richtung e, Höhe
+  const b0 = steil * Math.PI / 180, al = grad * Math.PI / 180;
+  // Längen der beiden Geraden aus s- und y-Richtung: L1 (oben, Neigung b0) und L2 (unten, Neigung al)
+  let L1 = -1, L2 = -1;
+  for (; rb > 0.3; rb *= 0.8) {
+    const Ds = D - rb * (Math.sin(b0) - Math.sin(al)), Hs = H - rb * (Math.cos(al) - Math.cos(b0)), det = Math.sin(al - b0);
+    L1 = (Ds * Math.sin(al) - Hs * Math.cos(al)) / det; L2 = (Math.cos(b0) * Hs - Math.sin(b0) * Ds) / det;
+    if (L1 >= 0 && L2 >= 0) break;
+  }
+  L1 = Math.max(0, L1);
+  const out = [top], at = (s, y) => [top[0] + e[0] * s, y, top[2] + e[2] * s];
+  let s = L1 * Math.cos(b0), y = top[1] - L1 * Math.sin(b0);
+  if (L1 > 0.05) out.push(at(s, y));
+  const m = Math.max(2, Math.ceil((b0 - al) / (10 * Math.PI / 180)));
+  for (let k = 1; k <= m; k++) { // Bogen: Neigung von b0 bis al
+    const bA = b0 - (b0 - al) * (k - 1) / m, bB = b0 - (b0 - al) * k / m;
+    s += rb * (Math.sin(bA) - Math.sin(bB)); y -= rb * (Math.cos(bB) - Math.cos(bA));
+    out.push(at(s, y));
+  }
+  out.push(end);
+  return out;
 }
 
 // Streifen-Textur (Kugelbahn-Kunststoff)

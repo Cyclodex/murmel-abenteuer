@@ -24,6 +24,7 @@ export const SURFACES = {
   flussbett: { friction: 0.4, bounce: 0.05, grip: 1, drag: 0, wash: 0.5 }, // Grund im Fluss: Wasser schluckt den Aufprall
   keramik: { friction: 0.3, bounce: 1, grip: 1, drag: 0.9, wash: 0.5 }, // nasses Lavabo: hart (Bälle springen), ein Wasserfilm bremst etwas
   kunststoff: { friction: 0.3, bounce: 1, grip: 1, drag: 0 }, // Kugelbahn: Rinne
+  rohr: { friction: 0.3, bounce: 1, grip: 0, drag: 0 }, // geschlossenes Rohr (Abfluss): drinnen lenkt man nicht
   trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 } // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
 };
 const DIRT_STILL = 0.08; // so viel Dreck pro Sekunde auch im Stehen im Schlamm
@@ -160,7 +161,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
   // Welcher Körper berührt die Murmel? (Boden = Berührung von unten)
   function contacts() {
     let best = null, bestNy = -2, ground = null, rundNy = -2;
-    g.rundN = null;
+    g.rundN = null; g.rundRohr = false;
     for (const c of world.contacts) {
       let other = null, s = 1;
       if (c.bi === ball) { other = c.bj; s = -1; } else if (c.bj === ball) other = c.bi;
@@ -168,7 +169,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
       const ny = c.ni.y * s; // Normale zeigt vom Körper zur Murmel
       if (ny > bestNy) { bestNy = ny; best = other; }
       if (ny > 0.3) { ground = other; g.groundN = [c.ni.x * s, ny, c.ni.z * s]; }
-      if (other.userData && other.userData.rund && ny > rundNy) { rundNy = ny; g.rundN = [c.ni.x * s, ny, c.ni.z * s]; }
+      if (other.userData && other.userData.rund && ny > rundNy) { rundNy = ny; g.rundN = [c.ni.x * s, ny, c.ni.z * s]; g.rundRohr = !!other.userData.rohr; }
     }
     g.touchBody = best; g.groundBody = ground;
     const u = best && best.userData;
@@ -245,15 +246,26 @@ export function createGame(CANNON, level, ballProps = BALL) {
     v.x += dx * k; v.y += dy * k; v.z += dz * k;
   }
 
-  // Runde Flächen (Rinne, Trichter, Lavabo) bestehen aus geraden Latten: an jeder Naht schluckt cannon.js den Teil
+  // Runde Flächen (Rinne, Trichter, Lavabo, Rohr) bestehen aus geraden Latten: an jeder Naht schluckt cannon.js den Teil
   // des Tempos, der in die nächste Latte zeigt (bei 12° rund 4 % der Energie, in der Halfpipe ~40 % pro Schwung).
   // Diesen Teil entlang der Fläche zurückgeben (nur beim Übergang zwischen zwei Latten, nicht bei echten Aufprallen).
+  // Im geschlossenen Rohr zusätzlich den Drall mit der Fläche mitdrehen: rollt die Murmel schnell vorwärts und pendelt
+  // dabei quer über die Nähte, passte der alte Drall nicht mehr zur neuen Latte (bei 7 m/s und 15° rutscht der Berührpunkt
+  // mit 1.8 m/s), und die Reibung bremste sie bei jeder Naht (auf 30 m ein Drittel des Tempos). Auf einer glatten Wand
+  // dreht sich die Rollachse ohne Rutschen mit.
   function seam(vx, vy, vz, n0) {
     const n1 = g.rundN;
     if (!n0 || !n1) return;
     const c = n0[0] * n1[0] + n0[1] * n1[1] + n0[2] * n1[2];
     if (c > 0.99995 || c < 0.9) return; // gleiche Latte oder Knick über 25°
-    const vin = vx * n1[0] + vy * n1[1] + vz * n1[2], v = ball.velocity, w = ball.angularVelocity, sp = Math.hypot(v.x, v.y, v.z);
+    const v = ball.velocity, w = ball.angularVelocity;
+    if (g.rundRohr) {
+      const ax = n0[1] * n1[2] - n0[2] * n1[1], ay = n0[2] * n1[0] - n0[0] * n1[2], az = n0[0] * n1[1] - n0[1] * n1[0], sn = Math.hypot(ax, ay, az);
+      const kx = ax / sn, ky = ay / sn, kz = az / sn, d = kx * w.x + ky * w.y + kz * w.z; // Drehung n0 -> n1 (Rodrigues)
+      const cx = ky * w.z - kz * w.y, cy = kz * w.x - kx * w.z, cz = kx * w.y - ky * w.x;
+      w.set(w.x * c + cx * sn + kx * d * (1 - c), w.y * c + cy * sn + ky * d * (1 - c), w.z * c + cz * sn + kz * d * (1 - c));
+    }
+    const vin = vx * n1[0] + vy * n1[1] + vz * n1[2], sp = Math.hypot(v.x, v.y, v.z);
     if (vin >= 0 || sp < 1e-6) return;
     const k = Math.sqrt(sp * sp + vin * vin) / sp;
     v.x *= k; v.y *= k; v.z *= k; w.x *= k; w.y *= k; w.z *= k;

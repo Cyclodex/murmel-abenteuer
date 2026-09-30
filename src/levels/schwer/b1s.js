@@ -72,7 +72,7 @@ export default {
     { type: 'strahl', at: [5, 4, -109], unten: -0.4, r: 0.6, hahn: true, yaw: 90, lang: 3.8, fuss: 3.6 },
     { type: 'wand', from: [-1, 0.5, -116.7], to: [11, 0.5, -116.7], height: 6 },
     { type: 'klotz', at: [5, 3.8, -116.45], size: [7, 4, 0.1], look: 'spiegel', deko: true },
-    { type: 'roehre', from: [5, -1.5, -112], down: true, to: [5, -6.5, -128], toYaw: 0, bogen: 3, speed: 14, out: 6, fang: 0.7, farbe: 0xB0BEC5 },
+    { type: 'roehre', from: [5, -1.5, -112], down: true, to: [5, -6.5, -130], toYaw: 0, farbe: 0xB0BEC5 },
 
     // ---------- Badewanne: Schiff, Schiff, Fähre, Schiff mit Trampolin ----------
     { type: 'wanne', at: [5, -8, -145], size: [9, 30], rim: 1.2, depth: 2, enten: [[-3, -10], [3.2, -2], [-3.2, 6], [3, 12]] },
@@ -91,7 +91,7 @@ export default {
     { type: 'falltuer', at: [5, -5, -173.5], size: [3, 3] },
     { type: 'weg', from: [5, -5, -175], to: [5, -5.4, -178.5], width: 3, walls: 0.6 },
     { type: 'klo', at: [5, -8, -183], yaw: 0 },
-    { type: 'ziel', at: [5, -8, -183] },
+    { type: 'ziel', at: [5, -10, -183] },
 
     { type: 'stern', at: [0, 0.9, -3] },
     { type: 'stern', at: [2.5, 5.3, -10] },

@@ -2,7 +2,7 @@
 // Herdplatte, Rasensprenger. Gleiche Schnittstelle wie in elements.js.
 import { DEG, quatYawPitch, add, scale, fwdOf, yawOf } from './math.js';
 import { buildProp, PROP_SIZE } from './props.js';
-import { ringSolids } from './elements-bahn.js';
+import { ringSolids, ABFLUSS } from './elements-bahn.js';
 
 const R = 0.5;
 
@@ -23,18 +23,21 @@ export const WELT = {
   // at = Mitte des Bodens (Oberkante), r = Bodenradius, R = Radius oben, h = Randhöhe, rim = Randbreite,
   // art = 'pfanne' | 'topf' | 'lavabo' | 'schuessel' | 'sandkuchen', offen = Liste von yaw (Grad): dort ist eine Lücke
   // (z. B. für eine Rampe hinein/hinaus), luecke = Breite der Lücke, aussen:false = keine Aussenwand (z. B. in einer Ablage),
-  // griff = yaw des Pfannenstiels, hahn = yaw des Wasserhahns (Lavabo), abfluss:true = Abfluss in der Mitte zeigen
-  // (dazu eine roehre mit down:true bei at legen). surface = Oberfläche innen.
+  // griff = yaw des Pfannenstiels, hahn = yaw des Wasserhahns (Lavabo), abfluss:true = echtes Loch in der Mitte
+  // (Radius 0.7 wie das Rohr darunter) mit steilem, abgesenktem Rand: die Murmel fällt hinein, dazu eine roehre mit down:true bei at
+  // legen (das Rohr darunter). surface = Oberfläche innen.
   // boden:'rund' = gewölbt bis zur Mitte (wie ein echtes Lavabo, dort Standard, Oberfläche keramik): die Murmel springt
-  // und kreist, bis sie in der Mitte zur Ruhe kommt; sonst flacher Boden mit Radius r und schräger Wand.
+  // und kreist, bis sie in der Mitte zur Ruhe kommt (bzw. ins Loch fällt); sonst flacher Boden mit Radius r und schräger Wand.
   // {type:'schuessel', at, r?, R?, h?, rim?, art?, boden?, offen?, luecke?, aussen?, griff?, hahn?, abfluss?, surface?}
   schuessel: {
     rund: d => (d.boden ?? (d.art === 'lavabo' ? 'rund' : 'flach')) === 'rund',
-    // Querschnitt der Innenfläche von der Mitte nach aussen: [radius, höhe]
+    loch: d => d.abfluss ? ABFLUSS.r : 0, // Lochradius = Innenradius des Rohrs darunter (keine Kante)
+    // Querschnitt der Innenfläche von der Mitte nach aussen: [radius, höhe]. Mit Abfluss beginnt er am Lochrand
+    // (tief unter dem Boden) und steigt zuerst steil an, damit die Murmel hineinrollt statt am Rand liegen zu bleiben.
     profil(d) {
-      const Rr = d.R ?? 4, h = d.h ?? 1.2;
-      if (!WELT.schuessel.rund(d)) return [[d.r ?? 2, 0], [Rr, h]];
-      const r0 = 0.6, n = 6, out = [];
+      const Rr = d.R ?? 4, h = d.h ?? 1.2, a = WELT.schuessel.loch(d), lip = a ? [[a, -ABFLUSS.tief]] : [];
+      if (!WELT.schuessel.rund(d)) return [...lip, [d.r ?? 2, 0], [Rr, h]];
+      const r0 = a ? a + 0.5 : 0.6, n = 6, out = lip;
       for (let i = 0; i <= n; i++) out.push([r0 + (Rr - r0) * i / n, h * Math.pow(i / n, 1.7)]); // unten flach, aussen steil
       return out;
     },
@@ -52,9 +55,13 @@ export const WELT = {
     solids(d) {
       const Rr = d.R ?? 4, h = d.h ?? 1.2, rim = d.rim ?? 0.5, th = 0.4, c = d.at;
       const { n, list } = WELT.schuessel.segs(d), surface = d.surface ?? (WELT.schuessel.rund(d) ? 'keramik' : undefined), prof = WELT.schuessel.profil(d);
-      const out = [{ pos: add(c, [0, -0.5, 0]), half: [prof[0][0], 0.5, prof[0][0]], quat: [0, 0, 0, 1], look: 'floor', surface, hide: true }];
-      const open = new Set(list.filter(x => x.open).map(x => x.k));
-      out.push(...ringSolids(c, [[prof[0][0] - 0.05, prof[0][1]], ...prof.slice(1)], { n, surface, skip: a => open.has(Math.round(a * n / (2 * Math.PI) - 0.5)), th }));
+      const open = new Set(list.filter(x => x.open).map(x => x.k)), skip = a => open.has(Math.round(a * n / (2 * Math.PI) - 0.5));
+      const out = [];
+      if (WELT.schuessel.loch(d)) out.push(...ringSolids(c, prof, { n, surface, skip, th, innen: false })); // Loch in der Mitte bleibt offen
+      else {
+        out.push({ pos: add(c, [0, -0.5, 0]), half: [prof[0][0], 0.5, prof[0][0]], quat: [0, 0, 0, 1], look: 'floor', surface, hide: true });
+        out.push(...ringSolids(c, [[prof[0][0] - 0.05, prof[0][1]], ...prof.slice(1)], { n, surface, skip, th }));
+      }
       for (const { a, open } of list) {
         if (open) continue;
         const u = dirOf(a), q = quatYawPitch(yawOf(u[0], u[2]), 0), wr = 2 * (Rr + rim) * Math.sin(Math.PI / n) + 0.1;
@@ -65,8 +72,8 @@ export const WELT = {
     },
     view(el, v) {
       const T = v.THREE, Rr = el.R ?? 4, h = el.h ?? 1.2, rim = el.rim ?? 0.5, c = el.at, st = BOWL[el.art] || BOWL.schuessel;
-      const V2 = (x, y) => new T.Vector2(x, y), inner0 = WELT.schuessel.profil(el), r = inner0[0][0];
-      const prof = [V2(0.01, 0), ...inner0.map(([x, y]) => V2(x, y)), V2(Rr + rim, h)];
+      const V2 = (x, y) => new T.Vector2(x, y), inner0 = WELT.schuessel.profil(el), r = inner0[0][0], loch = WELT.schuessel.loch(el);
+      const prof = [...(loch ? [] : [V2(0.01, 0)]), ...inner0.map(([x, y]) => V2(x, y)), V2(Rr + rim, h)]; // mit Abfluss bleibt die Mitte offen
       if (el.aussen !== false) prof.push(V2(Rr + rim, -0.02));
       const inner = new T.MeshPhongMaterial({ color: st.inner, shininess: st.shine, side: T.DoubleSide, specular: 0x666666 });
       const { n, list } = WELT.schuessel.segs(el), grp = new T.Group();
@@ -77,10 +84,11 @@ export const WELT = {
         const a0 = start * 2 * Math.PI / n, a1 = end * 2 * Math.PI / n;
         const m = new T.Mesh(new T.LatheGeometry(prof, Math.max(2, end - start) * 2, Math.PI / 2 - a1, a1 - a0), inner);
         m.receiveShadow = true; grp.add(m); start = null;
+        if (loch) v.blocker?.(m); // unter dem Becken (im Abflussrohr) rückt die Kamera nach, sonst verdeckt es die Murmel
       };
       list.forEach(({ k, open }) => { if (!open && start === null) start = k; if (open) flush(k); });
       flush(n);
-      if (list.some(s => s.open)) { // Boden als Scheibe, falls Lücken den Drehkörper unterbrechen
+      if (list.some(s => s.open) && !loch) { // Boden als Scheibe, falls Lücken den Drehkörper unterbrechen
         const floor = new T.Mesh(new T.CircleGeometry(r, 32), inner); floor.rotation.x = -Math.PI / 2; floor.position.y = 0.01; grp.add(floor);
       }
       const outerMat = new T.MeshPhongMaterial({ color: st.outer, shininess: st.shine });
@@ -102,11 +110,9 @@ export const WELT = {
         spout.position.set(...add(scale(f, Rr + rim * 0.6 - 1.1), [0, h + 3, 0]));
         grp.add(post, spout);
       }
-      if (el.abfluss) { // Abfluss mit Gitter
-        const drain = new T.Mesh(new T.CircleGeometry(0.75, 24), new T.MeshPhongMaterial({ color: 0x9EA4AD, shininess: 140 }));
-        drain.rotation.x = -Math.PI / 2; drain.position.y = 0.03; grp.add(drain);
-        const hole = new T.Mesh(new T.RingGeometry(0.15, 0.6, 24, 1), new T.MeshBasicMaterial({ color: 0x222222 }));
-        hole.rotation.x = -Math.PI / 2; hole.position.y = 0.04; grp.add(hole);
+      if (loch) { // Abfluss: Chromring am Lochrand, ohne Gitter (durch das Loch sieht man ins Rohr)
+        const drain = new T.Mesh(new T.TorusGeometry(loch + 0.05, 0.07, 8, 32), new T.MeshPhongMaterial({ color: 0xD7DCE2, shininess: 160, specular: 0xffffff }));
+        drain.rotation.x = Math.PI / 2; drain.position.y = -ABFLUSS.tief + 0.02; grp.add(drain);
       }
       grp.position.set(...c); v.scene.add(grp);
     }

@@ -32,7 +32,7 @@ const k3sA = [
 ];
 const k3sB = [
   { x: 35, z: -58, speed: 2 }, { x: 43, z: -58, speed: 3 }, { x: 50, z: -58, speed: 2, r: 0.5 },
-  { x: 50, z: -72, speed: 3 }, { x: 51.2, z: -78, speed: 3 }, { x: 51.2, z: -82, speed: 3 }, { x: 48.8, z: -86, speed: 3 }, { x: 48.8, z: -88, speed: 3 },
+  { x: 50, z: -72, speed: 3, wait: 'abfluss' }, { x: 51.2, z: -78, speed: 3 }, { x: 51.2, z: -82, speed: 3 }, { x: 48.8, z: -86, speed: 3 }, { x: 48.8, z: -88, speed: 3 },
   { x: 51.2, z: -92, speed: 3 }, { x: 51.2, z: -94, speed: 3 }, { x: 50, z: -97, speed: 2 }, { x: 50, z: -100, speed: 2 },
   { x: 50, z: -107, speed: 5, wait: ['phase', ['hammer', 0, 0.72, 0.85]] }, { x: 50, z: -112 }
 ];
