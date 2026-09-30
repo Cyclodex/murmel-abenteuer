@@ -413,10 +413,18 @@ test('Schlamm macht die Murmel dreckig, Pfütze und Wind waschen sie', async ({ 
 test('Dreckige Murmel: Flecken auf der Kugel, Spritzer, Sticker 🐷 und 🧼', async ({ page }) => {
   const errors = watchErrors(page);
   await play(page, 'g1');
-  // im Beet stehen und rollen: dreckig, Spritzer fliegen
-  await page.keyboard.down('ArrowUp');
-  await page.waitForFunction(() => window.murmel.game.dirt >= 1, null, { timeout: 15_000 });
-  await page.keyboard.up('ArrowUp');
+  // im Beet (z 0 bis -6) hin und her rollen, bis die Murmel ganz dreckig ist: Spritzer fliegen
+  // (einfach durchgerollt ist sie nur 0.03 s ganz dreckig, das verpasst die Abfrage leicht)
+  let key = 'ArrowUp';
+  await page.keyboard.down(key);
+  for (const t0 = Date.now(); Date.now() - t0 < 30_000;) {
+    const { z, dirt } = await page.evaluate(() => ({ z: window.murmel.game.ball.position.z, dirt: window.murmel.game.dirt }));
+    if (dirt >= 1) break;
+    const want = z < -4 ? 'ArrowDown' : z > -1.5 && key === 'ArrowDown' ? 'ArrowUp' : key;
+    if (want !== key) { await page.keyboard.up(key); key = want; await page.keyboard.down(key); }
+    await page.waitForTimeout(50);
+  }
+  await page.keyboard.up(key);
   expect(await page.evaluate(() => window.murmel.view.ball.dirtLevel)).toBe(1);
   expect(await page.evaluate(() => window.murmel.view.splash.schlamm.count)).toBeGreaterThan(0);
   // gewaschen ins Ziel: beide Sticker
@@ -1031,10 +1039,16 @@ test('Spur auswählbar, gespeichert und sichtbar hinter der Murmel', async ({ pa
   const n = await page.evaluate(() => window.murmel.view.trailFx.count);
   await page.keyboard.up('ArrowUp');
   expect(n).toBeGreaterThan(3);
-  // Spur-Teilchen sind ein einziges InstancedMesh (keine neuen Meshes pro Bild)
-  const meshes = await page.evaluate(() => { let k = 0; window.murmel.view.scene.traverse(() => k++); return k; });
+  // Spur-Teilchen sind ein einziges InstancedMesh (keine neuen Meshes pro Bild). Konfetti (0.2 x 0.3) nicht mitzählen:
+  // rollt die Murmel in der Zeit über einen Stern, kommt es dazu oder verschwindet
+  const count = () => page.evaluate(() => {
+    let k = 0;
+    window.murmel.view.scene.traverse(o => { const p = o.geometry && o.geometry.parameters; if (!(p && p.width === 0.2 && p.height === 0.3)) k++; });
+    return k;
+  });
+  const meshes = await count();
   await page.waitForTimeout(500);
-  expect(await page.evaluate(() => { let k = 0; window.murmel.view.scene.traverse(() => k++); return k; })).toBe(meshes);
+  expect(await count()).toBe(meshes);
   expect(errors).toEqual([]);
 });
 
