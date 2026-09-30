@@ -12,6 +12,8 @@ const JUBEL = 1.8;      // s Jubel nach dem Erreichen, danach winken
 const GRAU = 0xBBBBBB, GRUEN = 0x3BB273;
 const FIG_R = 1.1, FIG_H = 3.2; // Platzbedarf der Figur (Radius, Höhe)
 export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', vulkan: 'geysir' };
+// Figur eines Checkpoints: el.figur oder die der Welt (bestimmt auch den Jubel-Klang 'cp-' + Figur in audio.js)
+export const figurVon = (el, theme) => FIGUREN[el.figur] ? el.figur : FIGUR_JE_WELT[theme] || 'zwerg';
 
 const inv = (q, v) => rotate([-q[0], -q[1], -q[2], q[3]], v);
 
@@ -411,7 +413,7 @@ export function buildCheckpoint(v, el, types) {
 
   const tuchMat = new T.MeshLambertMaterial({ color: GRAU, side: T.DoubleSide });
   const F = fahnen(T, tuchMat, v.mats.pole);
-  const art = FIGUREN[el.figur] ? el.figur : FIGUR_JE_WELT[game.level.theme] || 'zwerg';
+  const art = figurVon(el, game.level.theme);
   const fig = FIGUREN[art](T, F);
   const z = zzz(T, v, fig.kopf); fig.g.add(z.g);
   // Sockel neben dem Weg, Figur schaut schräg zum Weg

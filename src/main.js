@@ -12,6 +12,7 @@ import { buildAlbum } from './stickers.js';
 import { createCheer } from './cheer.js';
 import { createProgress } from './progress.js';
 import { angleDiff } from './math.js';
+import { figurVon } from './checkpoint-figuren.js';
 import { createRecorder, formatTime } from './ghost.js';
 import { score, ranking } from './score.js';
 import { createOnline } from './online.js';
@@ -346,7 +347,7 @@ const VIBRATE = { quetsch: [120, 40, 60], klapp: 30, platsch: 40, spritz: 30, sp
 function onEvent(e) {
   if (e === 'hit') { audio.sfx('hit', game.hitStrength); return; }
   if (e === 'tock') { audio.sfx('tock', game.tockIdx); return; }
-  audio.sfx(e);
+  audio.sfx(e === 'cp' ? 'cp-' + figurVon(game.checkpoints[game.st.cp], game.level.theme) : e); // Checkpoint: Jubel der Figur
   if (VIBRATE[e]) buzz(VIBRATE[e]);
   if (e === 'star') view.burst(view.ballMesh.position, 12, [0xFFC928, 0xFFFFFF]);
   if (e === 'platsch') view.burst(view.ballMesh.position, 16, [0x5B3A1E, 0x7D5A36]);
