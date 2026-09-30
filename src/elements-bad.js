@@ -1,7 +1,7 @@
 // Badezimmer: Badewanne mit Wasser, schwimmende Schiffchen (mit Trampolin), Toilette als Ziel.
 // Gleiche Schnittstelle wie in elements.js; wird in bauteile.js eingetragen.
 import { DEG, quatYawPitch, rotate, add, sub, scale, lerp3, toLocal, fwdOf, rightOf, ease } from './math.js';
-import { TYPES, kinematicBody, boardParts, driveTo, ballPos } from './elements.js';
+import { TYPES, kinematicBody, boardParts, driveTo, ballPos, norm } from './elements.js';
 import { WELT } from './elements-welt.js';
 import { rohrSolids, ABFLUSS } from './elements-bahn.js';
 import { buildProp } from './props.js';
@@ -248,7 +248,7 @@ export const BAD = {
   // at = Mitte des Schüsselbodens, yaw = Blickrichtung beim Hineinfahren (Deckel und Spülkasten stehen dahinter),
   // r, R, h, rim wie bei schuessel. In der Mitte ein Loch (wie der Abfluss), darunter ein geschlossenes Rohr (tief m).
   // Ins Ziel legen: {type:'ziel', at: at - [0, 2, 0]} unten im Rohr: gewonnen, wenn die Murmel hinuntergespült ist.
-  // Beim Gewinnen wird gespült.
+  // Gespült wird, sobald die Murmel im Abfluss ist. Kamera schräg (45°) von oben, sobald die Murmel über der Schüssel ist.
   // {type:'klo', at, yaw?, r?, R?, h?, rim?, tief?}
   klo: {
     solids(d) {
@@ -262,7 +262,10 @@ export const BAD = {
       return out;
     },
     reset(el) { el.spuel = 0; },
-    step(el, g, h, ev) { if (g.st.won && !el.spuel) { el.spuel = 1e-6; ev.push('spuel'); } },
+    step(el, g, h, ev) {
+      const p = g.ball.position, a = el.at;
+      if (!el.spuel && Math.hypot(p.x - a[0], p.z - a[2]) < ABFLUSS.r && p.y < a[1] - ABFLUSS.tief) { el.spuel = 1e-6; ev.push('spuel'); }
+    },
     view(el, v) {
       const T = v.THREE, r = el.r ?? 1.5, Rr = el.R ?? 3.2, h = el.h ?? 2, rim = el.rim ?? 0.9, grp = new T.Group();
       const enamel = new T.MeshPhongMaterial({ ...EMAIL, side: T.DoubleSide });
@@ -294,7 +297,13 @@ export const BAD = {
       btn.position.set(0, h + 7.5, -(Rr + rim) - 2.2); back.add(btn);
       back.rotation.y = (el.yaw || 0) * DEG; grp.add(back);
       grp.position.set(...el.at); v.scene.add(grp);
+      // Kamera von der Einfahrtseite (gegenüber dem Spülkasten) 45° von oben in die Schüssel
+      const f = fwdOf((el.yaw || 0) * DEG), camDir = norm([-f[0], 1, -f[2]]), look = add(el.at, [0, 0.5, 0]);
       return {
+        cam(p) {
+          const inside = Math.hypot(p[0] - el.at[0], p[2] - el.at[2]) < Rr + rim && p[1] < el.at[1] + h + 2 && p[1] > el.at[1] - tief - 1;
+          return inside || el.spuel > 0 ? { look, dir: camDir, fit: Rr + rim + 0.5, clear: Rr + rim + 2 } : null;
+        },
         tick(dt) {
           if (el.spuel > 0) el.spuel += dt;
           const fast = el.spuel > 0 && el.spuel < 3;

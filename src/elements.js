@@ -419,14 +419,26 @@ export const TYPES = {
         el.done = true; g.st.won = true; ev.push('win');
       }
     },
+    // Geschafft: Ring pulsiert und leuchtet auf (klingt in 1.5 s ab), Fahne wächst und dreht schneller
     view(el, v) {
-      const T = v.THREE, r = el.r ?? 1.2;
-      const ring = new T.Mesh(new T.TorusGeometry(r, 0.15, 12, 40), v.mats.goal);
+      const T = v.THREE, r = el.r ?? 1.2, mat = v.mats.goal.clone(), glow0 = mat.emissive.clone(), glow = new T.Color(0xB8FFD0);
+      const ring = new T.Mesh(new T.TorusGeometry(r, 0.15, 12, 40), mat);
       ring.rotation.x = -Math.PI / 2; ring.position.set(el.at[0], el.at[1] + 0.05, el.at[2]);
       const flag = new T.Mesh(new T.ConeGeometry(0.5, 1, 3), v.mats.goalFlag);
       flag.position.set(el.at[0], el.at[1] + 2.2, el.at[2]);
       v.scene.add(ring, flag); v.goal = ring;
-      return { tick(dt) { flag.rotation.y += dt; } };
+      let t = 0;
+      return {
+        tick(dt) {
+          t = el.done ? t + dt : 0;
+          const fade = Math.max(0, 1 - t / 1.5), grow = Math.min(1, t / 0.5);
+          ring.scale.setScalar(1 + 0.15 * Math.sin(t * 10) * fade);
+          mat.emissive.copy(glow0).lerp(glow, fade * grow);
+          flag.scale.setScalar(1 + 0.6 * grow);
+          flag.position.y = el.at[1] + 2.2 + 0.5 * grow;
+          flag.rotation.y += dt * (el.done ? 4 : 1);
+        }
+      };
     }
   }
 };

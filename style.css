@@ -103,6 +103,8 @@ box-shadow:0 3px 0 rgba(0,0,0,.18);border:4px dashed rgba(0,0,0,.15);box-sizing:
 .overlay{justify-content:flex-start}
 .overlay>:first-child{margin-top:auto}
 .overlay>:last-child{margin-bottom:auto}
+/* Gewinn-Fenster: das Level (Weitsicht) bleibt dahinter sichtbar */
+#winOv{background:rgba(158,216,245,.15);gap:10px}
 #skinOv .grid{grid-template-columns:repeat(4,76px)}
 #skinOv .skin{width:76px;height:76px;font-size:38px}
 @media (orientation:landscape) and (max-height:500px){
