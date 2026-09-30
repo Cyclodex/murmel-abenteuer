@@ -271,7 +271,10 @@ test('Murmeln prallen je nach Art verschieden stark von der Wand ab', async ({ p
   expect(r.basketball.e).toBe(0.8);
   expect(r.bowling.e).toBe(0.1);
   expect(r.melone.e).toBe(0.2);
-  for (const id of ['standard', 'fussball', 'flummi', 'tennis', 'basketball']) expect(r[id].x, id).toBeLessThan(1);
+  for (const id of ['standard', 'fussball', 'flummi', 'tennis', 'basketball']) {
+    expect(r[id].vx, id).toBeLessThan(-0.5); // rollt noch zurück
+    expect(r[id].x, id).toBeLessThan(1.5);   // klar weg von der Wand (Berührung bei x = 2.5)
+  }
 });
 
 test('Golfball hüpft kaum und rollt weiter als die Standard-Murmel', async ({ page }) => {
@@ -410,10 +413,18 @@ test('Schlamm macht die Murmel dreckig, Pfütze und Wind waschen sie', async ({ 
 test('Dreckige Murmel: Flecken auf der Kugel, Spritzer, Sticker 🐷 und 🧼', async ({ page }) => {
   const errors = watchErrors(page);
   await play(page, 'g1');
-  // im Beet stehen und rollen: dreckig, Spritzer fliegen
-  await page.keyboard.down('ArrowUp');
-  await page.waitForFunction(() => window.murmel.game.dirt >= 1, null, { timeout: 15_000 });
-  await page.keyboard.up('ArrowUp');
+  // im Beet (z 0 bis -6) hin und her rollen, bis die Murmel ganz dreckig ist: Spritzer fliegen
+  // (einfach durchgerollt ist sie nur 0.03 s ganz dreckig, das verpasst die Abfrage leicht)
+  let key = 'ArrowUp';
+  await page.keyboard.down(key);
+  for (const t0 = Date.now(); Date.now() - t0 < 30_000;) {
+    const { z, dirt } = await page.evaluate(() => ({ z: window.murmel.game.ball.position.z, dirt: window.murmel.game.dirt }));
+    if (dirt >= 1) break;
+    const want = z < -4 ? 'ArrowDown' : z > -1.5 && key === 'ArrowDown' ? 'ArrowUp' : key;
+    if (want !== key) { await page.keyboard.up(key); key = want; await page.keyboard.down(key); }
+    await page.waitForTimeout(50);
+  }
+  await page.keyboard.up(key);
   expect(await page.evaluate(() => window.murmel.view.ball.dirtLevel)).toBe(1);
   expect(await page.evaluate(() => window.murmel.view.splash.schlamm.count)).toBeGreaterThan(0);
   // gewaschen ins Ziel: beide Sticker
@@ -477,7 +488,8 @@ test('Nagelwand: jede Murmel fällt hindurch, prallt an Nägeln ab und kommt unt
       const g = createGame(CANNON, { id: 't', start: [0, 14, 3], killY: -8, parts }, S.ball); g.reset();
       let hits = 0, unten = -1, xs = new Set();
       for (let i = 0; i < 60 * 15 && unten < 0; i++) {
-        hits += g.step(0, i < 60 ? -0.5 : 0, 1 / 60).filter(e => e === 'hit').length;
+        // oben bis über die Kante lenken (liegen lassen bremst sie sonst davor ab), dann nur noch fallen
+        hits += g.step(0, g.ball.position.z > -0.2 && g.ball.position.y > 13 ? -0.5 : 0, 1 / 60).filter(e => e === 'hit').length;
         if (g.ball.position.y < 1.5) unten = i / 60;
       }
       return { id: S.id, hits, unten, x: +g.ball.position.x.toFixed(1) };
@@ -527,8 +539,133 @@ test('Bergab zieht es: Rampe beschleunigt kräftig, Bremshilfe nur in der Ebene,
   // 10°-Rampe, 3 s: rollende Kugel ohne Verluste wäre 5/7 * g * sin(10°) * 3 s = 3.65 m/s
   expect(r.rampe).toBeGreaterThan(3.2);
   expect(Math.abs(r.rampeBremse - r.rampe)).toBeLessThan(0.01); // Bremshilfe bremst bergab nicht
-  expect(r.ebenBremse).toBeLessThan(r.eben - 1); // in der Ebene bremst sie weiter
+  expect(r.ebenBremse).toBeLessThan(r.eben - 0.5); // in der Ebene bremst sie weiter
   expect(r.fluss).toBeGreaterThan(5); // steiler Fluss: schneller als die Strömung (4 m/s)
+});
+
+test('Bremsen: langsam bleibt die Murmel bald stehen, schnell behält sie Schwung, leichtes Gefälle rollt', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const tan = d => Math.tan(d * Math.PI / 180);
+    const lauf = (parts, start, v0, sek, input = [0, 0]) => {
+      const g = createGame(CANNON, { id: 't', start, killY: -50, parts }); g.reset();
+      for (let i = 0; i < 30; i++) g.step(0, 0, 1 / 60);
+      g.ball.velocity.set(0, 0, -v0); g.ball.angularVelocity.set(-v0 / 0.5, 0, 0);
+      let t = 0, stand = null;
+      while (t < sek) { g.step(input[0], input[1], 1 / 60); t += 1 / 60; if (stand === null && g.ball.velocity.length() < 0.05) stand = t; }
+      return { v: g.ball.velocity.length(), stand };
+    };
+    const eben = [{ type: 'weg', from: [0, 0, 5], to: [0, 0, -300], width: 6 }];
+    return {
+      langsam: lauf(eben, [0, 0, 0], 3, 6).stand,                   // Kippen, keine Eingabe
+      schnell: lauf(eben, [0, 0, 0], 10, 2, [0.0, -0.3]).v,          // leicht weiter kippen: Luftwiderstand, kein Rollwiderstand
+      gefaelle: lauf([{ type: 'weg', from: [0, tan(3) * 105, 5], to: [0, 0, -100], width: 6 }], [0, tan(3) * 100, 0], 0, 3).v
+    };
+  });
+  expect(r.langsam).not.toBeNull();
+  expect(r.langsam).toBeLessThan(4);   // früher erst nach ~19 s
+  expect(r.schnell).toBeGreaterThan(9); // Schwung bleibt
+  expect(r.gefaelle).toBeGreaterThan(0.5); // 3° Gefälle: rollt von selbst los
+});
+
+test('Fluss: leichte Murmeln schwimmen oben, schwere rollen am Grund, alle kommen durch', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { SKINS } = await import('/src/skins.js');
+    const dy = Math.tan(5 * Math.PI / 180) * 30;
+    const parts = [{ type: 'fluss', from: [0, dy, 0], to: [0, 0, -30], width: 3.6, speed: 4 }, { type: 'weg', from: [0, -0.7, -30], to: [0, -0.7, -60], width: 3.6, walls: 1 }];
+    const out = {};
+    for (const id of ['pingpong', 'fussball', 'standard', 'gold']) {
+      const g = createGame(CANNON, { id: 't', start: [0, dy - 0.7, -1], killY: -20, parts }, SKINS.find(s => s.id === id).ball); g.reset();
+      let t = 0, hoehe = 0, n = 0, durch = null;
+      while (t < 15) {
+        g.step(0, 0, 1 / 60); t += 1 / 60;
+        const p = g.ball.position;
+        if (t > 1.5 && t < 3) { hoehe += p.y - dy * (1 + p.z / 30); n++; } // Mitte über der Wasseroberfläche
+        if (durch === null && p.z < -30) durch = t;
+      }
+      out[id] = { hoehe: hoehe / n, durch };
+    }
+    return out;
+  });
+  for (const id of ['pingpong', 'fussball']) expect(r[id].hoehe, id).toBeGreaterThan(0.2);   // schwimmt oben
+  for (const id of ['standard', 'gold']) expect(r[id].hoehe, id).toBeLessThan(-0.15);        // liegt am Grund (0.7 m tief)
+  for (const id in r) expect(r[id].durch, id).not.toBeNull();                                 // alle treibt es hinaus
+});
+
+test('Lavabo: Bälle springen auf der Keramik, kreisen und verschwinden erst unten und langsam im Abfluss', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { SKINS } = await import('/src/skins.js');
+    const parts = [
+      { type: 'schuessel', at: [0, 0, 0], r: 1.5, R: 4.5, h: 2, rim: 1, art: 'lavabo', abfluss: true },
+      { type: 'roehre', from: [0, 0, 0], down: true, to: [0, -6, -14], toYaw: 0, bogen: 3, fang: 0.7 },
+      { type: 'weg', from: [0, -6, -12], to: [0, -6, -30], width: 4, walls: 0.8, caps: 'end' }
+    ];
+    const out = {};
+    // wie von der Schanze: schräg von oben mitten ins Becken, und seitlich mit Schwung hinein
+    for (const [fall, p0, v0] of [['schanze', [0, 3.5, 6], [0, 2, -6]], ['seitlich', [3, 3, 0], [0, 0, -4]]]) for (const id of ['standard', 'pingpong', 'golf']) {
+      const g = createGame(CANNON, { id: 't', start: [0, 0, 20], killY: -30, parts }, SKINS.find(s => s.id === id).ball); g.reset();
+      g.ball.position.set(...p0); g.ball.velocity.set(...v0);
+      let t = 0, spruenge = 0, lastVy = 0, gurgel = null, winkel = 0, la = null;
+      while (t < 12 && gurgel === null) {
+        const ev = g.step(0, 0, 1 / 60); t += 1 / 60;
+        const p = g.ball.position, v = g.ball.velocity;
+        if (lastVy < -1 && v.y > 0.5) spruenge++;
+        lastVy = v.y;
+        const a = Math.atan2(p.z, p.x); if (la !== null && Math.hypot(p.x, p.z) > 0.8) winkel += Math.atan2(Math.sin(a - la), Math.cos(a - la)); la = a;
+        if (ev.includes('gurgel')) gurgel = t;
+      }
+      out[fall + ' ' + id] = { spruenge, gurgel, runden: Math.abs(winkel) / 2 / Math.PI };
+    }
+    return out;
+  });
+  for (const k in r) expect(r[k].gurgel, k).not.toBeNull();                 // alle verschwinden im Abfluss ...
+  for (const k in r) expect(r[k].gurgel, k).toBeLessThan(8);                // ... nach ein paar Sekunden
+  expect(r['schanze standard'].gurgel).toBeGreaterThan(2);                  // nicht schon im Flug geschluckt
+  expect(r['schanze pingpong'].spruenge).toBeGreaterThan(2);                // Pingpong springt auf der Keramik herum
+  expect(r['schanze pingpong'].spruenge).toBeGreaterThan(r['schanze golf'].spruenge);
+  for (const id of ['standard', 'golf']) expect(r['seitlich ' + id].runden, id).toBeGreaterThan(0.5); // kreist hinunter
+});
+
+test('Kugelbahn: Trichter lässt kreisen und fällt unten hinaus, Halfpipe schaukelt, Rutsche hält in der Kurve', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const mk = parts => { const g = createGame(CANNON, { id: 't', start: [0, 0, 50], killY: -30, parts }); g.reset(); return g; };
+    // Trichter: schräg nach innen auf den Rand
+    const tr = mk([{ type: 'trichter', at: [0, 0, 0], R: 6, h: 3.5, loch: 0.9, rim: 1.2 }, { type: 'weg', from: [0, -4, 4], to: [0, -4, -10], width: 6, walls: 1, caps: 'both' }]);
+    const a = 25 * Math.PI / 180, vx = -5 * Math.cos(a), vz = -5 * Math.sin(a);
+    tr.ball.position.set(0, 4.1, 6.6); tr.ball.velocity.set(vx, 0, vz); tr.ball.angularVelocity.set(vz / 0.5, 0, -vx / 0.5);
+    let t = 0, w = 0, la = null, durch = null;
+    while (t < 20 && durch === null) {
+      tr.step(0, 0, 1 / 60); t += 1 / 60; const p = tr.ball.position, an = Math.atan2(p.z, p.x);
+      if (la !== null) w += Math.atan2(Math.sin(an - la), Math.cos(an - la)); la = an;
+      if (p.y < -1) durch = t;
+    }
+    // Halfpipe: auf halber Höhe der Wand rollend loslassen
+    const hp = mk([{ type: 'rinne', from: [0, 0, 5], to: [0, 0, -40], r: 4, bogen: 80 }]);
+    hp.ball.position.set(0, 0.5, -10); hp.ball.velocity.set(6, 0, 0); hp.ball.angularVelocity.set(0, 0, -12);
+    const um = []; let dir = 1, maxY = 0;
+    for (let i = 0; i < 60 * 16; i++) { hp.step(0, 0, 1 / 60); const d = Math.sign(hp.ball.velocity.x); if (d && d !== dir) { um.push(hp.ball.position.y); dir = d; } maxY = Math.max(maxY, hp.ball.position.y); }
+    // Rutsche: 180°-Kurve abwärts mit viel Schwung
+    const ru = mk([{ type: 'weg', from: [0, 6, 10], to: [0, 6, 0], width: 3 }, { type: 'rinne', at: [0, 6, 0], yaw: 0, turn: 180, radius: 6, rise: -4, r: 1.6, bogen: 75 },
+      { type: 'weg', from: [12, 2, 0], to: [12, 2, 20], width: 4, walls: 1, caps: 'end' }]);
+    ru.ball.position.set(0, 6.5, 3); ru.ball.velocity.set(0, 0, -12); ru.ball.angularVelocity.set(24, 0, 0);
+    let unten = null; t = 0;
+    while (t < 10 && unten === null) { ru.step(0, 0, 1 / 60); t += 1 / 60; const p = ru.ball.position; if (p.y < 0) break; if (p.x > 10 && p.z > 1) unten = t; }
+    return { runden: Math.abs(w) / 2 / Math.PI, durch, um, maxY, halfpipeY: hp.ball.position.y, unten };
+  });
+  expect(r.durch).not.toBeNull();            // fällt durchs Loch
+  expect(r.runden).toBeGreaterThan(1);       // vorher kreist sie
+  expect(r.um.length).toBeGreaterThan(4);    // schaukelt von Wand zu Wand
+  for (let i = 1; i < r.um.length; i++) expect(r.um[i]).toBeLessThan(r.um[i - 1] + 0.05); // schaukelt sich nicht auf
+  expect(r.maxY).toBeLessThan(4);            // bleibt in der Halfpipe (Rand bei 3.3 m)
+  expect(r.halfpipeY).toBeGreaterThan(0);
+  expect(r.unten).not.toBeNull();            // Rutsche: kommt unten an, fliegt nicht aus der Kurve
 });
 
 test('Echte Dinge: durch die Pfanne, Herdplatte hüpft, Abfluss im Lavabo, Sprenger und Schlauch', async ({ page }) => {
@@ -902,10 +1039,16 @@ test('Spur auswählbar, gespeichert und sichtbar hinter der Murmel', async ({ pa
   const n = await page.evaluate(() => window.murmel.view.trailFx.count);
   await page.keyboard.up('ArrowUp');
   expect(n).toBeGreaterThan(3);
-  // Spur-Teilchen sind ein einziges InstancedMesh (keine neuen Meshes pro Bild)
-  const meshes = await page.evaluate(() => { let k = 0; window.murmel.view.scene.traverse(() => k++); return k; });
+  // Spur-Teilchen sind ein einziges InstancedMesh (keine neuen Meshes pro Bild). Konfetti (0.2 x 0.3) nicht mitzählen:
+  // rollt die Murmel in der Zeit über einen Stern, kommt es dazu oder verschwindet
+  const count = () => page.evaluate(() => {
+    let k = 0;
+    window.murmel.view.scene.traverse(o => { const p = o.geometry && o.geometry.parameters; if (!(p && p.width === 0.2 && p.height === 0.3)) k++; });
+    return k;
+  });
+  const meshes = await count();
   await page.waitForTimeout(500);
-  expect(await page.evaluate(() => { let k = 0; window.murmel.view.scene.traverse(() => k++); return k; })).toBe(meshes);
+  expect(await count()).toBe(meshes);
   expect(errors).toEqual([]);
 });
 

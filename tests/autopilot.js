@@ -123,6 +123,8 @@ export function checkLevel(makeGame, routes, maxTime = 400, delays = [0, 1.3, 2.
   return { won: !!best, falls: best ? best.falls : -1, stars: got.filter(Boolean).length, total: got.length, time: best ? best.time : -1, tries: runs.length };
 }
 
+const T5 = [30.5, -2.35, -27.2]; // Trichter in sz5
+
 // Wegpunkte pro Level (id -> Liste)
 export const ROUTES = {
   ausflug: [{ x: 0, z: -24, speed: 5 }, { x: 0, z: -37.5, speed: 4 }, { x: 0, z: -69, speed: 6 }],
@@ -136,8 +138,24 @@ export const ROUTES = {
     { x: 0, z: -39 }, { x: 0, z: -44, speed: 3 }, { x: 0, z: -49, speed: 3 }, { x: 0, z: -54 }
   ],
   sz3: [
-    { x: 0, z: -9 }, { x: 0, z: -17 }, { x: 0, z: -20, speed: 2 }, { x: -5, z: -21.25, speed: 1.5, r: 0.8 }, { x: 0, z: -21.25, speed: 1.5 }, { x: 1.2, z: -24, speed: 3 }, { x: -1.2, z: -27.5, speed: 3 },
+    { x: 0, z: -9 }, { x: 0, z: -17 }, { x: 0, z: -20, speed: 2 }, { x: -5, z: -21.25, speed: 1.5, r: 0.8 }, { x: 0, z: -21.25, speed: 1.5 }, { x: 1.2, z: -24, speed: 3 }, { x: -1.2, z: -27.5, speed: 3, r: 0.6 },
     { x: 0, z: -31 }, { x: 1.8, z: -35.5, speed: 2 }, { x: 0, z: -37, speed: 2, wait: 'bridgeUp' }, { x: 0, z: -46 }, { x: 0, z: -52 }
+  ],
+  // Kugelbahn: Rutsche, Serpentine (der Bahn folgen), schräg über die Bande in den Trichter, Schüssel, Halfpipe mit Sternen an den Wänden
+  sz5: [
+    [
+      { x: 0, z: -4, speed: 3 }, { x: 0, z: -18, free: true, r: 2 }, { follow: true, bisY: 3.9, speed: 5 },
+      { x: 20, z: -21, speed: 5 }, { x: 23, z: -27.2, speed: 6, r: 1.5 }, { x: T5[0], z: T5[2], free: true, r: 0.6 },
+      { x: T5[0], z: T5[2], speed: 1, wait: ['tiefer', -4] }, { x: T5[0], z: -30, speed: 2 }, { x: T5[0], z: -38, speed: 3 },
+      { x: 27.9, z: -44, speed: 3, r: 0.6 }, { x: 33.1, z: -52, speed: 3, r: 0.6 }, { x: T5[0], z: -56, speed: 3 }, { x: T5[0], z: -67 }
+    ],
+    // Bonusstern hoch oben an der linken Wand: mit Schwung hinauf
+    [
+      { x: 0, z: -4, speed: 3 }, { x: 0, z: -18, free: true, r: 2 }, { follow: true, bisY: 3.9, speed: 5 },
+      { x: 20, z: -21, speed: 5 }, { x: 23, z: -27.2, speed: 6, r: 1.5 }, { x: T5[0], z: T5[2], free: true, r: 0.6 },
+      { x: T5[0], z: T5[2], speed: 1, wait: ['tiefer', -4] }, { x: T5[0], z: -30, speed: 2 }, { x: T5[0], z: -38, speed: 3 },
+      { x: 33.5, z: -54, speed: 4 }, { x: 27.2, z: -58, speed: 6, r: 0.6 }, { x: T5[0], z: -62, speed: 3 }, { x: T5[0], z: -67 }
+    ]
   ],
   sz4: [
     { x: 0, z: -4 }, { x: -1.46, z: -9.54 }, { x: -5, z: -11 }, { x: -10, z: -11 }, { x: -13, z: -11, speed: 5 },

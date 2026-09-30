@@ -1,22 +1,25 @@
 // Murmel-Designs. need = so viele Sterne braucht man insgesamt zum Freischalten ('alle' = alle Sterne).
 // Jedes Design malt eine Kugel-Textur (Längen-/Breitengrad-Bild, 256 x 128).
 // ball = Sprungkraft (Anteil der Aufprallgeschwindigkeit, der zurückkommt) an Wand und Boden,
-// schwere = Faktor für die Schwerkraft (Mond hüpft leichter).
+// schwere = Faktor für die Schwerkraft (Mond hüpft leichter),
+// dichte = g/cm³ wie beim echten Ball: unter 1 schwimmt die Murmel im Fluss, darüber sinkt sie auf den Grund
+// (Glas 2.5, Planet = Saturn 0.69, Mond 3.34, Gold 19.3; Bälle aus Masse und Grösse nach Regel berechnet,
+// Bowling = 16 lb, Melone ~0.94; Flummi 1.1 angenommen).
 export const SKINS = [
-  { id: 'standard', emoji: '🔵', need: 0, paint: standard, ball: { wand: 0.5, boden: 0.25 } },
-  { id: 'tennis', emoji: '🎾', need: 3, paint: pixels(tennis), ball: { wand: 0.75, boden: 0.7 } },
-  { id: 'fussball', emoji: '⚽', need: 5, paint: pixels(fussball), ball: { wand: 0.75, boden: 0.5 } },
-  { id: 'golf', emoji: '⛳', need: 7, paint: pixels(golf), bump: pixels(golfHoehe), ball: { wand: 0.8, boden: 0.3, rollen: 0.5 } },
-  { id: 'pingpong', emoji: '🏓', need: 9, paint: pixels(pingpong), ball: { wand: 0.85, boden: 0.85, schwere: 0.8 } },
-  { id: 'flummi', emoji: '🔴', need: 8, paint: pixels(flummi), ball: { wand: 0.97, boden: 0.93 } },
-  { id: 'melone', emoji: '🍉', need: 10, paint: pixels(melone), ball: { wand: 0.2, boden: 0.1 } },
-  { id: 'basketball', emoji: '🏀', need: 12, paint: pixels(basketball), ball: { wand: 0.8, boden: 0.8 } },
-  { id: 'billard', emoji: '🎱', need: 14, paint: billard, shiny: true, ball: { wand: 0.8, boden: 0.4 } },
-  { id: 'planet', emoji: '🪐', need: 15, paint: pixels(planet), ring: true, ball: { wand: 0.5, boden: 0.25 } },
-  { id: 'bowling', emoji: '🎳', need: 18, paint: pixels(bowling), shiny: true, ball: { wand: 0.1, boden: 0.05 } },
-  { id: 'regenbogen', emoji: '🌈', need: 20, paint: pixels(regenbogen), ball: { wand: 0.5, boden: 0.25 } },
-  { id: 'mond', emoji: '🌙', need: 24, paint: pixels(mond), ball: { wand: 0.6, boden: 0.6, schwere: 0.5 } },
-  { id: 'gold', emoji: '🏅', need: 'alle', paint: pixels(gold), shiny: true, ball: { wand: 0.35, boden: 0.15 } }
+  { id: 'standard', emoji: '🔵', need: 0, paint: standard, ball: { wand: 0.5, boden: 0.25, dichte: 2.5 } },
+  { id: 'tennis', emoji: '🎾', need: 3, paint: pixels(tennis), ball: { wand: 0.75, boden: 0.7, dichte: 0.37 } },
+  { id: 'fussball', emoji: '⚽', need: 5, paint: pixels(fussball), ball: { wand: 0.75, boden: 0.5, dichte: 0.08 } },
+  { id: 'golf', emoji: '⛳', need: 7, paint: pixels(golf), bump: pixels(golfHoehe), ball: { wand: 0.8, boden: 0.3, rollen: 0.5, dichte: 1.13 } },
+  { id: 'pingpong', emoji: '🏓', need: 9, paint: pixels(pingpong), ball: { wand: 0.85, boden: 0.85, schwere: 0.8, dichte: 0.08 } },
+  { id: 'flummi', emoji: '🔴', need: 8, paint: pixels(flummi), ball: { wand: 0.97, boden: 0.93, dichte: 1.1 } },
+  { id: 'melone', emoji: '🍉', need: 10, paint: pixels(melone), ball: { wand: 0.2, boden: 0.1, dichte: 0.94 } },
+  { id: 'basketball', emoji: '🏀', need: 12, paint: pixels(basketball), ball: { wand: 0.8, boden: 0.8, dichte: 0.09 } },
+  { id: 'billard', emoji: '🎱', need: 14, paint: billard, shiny: true, ball: { wand: 0.8, boden: 0.4, dichte: 1.74 } },
+  { id: 'planet', emoji: '🪐', need: 15, paint: pixels(planet), ring: true, ball: { wand: 0.5, boden: 0.25, dichte: 0.69 } },
+  { id: 'bowling', emoji: '🎳', need: 18, paint: pixels(bowling), shiny: true, ball: { wand: 0.1, boden: 0.05, dichte: 1.38 } },
+  { id: 'regenbogen', emoji: '🌈', need: 20, paint: pixels(regenbogen), ball: { wand: 0.5, boden: 0.25, dichte: 2.5 } },
+  { id: 'mond', emoji: '🌙', need: 24, paint: pixels(mond), ball: { wand: 0.6, boden: 0.6, schwere: 0.5, dichte: 3.34 } },
+  { id: 'gold', emoji: '🏅', need: 'alle', paint: pixels(gold), shiny: true, ball: { wand: 0.35, boden: 0.15, dichte: 19.3 } }
 ];
 
 function standard(ctx, w, h) {

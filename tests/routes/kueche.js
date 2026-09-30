@@ -8,7 +8,7 @@ const k1sA = [
   { x: 0, z: -55, speed: 3 }, { x: 0, z: -61, speed: 2 }, { x: 0, z: -69, speed: 3 }
 ];
 const k1sB = [
-  { x: 0, z: -101, speed: 2 }, { x: 0, z: -105, speed: 3 }, { x: 0, z: -114, speed: 4, r: 1.5 }, { x: 0, z: -118.5, speed: 2 },
+  { x: 0, z: -101, speed: 2 }, { x: 0, z: -105, speed: 3 }, { x: 0, z: -114, speed: 4, r: 1.5 }, { x: 0, z: -115.2, speed: 2, r: 0.5, wait: 'amBoden' }, { x: 0, z: -118.5, speed: 2 },
   { x: 0, z: -126, speed: 5, wait: ['phase', ['hammer', 1, 0.72, 0.85]] }, { x: -1.2, z: -130.8, speed: 3 }, { x: -4, z: -132, speed: 3 },
   { x: -17, z: -132, speed: 4 }, { x: -22, z: -132, speed: 3 }
 ];

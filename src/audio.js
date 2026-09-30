@@ -81,7 +81,10 @@ const ROLL = {
   sand: { f0: 1400, fv: 50, q: 0.5, vol: 0.12, rumble: 0.6 },
   seife: { f0: 2200, fv: 120, q: 3, vol: 0.12, rumble: 0.2 },
   handtuch: { f0: 160, fv: 20, q: 0.6, vol: 0.08, rumble: 0.5 },
-  flussbett: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 }
+  flussbett: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 },
+  keramik: { f0: 1300, fv: 140, q: 1.6, vol: 0.15, rumble: 0.3 },
+  kunststoff: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 },
+  trichter: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 }
 };
 
 export function createAudio(opts = {}) {

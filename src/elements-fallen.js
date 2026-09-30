@@ -4,6 +4,7 @@ import { DEG, quatYawPitch, rotate, add, sub, dot, scale, lerp3, toLocal, fwdOf,
 import { TYPES, segment, track, kinematicBody, driveTo, ballPos, norm } from './elements.js';
 
 const R = 0.5;
+const WATER_DRAG = 2; // Wasserwiderstand im Fluss (siehe fluss.step)
 // Quaternionen multiplizieren (a danach b in lokalen Achsen)
 const mulQ = (a, b) => [
   a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
@@ -177,7 +178,8 @@ export const FALLEN = {
     }
   },
 
-  // Fluss: Rinne mit Wasser, die Strömung trägt die Murmel mit (auch bergab). from/to = Wasseroberfläche (Mitte),
+  // Fluss: Rinne mit Wasser, die Strömung trägt die Murmel mit (auch bergab). Leichte Murmeln (dichte < 1, siehe skins.js)
+  // schwimmen oben und treiben schnell mit, schwere rollen über den Grund. from/to = Wasseroberfläche (Mitte),
   // width, depth = Wassertiefe, speed = Strömung m/s, banks = Ufer über dem Wasser
   // {type:'fluss', from, to, width?, depth?, speed?, banks?}
   fluss: {
@@ -193,14 +195,22 @@ export const FALLEN = {
       const along = rel[0] * el.dir[0] + rel[1] * el.dir[1] + rel[2] * el.dir[2], side = rel[0] * s.right[0] + rel[2] * s.right[2];
       const up = rel[0] * s.up[0] + rel[1] * s.up[1] + rel[2] * s.up[2];
       if (Math.abs(along) > s.L / 2 || Math.abs(side) > (el.width ?? 4) / 2 || up > R + 0.1 || up < -(el.depth ?? 0.7) - 0.5) return;
-      // Strömung schiebt bis zu ihrem Tempo mit; ist die Murmel bergab schneller, bremst sie nicht
-      const v = g.ball.velocity, sp = el.speed ?? 3, va = v.x * el.dir[0] + v.y * el.dir[1] + v.z * el.dir[2], k = Math.min(1, 2.5 * h);
-      const dv = Math.max(0, sp - va) * k;
+      // eingetaucht: Anteil der Kugel unter der Wasseroberfläche (Kugelkappe der Höhe d)
+      const d = Math.min(2 * R, Math.max(0, R - up)), frac = d * d * (3 * R - d) / (4 * R * R * R);
+      if (frac <= 0) return;
+      const v = g.ball.velocity, rho = g.ballProps.dichte ?? 2.5, sp = el.speed ?? 3;
+      // Auftrieb (Archimedes): leichte Murmeln (dichte < 1) schwimmen oben, schwere sinken auf den Grund
+      v.y += g.gy / rho * frac * h;
+      // Wasserwiderstand ∝ Δv · (|Δv| + 1), geteilt durch die Dichte: leichte Murmeln treibt das Wasser stärker
+      const kw = WATER_DRAG * frac / rho;
+      // längs: Strömung schiebt bis zu ihrem Tempo mit; ist die Murmel bergab schneller, bremst sie nicht
+      const va = v.x * el.dir[0] + v.y * el.dir[1] + v.z * el.dir[2], da = Math.max(0, sp - va);
+      const dv = da * Math.min(1, kw * (da + 1) * h);
       v.x += el.dir[0] * dv; v.y += el.dir[1] * dv; v.z += el.dir[2] * dv;
-      // seitlich bremst das Wasser, Auftrieb hält die Murmel oben
-      const vs = v.x * s.right[0] + v.z * s.right[2], f = Math.min(1, 1.5 * h);
-      v.x -= s.right[0] * vs * f; v.z -= s.right[2] * vs * f;
-      v.y += g.G * 0.35 * h;
+      // quer und auf/ab bremst das Wasser (Schwimmende wippen nicht ewig)
+      const va2 = va + dv, qx = v.x - el.dir[0] * va2, qy = v.y - el.dir[1] * va2, qz = v.z - el.dir[2] * va2;
+      const fq = Math.min(1, kw * (Math.hypot(qx, qy, qz) + 1) * h);
+      v.x -= qx * fq; v.y -= qy * fq; v.z -= qz * fq;
       g.washK += 2;
     },
     view(el, v) {

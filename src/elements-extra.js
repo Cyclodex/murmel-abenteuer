@@ -4,6 +4,7 @@ import { DEG, quatYawPitch, rotate, add, sub, scale, lerp3, toLocal, fwdOf } fro
 import { TYPES, segment, kinematicBody, ballPos } from './elements.js';
 
 const R = 0.5;
+const DRAIN_V = 3; // Abfluss schluckt nur langsamere Murmeln (m/s)
 const UP = [0, 1, 0];
 const norm = v => { const l = Math.hypot(...v) || 1; return scale(v, 1 / l); };
 const bezier = (P, t) => {
@@ -38,7 +39,9 @@ export const EXTRA = {
       el.cool -= h;
       if (el.t < 0) {
         const p = g.ball.position, m = el.P[0];
-        if (el.cool <= 0 && Math.hypot(p.x - m[0], p.z - m[2]) < (el.fang ?? 0.9) && Math.abs(p.y - m[1]) < 1) { el.t = 0; g.lock = true; ev.push(el.down ? 'gurgel' : 'roehre'); }
+        // Abfluss: nur wenn die Murmel unten ankommt und langsam genug ist (sonst springt oder rollt sie darüber hinweg)
+        const catchY = el.down ? p.y < m[1] && Math.hypot(g.ball.velocity.x, g.ball.velocity.y, g.ball.velocity.z) < DRAIN_V : Math.abs(p.y - m[1]) < 1;
+        if (el.cool <= 0 && Math.hypot(p.x - m[0], p.z - m[2]) < (el.fang ?? 0.9) && catchY) { el.t = 0; g.lock = true; ev.push(el.down ? 'gurgel' : 'roehre'); }
         return;
       }
       el.t += h * (el.speed ?? 9) / el.len;
@@ -46,7 +49,9 @@ export const EXTRA = {
       if (el.t >= 1) {
         el.t = -1; el.cool = 1.5; g.lock = false;
         setBall(g, el.P[3]);
-        const o = el.out ?? 5; g.ball.velocity.set(el.exitDir[0] * o, -1, el.exitDir[2] * o);
+        const o = el.out ?? 5, vx = el.exitDir[0] * o, vz = el.exitDir[2] * o;
+        // herausrutschen und dabei vorwärts rollen (sonst wirft der alte Drall von vor der Röhre die Murmel beim Aufsetzen zurück)
+        g.ball.velocity.set(vx, -1, vz); g.ball.angularVelocity.set(vz / R, 0, -vx / R);
         ev.push('plopp');
       } else setBall(g, bezier(el.P, el.t));
     },
@@ -249,12 +254,11 @@ export const EXTRA = {
         setBall(g, el.base); g.hitCool = 0.3;
         if (el.t > 0.8) {
           g.ball.position.set(...el.muzzle); g.ball.velocity.set(...el.v0);
-          g.ball.linearDamping = 0; // genau treffen
           el.state = 'flug'; el.t = 0; ev.push('boom');
         }
       } else if (el.state === 'flug') {
         if ((g.groundBody && el.t > 0.2) || el.t > 5 || !g.lock) {
-          g.lock = false; g.ball.linearDamping = g.damping; el.state = 'pause'; el.t = 0;
+          g.lock = false; el.state = 'pause'; el.t = 0;
         }
       } else if (el.state === 'pause' && el.t > 1.5) el.state = 'bereit';
     },
