@@ -8,8 +8,9 @@ Die volle Suite läuft als GitHub Action (`.github/workflows/tests.yml`) nachts,
 von Hand starten (Actions → „Tests (voll)“ → „Run workflow“). In der Session die volle Suite nicht selbst starten,
 ausser der Benutzer will es.
 Jeder PR startet `.github/workflows/pr.yml` („Tests (PR)“): `npm run test:schnell` und `pruefe-level.mjs` für die Level,
-deren Datei oder Route der PR ändert (`tests/geaenderte-level.mjs`; Änderung an `src/levels/index.js`, `tests/autopilot.js`
-oder `tests/pruefe-level.mjs` → alle Level).
+deren Datei oder Route der PR ändert (`tests/geaenderte-level.mjs`; Änderung an `src/levels/index.js`, `tests/autopilot.js`,
+`tests/pruefe-level.mjs` oder `tests/kombis.mjs` → alle Level). Die Fahrten (Level × 16 Kombinationen) verteilt
+`tests/verteile-level.mjs` nach Richtzeit auf 8 Jobs („level 1/8“ … „level 8/8“), der Check „level“ fasst sie zusammen.
 
 **Tests nicht selbst in der Session starten** (weder `npm test` noch `test:schnell`, einzelne Playwright-Tests oder
 `pruefe-level.mjs`), ausser der Benutzer will es: Das macht der PR (GitHub Action „Tests (PR)“, `.github/workflows/pr.yml`).
