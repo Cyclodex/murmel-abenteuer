@@ -48,6 +48,8 @@ const ROLL_FLAT = 0.9998; // Rollwiderstand nur auf ebenem Boden (Neigung < 1.1�
 // Hangabtrieb: rollt die Murmel auf geneigten Bahnstücken (Weg, Rampe, Spirale, Fluss) bergab, zieht es sie zusätzlich
 // (Faktor der Hangkraft), sonst schluckt das Rollen einen grossen Teil davon und bergab wirkt zäh.
 const SLOPE_PUSH = 0.3;
+// Blickrichtung nach einem Sprung: so lange (s) in der Luft und so schnell (m/s) entlang des neuen Stücks
+const LAND_AIR = 0.3, LAND_V = 1;
 const BRAKE_FLAT = 0.998; // Bremshilfe nur auf (fast) ebenem Boden (Neigung < 3.6°), bergab rollt die Murmel weiter
 
 export function createGame(CANNON, level, ballProps = BALL) {
@@ -143,10 +145,11 @@ export function createGame(CANNON, level, ballProps = BALL) {
   // Nach dem Abprall drückt cannon.js die leicht eingedrungene Murmel noch ein paar Schritte aus der Wand und gibt ihr
   // dabei zusätzlich Schwung (Bowling kam je nach Tempo mit 0.1 bis 0.23 statt 0.1 zurück): kurz auf das Abpralltempo begrenzen.
   let last = null; // { body, v = Abpralltempo, t = Restzeit }
+  let airT = 0; // so lange (s) berührt die Murmel nichts
 
   g.spawn = p => {
     ball.position.set(...p); ball.velocity.set(0, 0, 0); ball.angularVelocity.set(0, 0, 0);
-    g.groundBody = g.touchBody = null; g.rundN = null; g.lock = false; g.squashT = 0; g.holdT = 0; last = null;
+    g.groundBody = g.touchBody = null; g.rundN = null; g.lock = false; g.squashT = 0; g.holdT = 0; last = null; airT = 0;
   };
   // Neu einsetzen nach Runterfallen oder Quetschen: Die Murmel wartet RESPAWN_T am Checkpoint (die Kamera fliegt hin),
   // Blickrichtung = die des Checkpoints bzw. des Starts. Die Uhr läuft weiter. Event 'wieder', wenn es weitergeht.
@@ -208,15 +211,20 @@ export function createGame(CANNON, level, ballProps = BALL) {
     g.touchBody = best; g.groundBody = ground;
     const u = best && best.userData;
     if (u && u.track) {
-      const tr = u.track, p = ball.position;
+      const tr = u.track, p = ball.position, v = ball.velocity;
       // Richtung eines Bahnstücks ist nur eine Achse: Läuft es gegen die Fahrtrichtung
       // (z. B. Förderband, das zurückschiebt), Blickrichtung behalten statt umzudrehen.
+      // Nach einem Sprung (Abkürzung auf ein tieferes Stück) zählt die Flugrichtung: die alte Blickrichtung
+      // gehört zu einem anderen Stück und kann quer oder entgegen dazu liegen.
       const d = Math.atan2(Math.sin(tr.yaw - g.track.yaw), Math.cos(tr.yaw - g.track.yaw));
-      const flip = Math.abs(d) > Math.PI / 2 ? -1 : 1;
+      const vf = -v.x * Math.sin(tr.yaw) - v.z * Math.cos(tr.yaw); // Tempo entlang des Stücks
+      const landed = airT >= LAND_AIR && best === ground && !u.loop && Math.abs(vf) > LAND_V;
+      const flip = landed ? Math.sign(vf) : Math.abs(d) > Math.PI / 2 ? -1 : 1;
       g.track.yaw = flip < 0 ? tr.yaw + Math.PI : tr.yaw;
       g.track.lateral = flip * ((p.x - tr.mid[0]) * tr.right[0] + (p.y - tr.mid[1]) * tr.right[1] + (p.z - tr.mid[2]) * tr.right[2]);
     }
     g.surface = SURFACES[ground && ground.userData && ground.userData.surface] || SURFACES.normal;
+    airT = best ? 0 : airT + H;
   }
 
   // Abprall selbst rechnen: cannon.js schluckt fast den ganzen Rückprall (Restitution 0.8 -> ~0.3).
