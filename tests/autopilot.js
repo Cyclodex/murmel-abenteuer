@@ -184,11 +184,17 @@ export const ROUTES = {
   ],
   k3: [
     { x: 0, z: -8, speed: 4 }, { x: 0, z: -18 }, { x: 0, z: -22, speed: 3 }, { x: 10, z: -30 }, { x: 13.75, z: -31, speed: 2 },
-    { x: 13.75, z: -35, speed: 2, r: 0.5 }, { x: 13.75, z: -30, speed: 2 }, { x: 18, z: -30 }, { x: 36, z: -30 }
+    { x: 13.75, z: -35, speed: 2, r: 0.5 }, { x: 13.75, z: -30, speed: 2 }, { x: 18, z: -30 },
+    { x: 30, z: -30 }, { x: 33, z: -30, speed: 5 }, { x: 39.2, z: -33, speed: 6, r: 1.5 }, { x: 39.2, z: -40.5, free: true, r: 0.6 },
+    { x: 39.2, z: -40.5, speed: 1, wait: ['tiefer', -3] }, { x: 42, z: -40.5, speed: 2 }, { x: 50.2, z: -40.5 }
   ],
+  // Mondhüpfer: Trampoline, dann in der Halfpipe zu den Sternen an den Wänden schwingen
   w1: [
-    [{ x: 0, z: -6, speed: 3 }, { x: 0, z: -22, speed: 5 }, { x: 0, z: -26, speed: 3 }, { x: 0, z: -40, speed: 5 }, { x: 0, z: -45 }],
-    [{ x: 0, z: -6, speed: 3 }, { x: 5, z: -12, speed: 5 }, { x: 0, z: -22, speed: 4 }, { x: 0, z: -26, speed: 3 }, { x: 0, z: -40, speed: 5 }, { x: 0, z: -45 }]
+    [
+      { x: 0, z: -6, speed: 3 }, { x: 0, z: -22, speed: 5 }, { x: 0, z: -26, speed: 3 }, { x: 0, z: -37, speed: 5 }, { x: 0, z: -40, speed: 3 },
+      { x: -2.87, z: -46, speed: 3, r: 0.6 }, { x: 3.45, z: -54, speed: 6, r: 0.6 }, { x: 0, z: -58, speed: 3 }, { x: 0, z: -64 }
+    ],
+    [{ x: 0, z: -6, speed: 3 }, { x: 5, z: -12, speed: 5 }, { x: 0, z: -22, speed: 4 }, { x: 0, z: -26, speed: 3 }, { x: 0, z: -37, speed: 5 }, { x: 0, z: -40, speed: 3 }, { x: 0, z: -64, speed: 3 }]
   ],
   w2: [
     { x: 0, z: -6, speed: 2 }, { x: 0, z: -22, speed: 2 }, { x: 0, z: -20, speed: 2 }, { x: 0, z: -33, speed: 2 }, { x: 12, z: -48 }, { x: 12, z: -52 }
@@ -203,8 +209,9 @@ export const ROUTES = {
   ],
   u2: [
     { x: 0, z: -8 }, { x: 0, z: -10, speed: 1.5 }, { x: 0, z: -15, wait: ['hoehe', 6] }, { x: -5, z: -18, speed: 2, r: 0.5 }, { x: 0, z: -18, speed: 2 },
-    { x: 0, z: -24 }, { x: 0, z: -26, speed: 1.5 }, { x: 0, z: -31, wait: ['hoehe', 11] }, { x: 0, z: -35 }, { follow: true, bisY: 1.6, speed: 4 },
-    { x: 10, z: -31 }, { x: 10, z: -27 }
+    { x: 0, z: -24 }, { x: 0, z: -26, speed: 1.5 }, { x: 0, z: -31, wait: ['hoehe', 11] },
+    { x: 0, z: -35, speed: 5 }, { x: 3, z: -38.2, speed: 6, r: 1.5 }, { x: 10.5, z: -38.2, free: true, r: 0.6 },
+    { x: 10.5, z: -38.2, speed: 1, wait: ['tiefer', 2] }, { x: 10.5, z: -41, speed: 2 }, { x: 10.5, z: -49.2 }
   ],
   u3: [
     { x: 0, z: -6 }, { x: 0, z: -17, speed: 4 }, { x: 3, z: -24, speed: 4, r: 0.6, wait: ['balkenWeg', [2, -20.5]] }, { x: 0, z: -30, speed: 4 }, { x: 0, z: -44 }, { x: 0, z: -46, speed: 2 }, { x: 0, z: -62 },
@@ -220,8 +227,8 @@ export const ROUTES = {
   v2: [
     { x: 0, z: -8, speed: 4 }, { x: 0, z: -16, speed: 4 }, { x: 0, z: -27, speed: 3 }, { x: 0, z: -29, speed: 1.5, r: 0.5 }, { x: 7, z: -29, speed: 1.5, r: 0.5 }, { x: 0, z: -29, speed: 1.5, r: 0.5 },
     { x: 0, z: -33, speed: 2 }, { x: 0, z: -35, speed: 1.5, r: 0.5 }, { x: 0, z: -43, speed: 5, r: 0.8, wait: ['balkenWeg', [0, -39]] },
-    { x: 0, z: -47, speed: 2.5 }, { x: 0, z: -58, speed: 2.5, r: 0.8 }, { x: 0, z: -64, speed: 2 }, { x: 0, z: -69, speed: 2 },
-    { x: -1.46, z: -73.54, speed: 3 }, { x: -6, z: -75, speed: 3 }, { x: -12, z: -75 }
+    { x: 0, z: -47, speed: 2.5 }, { x: 0, z: -58, speed: 2.5, r: 0.8 }, { x: 0, z: -68, free: true, r: 1 },
+    { x: -6, z: -74, free: true, r: 1.5 }, { x: -13, z: -74 }
   ],
   v3: [
     { x: 0, z: -7, speed: 3 }, { x: 0, z: -13, speed: 2 }, { x: 0, z: -30, speed: 2 }, { x: 0, z: -37, speed: 2 },

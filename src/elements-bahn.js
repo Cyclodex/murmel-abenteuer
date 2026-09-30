@@ -133,7 +133,7 @@ export const BAHN = {
       tex.wrapS = tex.wrapT = T.RepeatWrapping;
       const mesh = new T.Mesh(geo, new T.MeshPhongMaterial({ map: tex, shininess: 90, specular: 0x555555, side: T.DoubleSide }));
       mesh.receiveShadow = true; mesh.castShadow = true;
-      v.scene.add(mesh);
+      v.scene.add(mesh); v.blocker?.(mesh); // z. B. obere Runde einer Spirale: Kamera rückt davor näher an die Murmel
     }
   },
 

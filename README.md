@@ -85,7 +85,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `felsen` | `from`, `dir: [x, z]`, `speed`, `every` (s), `r`, `offset`, `farbe` – rollende Felsen (oder Kartoffeln, Äpfel …), bergab einsetzen |
 | `schuessel` | `at` (Bodenmitte), `r`, `R`, `h`, `rim`, `art` (`'pfanne'`/`'topf'`/`'lavabo'`/`'schuessel'`/`'sandkuchen'`), `boden: 'rund'` (gewölbt bis zur Mitte; beim Lavabo Standard, dazu Oberfläche Keramik: Bälle springen und kreisen hinunter), `offen: [yaw]` (Lücke für eine Rampe), `aussen`, `griff`, `hahn`, `abfluss` |
 | `rinne` | gerade: `from`, `to` (Mitte unten); oder Kurve/Spirale: `at`, `yaw`, `turn`, `radius`, `rise`; dazu `r` (Radius des Querschnitts: ~1.6 Rutsche, ~4 Halfpipe), `bogen` (Grad je Seite), `surface`, `farbe` – runde Bahn, in Kurven fährt die Murmel die Wand hoch |
-| `trichter` | `at` (Mitte des Lochs), `R`, `h`, `loch`, `rim`, `wand` (Bande), `offen`, `farbe` – Spiraltrichter: schräg über die Bande hinein, die Murmel kreist immer schneller hinunter und fällt durchs Loch (darunter auffangen) |
+| `trichter` | `at` (Mitte des Lochs), `R`, `h`, `loch`, `rim`, `wand` (Bande), `offen`, `surface` (Standard `trichter`, bremst etwas), `farbe` – Spiraltrichter: schräg über die Bande hinein, die Murmel kreist immer schneller hinunter und fällt durchs Loch (darunter auffangen) |
 | `roehre` mit `down: true` | Abfluss: bei `from` geht es senkrecht hinunter, `fang` = Fangradius (z. B. Mitte vom Lavabo); schluckt nur, wenn die Murmel unten und langsamer als 3 m/s ist |
 | `wind` mit `look` | `'schlauch'` (Gartenschlauch) oder `'hahn'` (Wasserhahn): Wasserstrahl statt Ventilator |
 | `sprenger` | `at`, `length` (Reichweite), `speed` (°/s), `strength`, `breite` – Rasensprenger schiebt die Murmel weg |
