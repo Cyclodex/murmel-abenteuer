@@ -130,11 +130,11 @@ test('Level schaffen speichert Fortschritt und schaltet frei', async ({ page }) 
   expect(errors).toEqual([]);
 });
 
-test('Mehrere Spieler: eigener Spielstand, Rangliste nach Sternen', async ({ page }) => {
+test('Mehrere Spieler: eigener Spielstand, Rangliste nach Punkten', async ({ page }) => {
   const errors = watchErrors(page);
-  const win = async (id, stars, spot) => {
+  const win = async (id, stars, spot, falls = 0) => {
     await page.click(`.lvl[data-level="${id}"]`);
-    await page.evaluate(([n, p]) => { const g = window.murmel.game; g.st.stars = n; g.spawn(p); }, [stars, spot]);
+    await page.evaluate(([n, p, f]) => { const g = window.murmel.game; for (let k = 0; k < f; k++) g.fall([]); g.st.stars = n; g.spawn(p); }, [stars, spot, falls]);
     await expect(page.locator('#winOv')).toBeVisible();
   };
   await page.goto('/');
@@ -143,7 +143,9 @@ test('Mehrere Spieler: eigener Spielstand, Rangliste nach Sternen', async ({ pag
   await expect(page.locator('#playerOv')).toBeVisible();
   await newPlayer(page, '  Anna  ');
   await expect(page.locator('#btnPlayer')).toHaveText('👤 Anna');
-  await win('ausflug', 3, [0, 5, -69]);
+  // 3 von 5 Sternen, sofort im Ziel (Zeitbonus voll), 1 Absturz: 600 + 750 + 200
+  await win('ausflug', 3, [0, 5, -69], 1);
+  await expect(page.locator('#winScore')).toHaveText('🏆 1550 · 💥1');
   await expect(page.locator('#winRank')).toBeHidden();  // nur ein Spieler
   await page.click('#mapBtn');
   // zweiter Spieler startet bei null
@@ -153,13 +155,14 @@ test('Mehrere Spieler: eigener Spielstand, Rangliste nach Sternen', async ({ pag
   await expect(page.locator('#mapStars')).toHaveText('⭐ 0');
   await expect(page.locator('.lvl[data-level="ausflug"]')).not.toHaveClass(/done/);
   await win('ausflug', 5, [0, 5, -69]);
-  await expect(page.locator('#winRank')).toHaveText('🥇 <b>Ben</b> ⭐5\n🥈 Anna ⭐3');
+  await expect(page.locator('#winScore')).toHaveText('🏆 2050');
+  await expect(page.locator('#winRank')).toHaveText('🥇 <b>Ben</b> 🏆2050 🐇\n🥈 Anna 🏆1550 🐇');
   // nach Neuladen: Ben ist noch dran, Rangliste in der Auswahl
   await page.reload();
   await page.click('#startJoy');
   await expect(page.locator('#btnPlayer')).toHaveText('👤 <b>Ben</b>');
   await page.click('#btnPlayer');
-  await expect(page.locator('.player')).toHaveText(['🥇 <b>Ben</b> ⭐5', '🥈 Anna ⭐3']);
+  await expect(page.locator('.player')).toHaveText(['🥇 <b>Ben</b> 🏆2050 ⭐5', '🥈 Anna 🏆1550 ⭐3']);
   await expect(page.locator('.player.sel')).toHaveText(/Ben/);
   await page.click('.player:has-text("Anna")');
   await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
@@ -455,7 +458,7 @@ const fahre = (page, parts, start, sek, input = [0, 0], extra = '', nachher = ''
     g.jeSchritt?.(); maxY = Math.max(maxY, g.ball.position.y);
   }
   const p = g.ball.position, v = g.ball.velocity;
-  return { ev, p: [p.x, p.y, p.z], v: [v.x, v.y, v.z], maxY, dirt: g.dirt, aus: nachher ? new Function('g', nachher)(g) : undefined };
+  return { ev, p: [p.x, p.y, p.z], v: [v.x, v.y, v.z], maxY, dirt: g.dirt, falls: g.st.falls, aus: nachher ? new Function('g', nachher)(g) : undefined };
 }, [parts, start, sek, input, extra, nachher]);
 // Murmel rollt mit v m/s nach vorne (-z) los
 const schwung = v => `g.ball.velocity.set(0, 0, ${-v}); g.ball.angularVelocity.set(${-v / 0.5}, 0, 0);`;
@@ -616,10 +619,12 @@ test('Fallen: Hammer quetscht, Falltür klappt auf, Loch im Feld, Schieber schie
   // Hammer: Murmel steht darunter -> platt, dann zurück zum Start
   const h = await fahre(page, [weg, { type: 'hammer', at: [0, 0, -3] }, { type: 'checkpoint', at: [0, 0, 2], size: [3, 3, 2] }], [0, 0, 2], 4, [0, 0], 'g.spawn([0, 1, -3]); g.st.cp = 0;');
   expect(h.ev.slice(0, 2)).toEqual(['quetsch', 'zurueck']);
+  expect(h.falls).toBe(h.ev.filter(e => e === 'quetsch').length); // zählt als Absturz (Punkte)
   // Falltür: stehen bleiben -> Klappe auf, runterfallen; schnell drüber -> kommt durch
   const tuer = [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -1.5], width: 3 }, { type: 'falltuer', at: [0, 0, -3], size: [3, 3] }, { type: 'weg', from: [0, 0, -4.5], to: [0, 0, -40], width: 3 }];
   const steh = await fahre(page, tuer, [0, 0, -3], 3);
   expect(steh.ev.slice(0, 2)).toEqual(['klapp', 'fall']); // Neustart liegt wieder auf der Klappe
+  expect(steh.falls).toBe(steh.ev.filter(e => e === 'fall').length);
   const schnell = await fahre(page, tuer, [0, 0, 3], 2, [0, 0], 'g.ball.velocity.set(0, 0, -8); g.ball.angularVelocity.set(-16, 0, 0);');
   expect(schnell.ev).not.toContain('fall'); // Klappe geht erst hinter der Murmel auf
   expect(schnell.p[2]).toBeLessThan(-6);
@@ -1266,6 +1271,116 @@ test('Alle Spuren laufen ohne Fehler', async ({ page }) => {
   }
   expect(await page.evaluate(() => window.murmel.view.trailFx.count)).toBe(0);
   expect(errors).toEqual([]);
+});
+
+// Online-Rangliste (#9): Supabase-Anfragen auf page.route umleiten. Auf localhost ist die Rangliste sonst aus.
+// server.down = true: Server antwortet mit 503 (pausiert oder weg), server.hang = true: gar nicht; calls sammelt die Anfragen je Funktion.
+async function fakeSupabase(page, rows = [], ghosts = {}) {
+  const server = { down: false, calls: { submit_run: [], get_ranking: [], get_ghost: [] }, rows };
+  await page.addInitScript(() => localStorage.setItem('murmel-online', 'an'));
+  await page.route('https://qnxkkwiflepmhokkeslx.supabase.co/**', async route => {
+    const req = route.request(), fn = new URL(req.url()).pathname.split('/').pop(), body = JSON.parse(req.postData() || '{}');
+    expect(req.headers().apikey).toMatch(/^sb_publishable_/);
+    if (server.hang) return; // keine Antwort: online.js bricht nach 3 s ab
+    if (server.down) return route.fulfill({ status: 503, body: '' });
+    server.calls[fn].push(body);
+    const json = data => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
+    if (fn === 'get_ranking') return json(server.rows);
+    if (fn === 'get_ghost') return json(ghosts[body.p_name + '/' + body.p_level] ?? null);
+    const b = body;
+    server.rows = server.rows.filter(r => !(r.name.toLowerCase() === b.p_name.toLowerCase() && r.level === b.p_level));
+    server.rows.push({ name: b.p_name, level: b.p_level, stars: b.p_stars, total: b.p_total, seconds: b.p_seconds, falls: b.p_falls, power: b.p_power, score: b.p_score, ghost: !!b.p_ghost });
+    return json(true);
+  });
+  return server;
+}
+const online = (name, level, stars, total, seconds, falls, ghost = false) => ({ name, level, stars, total, seconds, falls, power: 'normal', score: 0, ghost });
+
+test('Online-Rangliste: Rekord mit Aufnahme senden, Welt- und Level-Rangliste, gegen Online-Geist fahren', async ({ page }) => {
+  const errors = watchErrors(page);
+  // ausflug: Max 1000 + 750 + 200 = 1950, Zoe 800 + 750 + 300 = 1850 (mit Aufnahme); sz1: Max 1000 + 750 + 300 = 2050
+  const track = { t: 3, skin: 'fussball', p: [0, 100, 0, 0, 100, -500, 0, 100, -1000] }; // Zentimeter
+  const server = await fakeSupabase(page,
+    [online('Max', 'ausflug', 5, 5, 1, 1), online('Zoe', 'ausflug', 4, 5, 1, 0, true), online('Max', 'sz1', 6, 6, 1, 0)],
+    { 'Zoe/ausflug': track });
+  await play(page, 'ausflug');
+  expect(server.calls.get_ranking.length).toBeGreaterThan(0); // beim Öffnen der Karte geholt
+  await page.evaluate(() => { const g = window.murmel.game; g.st.stars = 5; g.spawn([0, 5, -69]); });
+  await expect(page.locator('#winOv')).toBeVisible();
+  // Rekord gesendet: Rohwerte, Punkte und die Aufnahme der Fahrt
+  await expect.poll(() => server.calls.submit_run.length).toBe(1);
+  const sent = server.calls.submit_run[0];
+  expect(sent).toMatchObject({ p_name: 'Test', p_level: 'ausflug', p_stars: 5, p_total: 5, p_falls: 0, p_power: 'normal', p_score: 2050 });
+  expect(sent.p_seconds).toBeGreaterThan(0);
+  expect(sent.p_ghost.skin).toBe('standard');
+  expect(sent.p_ghost.p.length % 3).toBe(0);
+  expect(sent.p_ghost.p.length).toBeGreaterThan(0);
+  // Level-Rangliste mit den Online-Fahrten (Punkte aus den Rohwerten neu gerechnet), Geist des besten anderen mit Aufnahme
+  await expect(page.locator('#winRank')).toHaveText('🥇 Test 🏆2050 🐇\n🥈 Max 🏆1950 🐇\n🥉 Zoe 🏆1850 🐇');
+  await expect(page.locator('#winGhost')).toHaveText('👻 🥉 Zoe');
+  await page.click('#cheerOv').catch(() => {});
+  await page.click('#winGhost');
+  await expect(page.locator('#winOv')).toBeHidden();
+  expect(server.calls.get_ghost).toEqual([{ p_name: 'Zoe', p_level: 'ausflug' }]);
+  expect(await page.evaluate(() => window.murmel.running)).toBe(true);
+  await page.waitForFunction(() => window.murmel.game.time > 0.5);
+  expect(await page.evaluate(() => window.murmel.view.ghost.position.z)).toBeLessThan(-9); // Zoes Aufnahme, nicht die eigene
+  // Weltrangliste in der Spieler-Auswahl: Summe über alle Level
+  await page.click('#btnHome');
+  await page.click('#btnPlayer');
+  await expect(page.locator('#worldRank')).toHaveText('🌍\n🥇 Max 🏆4000\n🥈 Test 🏆2050\n🥉 Zoe 🏆1850');
+  expect(errors).toEqual([]);
+});
+
+test('Online-Rangliste ohne Server: Spiel läuft, Rekord wartet und geht beim nächsten Start raus', async ({ page }) => {
+  const errors = watchErrors(page);
+  const server = await fakeSupabase(page);
+  server.down = true;
+  await play(page, 'ausflug');
+  await page.evaluate(() => { const g = window.murmel.game; g.st.stars = 3; g.spawn([0, 5, -69]); });
+  await expect(page.locator('#winOv')).toBeVisible();
+  await expect(page.locator('#winScore')).toHaveText('🏆 1650');
+  await expect(page.locator('#winGhost')).toBeHidden();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('murmel-online-v1')).queue['test\nausflug'].run.score)).toBe(1650);
+  // Server antwortet gar nicht: nach dem Timeout geht es ohne Fehler weiter, der Rekord wartet weiter
+  server.down = false; server.hang = true;
+  expect(await page.evaluate(() => window.murmel.online.sync())).toBe(false);
+  expect(await page.evaluate(() => window.murmel.online.pending())).toBe(1);
+  // Server wieder da: beim nächsten Start (Karte) wird nachgesendet, die Warteschlange ist leer
+  server.hang = false;
+  await page.reload();
+  await page.click('#startJoy');
+  await expect.poll(() => server.calls.submit_run.length).toBe(1);
+  expect(server.calls.submit_run[0]).toMatchObject({ p_name: 'Test', p_level: 'ausflug', p_stars: 3, p_score: 1650 });
+  await expect.poll(() => page.evaluate(() => window.murmel.online.pending())).toBe(0);
+  // Anfragen an den Server schlagen fehl (503, beim Neuladen abgebrochen), sonst keine Fehler
+  expect(errors.filter(e => !e.includes('supabase.co') && !e.includes('503'))).toEqual([]);
+});
+
+test('Punkte: Sterne, Zeit gegen Richtzeit, Abstürze; Rangliste aus Zeilen', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { score, ranking } = await import('/src/score.js');
+    const { RICHTZEIT } = await import('/src/levels/richtzeiten.js');
+    const { LEVELS } = await import('/src/levels/index.js');
+    const run = (stars, time, falls, level = 'sz1') => score({ level, stars, total: 6, time, falls });
+    const rows = [
+      { name: 'Anna', level: 'sz1', score: 100, power: 'normal' }, { name: 'anna', level: 'sz1', score: 300, power: 'extrem' },
+      { name: 'Anna', level: 'k1', score: 50, power: 'normal' }, { name: 'Ben', level: 'sz1', score: 200, power: 'sanft' }
+    ];
+    return {
+      par: RICHTZEIT.sz1, missing: LEVELS.filter(l => !(RICHTZEIT[l.id] > 0)).map(l => l.id),
+      pts: [run(6, 25, 1), run(6, 40, 0), run(4, 20, 0), run(6, 5, 0), run(6, 0, 0), run(0, 43.8, 5), run(3, 10, 0, 'unbekannt')],
+      total: ranking(rows), sz1: ranking(rows, 'sz1')
+    };
+  });
+  expect(r.missing).toEqual([]); // jedes Level hat eine Richtzeit (node tests/richtzeiten.mjs)
+  expect(r.par).toBe(21.9);
+  // 1000 + 438 + 200 | 1000 + 273.75 + 300 | 666.7 + 547.5 + 300 | 2050 = Maximum | Zeit 0 | 250 + 0 | ohne Richtzeit kein Zeitbonus
+  expect(r.pts).toEqual([1638, 1574, 1514, 2050, 2050, 250, 800]);
+  // pro Name (ohne Gross/Klein) und Level die beste Zeile; Stärke nur in der Level-Rangliste
+  expect(r.total).toEqual([{ name: 'anna', score: 350 }, { name: 'Ben', score: 200 }]);
+  expect(r.sz1).toEqual([{ name: 'anna', score: 300, power: 'extrem' }, { name: 'Ben', score: 200, power: 'sanft' }]);
 });
 
 test('Zeit messen: Aufnahme, Geistermurmel und Zeitformat', async ({ page }) => {
