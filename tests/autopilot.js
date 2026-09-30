@@ -129,7 +129,10 @@ const T5 = [30.5, -2.35, -27.2]; // Trichter in sz5
 
 // Wegpunkte pro Level (id -> Liste)
 export const ROUTES = {
-  ausflug: [{ x: 0, z: -24, speed: 5 }, { x: 0, z: -37.5, speed: 4 }, { x: 0, z: -69, speed: 6 }],
+  ausflug: [
+    [{ x: 0, z: -24, speed: 5 }, { x: 0, z: -37.5, speed: 4 }, { x: 0, z: -69, speed: 6 }],
+    [{ x: 0, z: -24, speed: 5 }, { x: 0, z: -37.5, speed: 4 }, { x: 0, z: -46, speed: 4 }, { x: -2, z: -50, speed: 2 }, { x: 0, z: -59, speed: 2 }] // Umweg zum Stern links auf dem Klotz
+  ],
   sz1: [
     { x: 0, z: -8 }, { x: -1, z: -14.25, speed: 2 }, { x: -5, z: -14.25, speed: 2 }, { x: 0, z: -14.25, speed: 2 }, { x: 0, z: -18 }, { x: 1.46, z: -23.54 }, { x: 5, z: -25 }, { x: 9, z: -25 },
     { x: 20, z: -25, speed: 9 }, { x: 28, z: -25, speed: 6 }, { x: 31.5, z: -26.5 }, { x: 33, z: -31 }, { x: 33, z: -36 }
