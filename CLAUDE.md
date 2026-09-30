@@ -3,7 +3,8 @@
 ## Tests
 
 Die volle Suite (`npm test`, 58 Tests) dauert im Cloud-Container 24 Minuten: 16 Autopilot-Tests fahren jedes Level mit
-allen Stärken und Murmeln. `npm run test:schnell` (die übrigen 42) dauert dort 4.6 Minuten. Sie läuft als GitHub Action (`.github/workflows/tests.yml`) nachts, wenn main neue Commits hat, und lässt sich
+allen Stärken und Murmeln. `npm run test:schnell` (die übrigen 42) dauert dort 4.6 Minuten.
+Die volle Suite läuft als GitHub Action (`.github/workflows/tests.yml`) nachts, wenn main neue Commits hat, und lässt sich
 von Hand starten (Actions → „Tests (voll)“ → „Run workflow“). In der Session die volle Suite nicht selbst starten,
 ausser der Benutzer will es.
 
