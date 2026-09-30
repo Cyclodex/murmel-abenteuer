@@ -1,16 +1,22 @@
 // Alle Bauteile, die in Level-Daten vorkommen dürfen.
 // Ein Bauteil-Typ kann haben:
-//   solids(d)            -> feste Klötze [{pos, half, quat, look, surface, track}] (Physik + Grafik automatisch)
+//   solids(d)            -> feste Klötze [{pos, half, quat, look, surface, track, glass}] (Physik + Grafik automatisch;
+//                           glass = halb durchsichtig)
 //   init(el, g)          -> Zustand/bewegliche Körper anlegen (einmal)
 //   reset(el, g)         -> Zustand auf Anfang (bei Neustart)
 //   pre(el, g, h)        -> vor jedem Physikschritt (h Sekunden), z. B. bewegte Teile steuern
 //   step(el, g, h, ev)   -> nach jedem Physikschritt: Spiellogik, Ereignisse in ev schreiben
-//   view(el, v)          -> zusätzliche Grafik; darf {tick(dt, g)} zurückgeben
+//   view(el, v)          -> zusätzliche Grafik; darf {tick(dt, g), cam(p)} zurückgeben
+//                           cam(p): eigene Kamera, solange die Murmel (p = [x, y, z]) dort ist, sonst null;
+//                           {look, dir: Richtung vom Blickpunkt zur Kamera, fit: so viele m ab look muss man mindestens
+//                           in jede Richtung sehen (bestimmt den Abstand), clear: nur was höchstens so weit vor look
+//                           liegt, wird gezeichnet (alles näher bei der Kamera fällt weg)}
 // Winkel in Level-Daten sind in Grad. yaw 0 = nach vorne (-z), positiv = nach links drehen.
-import { DEG, quatYawPitch, rotate, add, scale, lerp3, yawOf, toLocal, fwdOf, rightOf, ease } from './math.js';
+import { DEG, quatYawPitch, rotate, add, sub, dot, scale, lerp3, yawOf, toLocal, fwdOf, rightOf, ease } from './math.js';
 
 const R = 0.5; // Murmel-Radius
 const TAU = Math.PI * 2;
+export const norm = v => scale(v, 1 / (Math.hypot(...v) || 1));
 
 export function segment(from, to, fallbackYaw) {
   const dx = to[0] - from[0], dy = to[1] - from[1], dz = to[2] - from[2];
@@ -111,7 +117,7 @@ export const TYPES = {
         const P = add(add(C, add(scale(F, Math.sin(a) * Rl), scale(U, -Math.cos(a) * Rl))), scale(Rr, shift * a / TAU));
         const N = add(scale(U, Math.cos(a)), scale(F, -Math.sin(a)));
         out.push({ pos: add(P, scale(N, -th / 2)), half: [w / 2, th / 2, L / 2], quat: q, look: d.look || 'ramp', track: { yaw: h, mid: P, right: Rr }, loop: d });
-        for (const k2 of [-1, 1]) out.push({ pos: add(add(P, scale(Rr, k2 * (w / 2 + 0.2))), scale(N, rail / 2)), half: [0.2, rail / 2, L / 2], quat: q, look: 'wall', loop: d });
+        for (const k2 of [-1, 1]) out.push({ pos: add(add(P, scale(Rr, k2 * (w / 2 + 0.2))), scale(N, rail / 2)), half: [0.2, rail / 2, L / 2], quat: q, look: 'wall', glass: true, loop: d });
       }
       return out;
     },
@@ -133,6 +139,20 @@ export const TYPES = {
       const want = (el.prog > 0 && el.prog < TAU - 0.6 ? shift / (TAU * (Rl - R)) * vt : 0) + 4 * (shift * pr / TAU - lat);
       const vl = v.x * Rr[0] + v.z * Rr[2], dv = want - vl;
       v.x += Rr[0] * dv; v.z += Rr[2] * dv;
+    },
+    // Kamera von der Seite (auf der Achse des Loopings), damit man die ganze Runde sieht; die Schienen sind
+    // dafür halb durchsichtig. Von der Seite der Einfahrt: dort verdeckt die spätere Hälfte der Bahn nichts.
+    view(el) {
+      const yaw = (el.yaw || 0) * DEG, Rl = el.radius ?? 3, shift = el.shift ?? 5, w = el.width ?? 3;
+      const F = fwdOf(yaw), Rr = rightOf(yaw), mid = add(add(el.at, [0, Rl, 0]), scale(Rr, shift / 2));
+      const dir = norm(add(scale(Rr, shift < 0 ? 1 : -1), [0, 0.25, 0]));
+      return {
+        cam(p) {
+          const rel = sub(p, mid), f = dot(rel, F), y = p[1] - el.at[1];
+          if (f < -Rl - 4 || f > Rl + 0.5 || Math.abs(dot(rel, Rr)) > Math.abs(shift) / 2 + w / 2 + 1 || y < -1 || y > 2 * Rl + 1.5) return null;
+          return { look: lerp3(mid, p, 0.3), dir, fit: Rl + 1.5, clear: Math.abs(shift) / 2 + w / 2 + 1.5 };
+        }
+      };
     }
   },
 

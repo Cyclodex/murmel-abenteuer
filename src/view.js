@@ -227,18 +227,21 @@ export function createView(THREE, renderer, game) {
   const studs = {}, studPos = []; // Farbe -> Liste von Matrizen; alle Noppen-Positionen
   const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpP = new THREE.Vector3(), tmpS = new THREE.Vector3();
   const STUD_R = 0.3, STUD_H = 0.2125; // relativ zum Rastermass (Original: 4.8 mm bzw. 1.7 mm bei 8 mm Raster)
-  const pillars = [], blockers = [];
+  const pillars = [], blockers = [], thru = new Map();
   v.blocker = mesh => blockers.push(mesh); // Bauteile mit eigener Grafik: Kamera rückt davor näher an die Murmel
+  // halb durchsichtig (Looping-Schienen, was vor der Bauteil-Kamera liegt): die Murmel bleibt dahinter sichtbar
+  const seeThrough = m => thru.get(m) || thru.set(m, Object.assign(m.clone(), { transparent: true, opacity: 0.45, depthWrite: false })).get(m);
   for (const s of game.solids) {
     if (s.hide) continue; // nur Physik, die Grafik baut das Bauteil selbst (z. B. Schüssel)
-    const m0 = s.look === 'abc' ? abcMat(s.text) : mat(s.look);
+    let m0 = s.look === 'abc' ? abcMat(s.text) : mat(s.look);
+    if (s.glass) m0 = seeThrough(m0);
     const mesh = new THREE.Mesh(s.look === 'abc' ? new THREE.BoxGeometry(s.half[0] * 2, s.half[1] * 2, s.half[2] * 2) : boxGeo(THREE, s.half[0] * 2, s.half[1] * 2, s.half[2] * 2), m0);
     mesh.position.set(...s.pos); mesh.quaternion.set(...s.quat); mesh.receiveShadow = true;
     scene.add(mesh);
-    if (!s.deko && !s.clear) blockers.push(mesh); // durchsichtiges Glas hält die Kamera nicht auf
+    if (!s.deko && !s.clear && !s.glass) blockers.push(mesh); // durchsichtiges Glas hält die Kamera nicht auf
     // Legonoppen oben drauf. Rastermass = Breite des Steins (dünne Wand = 1er-Stein, breiter Klotz = 2er-Stein),
     // Noppen wie beim Original: Durchmesser 0.6, Höhe 0.2125 des Rastermasses
-    const col = m0.userData.lego;
+    const col = !s.glass && m0.userData.lego;
     if (col) {
       const [hx, hy, hz] = s.half, short = Math.min(hx, hz) * 2, pitch = short > 1 ? short / 2 : short;
       const nx = Math.max(1, Math.round(hx * 2 / pitch)), nz = Math.max(1, Math.round(hz * 2 / pitch));
@@ -262,19 +265,21 @@ export function createView(THREE, renderer, game) {
   }
   const floorY = (game.level.killY ?? -8) - 1;
   const groundFx = theme.ground ? theme.ground(tools, floorY) : null;
+  const pillarMeshes = [];
   if (theme.pillars) {
     pillars.forEach((s, i) => {
       const top = s.pos[1] - s.half[1], hgt = top - floorY;
       if (hgt < 0.5) return;
       const p = new THREE.Mesh(boxGeo(THREE, 1.2, hgt, 1.2), mat(theme.pillars[i % theme.pillars.length]));
-      p.position.set(s.pos[0], floorY + hgt / 2, s.pos[2]); scene.add(p);
+      p.position.set(s.pos[0], floorY + hgt / 2, s.pos[2]); scene.add(p); pillarMeshes.push(p);
     });
   }
 
-  const ticks = [];
+  const ticks = [], cams = [];
   for (const el of game.els) {
     const r = TYPES[el.type].view?.(el, v);
     if (r && r.tick) ticks.push(r.tick);
+    if (r && r.cam) cams.push(r.cam);
   }
 
   // ---------- Murmel ----------
@@ -324,6 +329,31 @@ export function createView(THREE, renderer, game) {
   // ---------- Kamera ----------
   const camPos = new THREE.Vector3(), tmp = new THREE.Vector3(), ray = new THREE.Raycaster(), dir = new THREE.Vector3();
   let camInit = false;
+  // Bauteil-Kamera (z. B. Looping, Nagelwand): Anteil 0..1, Blickpunkt, Ort, wie weit vor dem Blickpunkt noch gezeichnet wird
+  const elLook = new THREE.Vector3(), elPos = new THREE.Vector3(), occluders = [...blockers, ...pillarMeshes], faded = new Set();
+  let elW = 0, elClear = 0;
+  // Abstand so, dass `fit` Meter um den Blickpunkt ins Bild passen
+  function elementCam(p) {
+    let c = null;
+    for (const h of cams) if ((c = h(p))) break;
+    if (!c) return false;
+    const dist = Math.min(24, c.fit / (Math.tan(camera.fov * Math.PI / 360) * Math.min(1, camera.aspect)));
+    elPos.copy(elLook.set(...c.look)).addScaledVector(dir.set(...c.dir), dist);
+    elClear = c.clear;
+    return true;
+  }
+  // Was bei der Bauteil-Kamera zwischen Kamera und Murmel liegt, wird halb durchsichtig (statt die Kamera zu versetzen)
+  function fade(on, target) {
+    if (!on && !faded.size) return;
+    const hits = new Set();
+    if (on) {
+      dir.subVectors(camera.position, target); const d = dir.length();
+      ray.set(target, dir.divideScalar(d)); ray.far = d;
+      for (const h of ray.intersectObjects(occluders, false)) hits.add(h.object);
+    }
+    for (const m of faded) if (!hits.has(m)) { m.material = m.userData.mat0; faded.delete(m); }
+    for (const m of hits) if (!faded.has(m)) { m.userData.mat0 = m.material; m.material = seeThrough(m.material); faded.add(m); }
+  }
   function resize() {
     const w = innerWidth, h = innerHeight;
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -357,29 +387,42 @@ export function createView(THREE, renderer, game) {
     // Kamera hinter der Murmel, dreht mit der Bahn, kippt leicht mit der Eingabe
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
     const target = ballMesh.position, lat = Math.max(-4, Math.min(4, game.track.lateral || 0)) * 0.4;
-    const back = 10 + inZ * 1.5 * lean, side = -inX * 1.5 * lean - lat;
-    tmp.set(target.x - fx * back + rx * side, target.y + 7, target.z - fz * back + rz * side);
-    // Ist etwas zwischen Murmel und Kamera (z. B. Looping), rückt die Kamera näher heran
-    dir.subVectors(tmp, target); const dist = dir.length(); dir.divideScalar(dist);
-    ray.set(target, dir); ray.far = dist;
-    const hit = ray.intersectObjects(blockers, false)[0];
+    // Bei manchen Bauteilen (Looping, Nagelwand) übernimmt deren eigene Kamera, weich überblendet
+    elW = Math.max(0, Math.min(1, elW + (elementCam([target.x, target.y, target.z]) ? dt : -dt) * 2.5));
+    const w = elW * elW * (3 - 2 * elW);
     let k = 0.08;
-    if (hit && hit.distance > 0.8) { tmp.copy(target).addScaledVector(dir, Math.max(2.5, hit.distance - 0.6)); k = 0.3; }
+    if (w < 1) {
+      const back = 10 + inZ * 1.5 * lean, side = -inX * 1.5 * lean - lat;
+      tmp.set(target.x - fx * back + rx * side, target.y + 7, target.z - fz * back + rz * side);
+      // Ist etwas zwischen Murmel und Kamera, rückt die Kamera näher heran
+      dir.subVectors(tmp, target); const dist = dir.length(); dir.divideScalar(dist);
+      ray.set(target, dir); ray.far = dist;
+      const hit = ray.intersectObjects(blockers, false)[0];
+      if (hit && hit.distance > 0.8) { tmp.copy(target).addScaledVector(dir, Math.max(2.5, hit.distance - 0.6)); k = 0.3; }
+    }
+    tmp.lerp(elPos, w);
     if (!camInit) { camPos.copy(tmp); camInit = true; } else camPos.lerp(tmp, k);
-    camera.position.copy(camPos); camera.lookAt(target.x + fx * 3, target.y, target.z + fz * 3);
-    // Bahn sichtbar mitkippen: rechts kippen = rechte Seite tiefer
-    const roll = tiltDeg * 0.3 * Math.PI / 180 * lean;
+    camera.position.copy(camPos);
+    camera.lookAt(dir.set(target.x + fx * 3, target.y, target.z + fz * 3).lerp(elLook, w));
+    // Bahn sichtbar mitkippen: rechts kippen = rechte Seite tiefer (nicht bei der Bauteil-Kamera)
+    const roll = tiltDeg * 0.3 * Math.PI / 180 * lean * (1 - w);
     camera.rotateZ(inX * roll); camera.rotateX(inZ * roll * 0.4);
+    // Bauteil-Kamera: was näher bei der Kamera liegt als `clear` vor dem Blickpunkt, wird nicht gezeichnet (Wege, Säulen davor)
+    const near = 0.1 + Math.max(0, camera.position.distanceTo(elLook) - elClear - 0.1) * w;
+    if (camera.near !== near) { camera.near = near; camera.updateProjectionMatrix(); }
+    fade(w > 0, target);
     sun.position.set(target.x + 6, target.y + 14, target.z + 6); sun.target.position.copy(target);
     renderer.render(scene, camera);
   }
 
   function dispose() {
+    fade(false); // ausgeblendete Klötze zurück auf ihr Material, damit es mit aufgeräumt wird
     scene.traverse(o => {
       if (o.geometry) o.geometry.dispose();
       const ms = o.material ? [].concat(o.material) : [];
       for (const m of ms) { if (m.map) m.map.dispose(); m.dispose(); }
     });
+    for (const m of thru.values()) m.dispose();
   }
 
   const view = { scene, camera, ballMesh, burst, render, resize, setSkin, setTrail: trailFx.set, trailFx, splash, ball, setGhost, get ghost() { return ghost && ghost.mesh; }, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
