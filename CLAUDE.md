@@ -2,11 +2,14 @@
 
 ## Tests
 
-Die volle Suite (`npm test`, 58 Tests) dauert im Cloud-Container 24 Minuten: 16 Autopilot-Tests fahren jedes Level mit
-allen Stärken und Murmeln. `npm run test:schnell` (die übrigen 42) dauert dort 4.6 Minuten.
+Die volle Suite (`npm test`, 62 Tests) dauert im Cloud-Container 24 Minuten: 16 Autopilot-Tests fahren jedes Level mit
+allen Stärken und Murmeln. `npm run test:schnell` (die übrigen 46) dauert dort 4.6 Minuten.
 Die volle Suite läuft als GitHub Action (`.github/workflows/tests.yml`) nachts, wenn main neue Commits hat, und lässt sich
 von Hand starten (Actions → „Tests (voll)“ → „Run workflow“). In der Session die volle Suite nicht selbst starten,
 ausser der Benutzer will es.
+Jeder PR startet `.github/workflows/pr.yml` („Tests (PR)“): `npm run test:schnell` und `pruefe-level.mjs` für die Level,
+deren Datei oder Route der PR ändert (`tests/geaenderte-level.mjs`; Änderung an `src/levels/index.js`, `tests/autopilot.js`
+oder `tests/pruefe-level.mjs` → alle Level).
 
 Vor dem Push gezielt prüfen, passend zur Änderung:
 

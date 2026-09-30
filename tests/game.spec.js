@@ -237,7 +237,7 @@ for (const welt of WELTEN) for (const art of ['normal', 'schwer']) {
     for (const r of res) {
       expect(r.won, r.id).toBe(true);
       expect(r.falls, r.id).toBe(0);
-      if (r.lv !== 'ausflug') expect(r.stars, r.id).toBe(r.total); // im ersten Level fehlt ein Stern auf der Route
+      expect(r.stars, r.id).toBe(r.total);
     }
     expect(errors).toEqual([]);
   });
