@@ -6,8 +6,11 @@
 
 ```sh
 node tests/server.js        # http://localhost:8123/
-npm install && npm test     # Playwright-Tests
+npm install && npm test     # Playwright-Tests, alle (dauert lange, Autopilot fährt jedes Level)
+npm run test:schnell        # ohne die Autopilot-Tests
 ```
+
+Die volle Suite läuft als GitHub Action nachts, wenn main neue Commits hat, und von Hand über Actions → „Tests (voll)“ → „Run workflow“.
 
 Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2) und `src/main.js` als ES-Modul.
 
