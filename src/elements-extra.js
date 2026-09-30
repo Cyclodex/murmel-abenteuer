@@ -300,20 +300,26 @@ export const EXTRA = {
     }
   },
 
-  // Dominos: Reihe von Steinen, die umfallen. {type:'domino', from, to, count?, size?:[b,h,t]}
+  // Dominos: weisse Steine mit Punkten, die umfallen. count Reihen von from bis to, bis zu quer (ungerade) Steine
+  // nebeneinander (abstand = Mitte zu Mitte), jede zweite Reihe um einen halben Abstand versetzt mit einem Stein weniger:
+  // ein fallender Stein trifft zwei der nächsten Reihe. Vorne beginnt es als Dreieck (1, 2, 3 …), damit alle umfallen.
+  // Einzelner Stein: at, yaw. {type:'domino', from, to, count?, quer?, abstand?, size?:[b,h,t]}
   domino: {
     init(el, g) {
-      const C = g.C, n = el.count ?? 8, [b, hh, t] = el.size || [1.2, 1.8, 0.3], yaw = segment(el.from, el.to).yaw;
-      const cols = ['rot', 'gelb', 'blau', 'gruen', 'orange', 'lila'];
-      el.q = quatYawPitch(yaw, 0);
+      if (el.at) el.from = el.to = el.at;
+      const C = g.C, n = el.count ?? (el.at ? 1 : 8), [b, hh, t] = el.size || [1, 2, 0.35], q = el.quer ?? 1, d = el.abstand ?? b + 0.2;
+      const s = segment(el.from, el.to, el.yaw);
+      el.q = quatYawPitch(s.yaw, 0);
       el.bodies = [];
       for (let i = 0; i < n; i++) {
-        const body = new C.Body({ mass: 0.25, material: g.matFor('normal'), shape: new C.Box(new C.Vec3(b / 2, hh / 2, t / 2)) });
-        body.collisionFilterGroup = 4; body.collisionFilterMask = 1 | 2 | 4;
-        body.home = add(lerp3(el.from, el.to, n > 1 ? i / (n - 1) : 0), [0, hh / 2, 0]);
-        body.looks = ['klotz-' + cols[i % cols.length]];
-        body.userData = {};
-        g.world.addBody(body); el.bodies.push(body);
+        const k = q > 1 ? Math.min(i + 1, i % 2 ? q - 1 : q) : 1, mid = lerp3(el.from, el.to, n > 1 ? i / (n - 1) : 0);
+        for (let j = 0; j < k; j++) {
+          const body = new C.Body({ mass: 0.1, material: g.mLose, shape: new C.Box(new C.Vec3(b / 2, hh / 2, t / 2)) });
+          body.collisionFilterGroup = 4; body.collisionFilterMask = 1 | 2 | 4;
+          body.home = add(add(mid, scale(s.right, (j - (k - 1) / 2) * d)), [0, hh / 2, 0]);
+          body.userData = {};
+          g.world.addBody(body); el.bodies.push(body);
+        }
       }
     },
     reset(el) {
@@ -335,10 +341,36 @@ export const EXTRA = {
       });
     },
     view(el, v) {
-      const groups = el.bodies.map(b => v.bodyGroup(b));
-      return { tick() { groups.forEach(x => x.tick()); } };
+      const T = v.THREE, he = el.bodies[0].shapes[0].halfExtents;
+      const geo = new T.BoxGeometry(he.x * 2, he.y * 2, he.z * 2);
+      const white = new T.MeshPhongMaterial({ color: 0xF7F4EC, shininess: 60 });
+      const meshes = el.bodies.map((b, i) => {
+        const [o, u] = DOMINO_PAARE[(i * 11 + 5) % DOMINO_PAARE.length];
+        const face = new T.MeshPhongMaterial({ map: dominoTex(v, o, u), shininess: 60 });
+        const m = new T.Mesh(geo, [white, white, white, white, face, face]);
+        m.castShadow = m.receiveShadow = true; v.scene.add(m);
+        return m;
+      });
+      return { tick() { meshes.forEach((m, i) => { m.position.copy(el.bodies[i].position); m.quaternion.copy(el.bodies[i].quaternion); }); } };
     }
   }
 };
+
+// Alle 28 Steine eines Domino-Spiels (Punkte oben, unten)
+const DOMINO_PAARE = [];
+for (let a = 0; a <= 6; a++) for (let b = a; b <= 6; b++) DOMINO_PAARE.push([a, b]);
+// Punkte wie auf dem Würfel, im Einheitsquadrat einer Hälfte
+const PUNKTE = {
+  0: [], 1: [[0.5, 0.5]], 2: [[0.27, 0.27], [0.73, 0.73]], 3: [[0.27, 0.27], [0.5, 0.5], [0.73, 0.73]],
+  4: [[0.27, 0.27], [0.73, 0.27], [0.27, 0.73], [0.73, 0.73]],
+  5: [[0.27, 0.27], [0.73, 0.27], [0.5, 0.5], [0.27, 0.73], [0.73, 0.73]],
+  6: [[0.27, 0.22], [0.73, 0.22], [0.27, 0.5], [0.73, 0.5], [0.27, 0.78], [0.73, 0.78]]
+};
+// Vorderseite: weiss, Trennlinie in der Mitte, oben o und unten u Punkte
+const dominoTex = (v, o, u) => v.canvasTex(64, 128, (x, w, h) => {
+  x.fillStyle = '#F7F4EC'; x.fillRect(0, 0, w, h);
+  x.fillStyle = '#1A1A1A'; x.fillRect(8, h / 2 - 1.5, w - 16, 3);
+  [o, u].forEach((n, k) => PUNKTE[n].forEach(([px, py]) => { x.beginPath(); x.arc(px * w, k * h / 2 + py * h / 2, 6, 0, 7); x.fill(); }));
+});
 
 

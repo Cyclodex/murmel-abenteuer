@@ -19,6 +19,8 @@ export default {
     { type: 'kurve', at: [20, 0, -13], yaw: -90, turn: -90, radius: 4, width: 3 },
     { type: 'weg', from: [24, 0, -17], to: [24, 0, -23], width: 12 },
     { type: 'checkpoint', at: [24, 0, -19.5], size: [12, 3, 3] },
+    { type: 'domino', at: [19.5, 0, -18.5], yaw: 20 },
+    { type: 'domino', at: [28.5, 0, -18], yaw: -15 },
     // Gabelung links: schmaler Balken mit Hammer (kurz, riskant, Bonusstern)
     { type: 'weg', from: [19.5, 0, -23], to: [19.5, 0, -45], width: 1.6 },
     { type: 'hammer', at: [19.5, 0, -33], side: -1, length: 4, size: [2.2, 1.4, 1.6], farbe: 'blau' },
@@ -41,8 +43,10 @@ export default {
     // zweiter Platz, dann der Bauklotz-Turm (Dominos) in der Gasse
     { type: 'weg', from: [24, 0, -45], to: [24, 0, -51], width: 12 },
     { type: 'checkpoint', at: [24, 0, -48], size: [12, 3, 3] },
+    { type: 'domino', at: [20.5, 0, -49.5], yaw: -10 },
+    { type: 'domino', at: [28, 0, -50], yaw: 25 },
     { type: 'weg', from: [24, 0, -51], to: [24, 0, -64], width: 5, walls: 0.8 },
-    { type: 'domino', from: [24, 0, -54], to: [24, 0, -61.2], count: 7, size: [3.6, 1.8, 0.3] },
+    { type: 'domino', from: [24, 0, -54], to: [24, 0, -61.6], count: 5, quer: 3 },
     { type: 'kurve', at: [24, 0, -64], yaw: 0, turn: -90, radius: 5, width: 3 },
     // schmale Gasse mit gelbem Hammer
     { type: 'weg', from: [19, 0, -69], to: [5, 0, -69], width: 3 },

@@ -74,7 +74,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `balken` | `at` (Drehpunkt), `length`, `speed` (°/s, negativ = andersrum), `farbe` |
 | `magnet` | `at` (Boden darunter), `radius`, `strength` (negativ = stösst ab) |
 | `kanone` | `at` (Boden), `target` (Landepunkt), `time` (Flugzeit) |
-| `domino` | `from`, `to`, `count`, `size: [b, h, t]` |
+| `domino` | `from`, `to`, `count` (Reihen), `quer` (bis zu so viele Steine nebeneinander, versetzt, vorne als Dreieck), `abstand`, `size: [b, h, t]`; einzelner Stein: `at`, `yaw` |
 | `feld` | `at` (Mitte der vorderen Kante), `yaw`, `cell` (Kachel, Standard 2), `map` (Zeilen, unterste = Einfahrt): `#` Boden, `.` Loch, `w` Mauer, `e`/`s`/`p`/`a`/`o`/`h` Eis/Schlamm/Pfütze/Sand/Seife/Handtuch; `walls` |
 | `falltuer` | `at`, `size: [b, t]`, `yaw`, `delay` (s bis sie aufklappt, Standard 0.6), `offen` (s bis sie zugeht) |
 | `schieber` | `from`, `to` (Mitte unten), `size: [b, h, t]`, `time`, `pause`, `offset` – schiebt die Murmel weg |

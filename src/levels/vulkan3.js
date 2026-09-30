@@ -29,7 +29,7 @@ export default {
     { type: 'wand', from: [1.9, 0, -54], to: [2.7, 0, -54] },
     { type: 'wand', from: [-2.7, 0, -66], to: [-1.9, 0, -66] },
     { type: 'wand', from: [1.9, 0, -66], to: [2.7, 0, -66] },
-    { type: 'domino', from: [0, 0, -57], to: [0, 0, -63], count: 6, size: [3.6, 1.8, 0.3] },
+    { type: 'domino', from: [0, 0, -57], to: [0, 0, -63], count: 4, quer: 3 },
     // Pfütze wäscht den Schlamm ab, dann mit Schwung durch den Looping
     { type: 'weg', from: [0, 0, -66], to: [0, 0, -70], width: 3, walls: 0.6, surface: 'pfuetze' },
     { type: 'weg', from: [0, 0, -70], to: [0, 0, -74], width: 3, walls: 0.8 },

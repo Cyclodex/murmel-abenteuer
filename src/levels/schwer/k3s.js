@@ -23,7 +23,7 @@ export default {
     // Keks-Dominos: schnell hineinrollen
     { type: 'weg', from: [0, 6, -30], to: [0, 6, -48], width: 5, walls: 0.8 },
     { type: 'checkpoint', at: [0, 6, -32], size: [5, 3, 3] },
-    { type: 'domino', from: [0, 6, -37], to: [0, 6, -44], count: 6, size: [3.6, 1.8, 0.3] },
+    { type: 'domino', from: [0, 6, -37], to: [0, 6, -42.7], count: 4, quer: 3 },
     // Strohhalm aus dem Glas
     { type: 'weg', from: [0, 6, -48], to: [0, 6, -52], width: 2, walls: 0.8, caps: 'end' },
     { type: 'wand', from: [-2.7, 6, -48], to: [-1.2, 6, -48] },

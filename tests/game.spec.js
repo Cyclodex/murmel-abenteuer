@@ -374,12 +374,12 @@ test('Dominos fallen nicht vom Kippen um, nur wenn die Murmel sie trifft', async
       // Murmel rollt hinein
       const hit = createGame(CANNON, L); hit.reset(); hit.spawn([x, y + 1, z + 3]);
       for (let i = 0; i < 60 * 4; i++) hit.step(0, -1, 1 / 60);
-      out[id] = { tiltUp: up(tilt), hitUp: up(hit) };
+      out[id] = { n: dom(tilt).bodies.length, tiltUp: up(tilt), hitUp: up(hit) };
     }
     return out;
   });
-  expect(r.k3).toEqual({ tiltUp: 6, hitUp: 0 });
-  expect(r.u3).toEqual({ tiltUp: 6, hitUp: 0 });
+  expect(r.k3).toEqual({ n: 8, tiltUp: 8, hitUp: 0 });
+  expect(r.u3).toEqual({ n: 8, tiltUp: 8, hitUp: 0 });
 });
 
 test('Schlamm macht die Murmel dreckig, Pfütze und Wind waschen sie', async ({ page }) => {

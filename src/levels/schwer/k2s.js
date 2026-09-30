@@ -24,6 +24,8 @@ export default {
     { type: 'hammer', at: [0, 0, -53], side: 1, length: 4, size: [2.4, 1.4, 1.2], up: 2 },
     { type: 'weg', from: [0, 0, -58], to: [0, 0, -64], width: 14, walls: 0.8 },
     { type: 'checkpoint', at: [0, 0, -61], size: [14, 3, 3] },
+    { type: 'domino', at: [-5, 0, -59.5], yaw: 15 },
+    { type: 'domino', at: [5.5, 0, -59.5], yaw: -20 },
     // Gabelung links: Eierkarton mit Löchern (kurz, Bonusstern)
     { type: 'feld', at: [-4, 0, -64], cell: 2, look: 'kachel-gelb', map: [
       '####',
@@ -40,6 +42,8 @@ export default {
     { type: 'balken', at: [5, 0, -72], length: 3.6, speed: 70, farbe: 'rot' },
     { type: 'weg', from: [0, 0, -80], to: [0, 0, -86], width: 14, walls: 0.8 },
     { type: 'checkpoint', at: [0, 0, -83], size: [14, 3, 3] },
+    { type: 'domino', at: [-5, 0, -83.5], yaw: -10 },
+    { type: 'domino', at: [5, 0, -84.5], yaw: 20 },
     // Tellerstapel hinunter
     { type: 'treppe', from: [0, 0, -86], to: [0, -6, -100], steps: 6, width: 4, walls: 0.6 },
     // schmaler Kochlöffel ohne Rand mit abstossenden Magneten

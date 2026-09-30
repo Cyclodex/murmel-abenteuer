@@ -34,7 +34,7 @@ export default {
     { type: 'wand', from: [1.5, 0, -69], to: [2.7, 0, -69] },
     { type: 'wand', from: [-2.7, 0, -81], to: [-1.2, 0, -81] },
     { type: 'wand', from: [1.2, 0, -81], to: [2.7, 0, -81] },
-    { type: 'domino', from: [0, 0, -72], to: [0, 0, -78], count: 6, size: [3.6, 1.8, 0.3] },
+    { type: 'domino', from: [0, 0, -72], to: [0, 0, -78], count: 4, quer: 3 },
     // Brücke ohne Rand: Stampfer, Schieber, Stampfer
     { type: 'weg', from: [0, 0, -81], to: [0, 0, -99], width: 2.4 },
     { type: 'hammer', at: [0, 0, -85], side: 1, length: 4, size: [3, 1.4, 1.6], farbe: 'rot' },
