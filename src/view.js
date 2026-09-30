@@ -1,6 +1,6 @@
 // Grafik mit three.js: baut die Szene aus den Spieldaten und zeichnet jedes Bild.
 import { TYPES } from './bauteile.js';
-import { R, SURFACES } from './game.js';
+import { R, SURFACES, RESPAWN_T } from './game.js';
 import { THEMES, COLORS, canvasTex, rnd, woodTex } from './themes.js';
 import { createTrailFx } from './trails.js';
 import { ghostAt } from './ghost.js';
@@ -326,9 +326,22 @@ export function createView(THREE, renderer, game) {
     }
   }
 
+  // ---------- Runterfallen: Ring am Checkpoint, Murmel ploppt dort ein ----------
+  const RING_FADE = 0.6, POP_T = 0.3;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.75, 1.05, 40), new THREE.MeshBasicMaterial({ color: 0xFFC928, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring);
+  let popT = -1, ringT = -1; // Zeit seit dem Einploppen (-1 = aus)
+  function plopp() {
+    popT = 0; ringT = 0;
+    burst(ballMesh.position, 14, [0xFFC928, 0xFFFFFF]);
+  }
+
   // ---------- Kamera ----------
   const camPos = new THREE.Vector3(), tmp = new THREE.Vector3(), ray = new THREE.Raycaster(), dir = new THREE.Vector3();
   let camInit = false;
+  // Runterfallen: watch = Kamera bleibt stehen und schaut der Murmel nach, fly = Flug im Bogen zum Checkpoint (solange game.holdT)
+  const lookPt = new THREE.Vector3(), flyP0 = new THREE.Vector3(), flyL0 = new THREE.Vector3();
+  let watch = false, flyT = -1, flyArc = 0, lastTime = 0;
   // Bauteil-Kamera (z. B. Looping, Nagelwand): Anteil 0..1, Blickpunkt, Ort, wie weit vor dem Blickpunkt noch gezeichnet wird
   const elLook = new THREE.Vector3(), elPos = new THREE.Vector3(), occluders = [...blockers, ...pillarMeshes], faded = new Set();
   let elW = 0, elClear = 0;
@@ -354,6 +367,23 @@ export function createView(THREE, renderer, game) {
     for (const m of faded) if (!hits.has(m)) { m.material = m.userData.mat0; faded.delete(m); }
     for (const m of hits) if (!faded.has(m)) { m.userData.mat0 = m.material; m.material = seeThrough(m.material); faded.add(m); }
   }
+  // Ort hinter der Murmel (in tmp). Ist etwas zwischen Murmel und Kamera, rückt die Kamera näher heran. Liefert das Nachziehtempo.
+  function behind(target, fx, fz, rx, rz, back, side) {
+    tmp.set(target.x - fx * back + rx * side, target.y + 7, target.z - fz * back + rz * side);
+    dir.subVectors(tmp, target); const dist = dir.length(); dir.divideScalar(dist);
+    ray.set(target, dir); ray.far = dist;
+    const hit = ray.intersectObjects(blockers, false)[0];
+    if (hit && hit.distance > 0.8) { tmp.copy(target).addScaledVector(dir, Math.max(2.5, hit.distance - 0.6)); return 0.3; }
+    return 0.08;
+  }
+  // Kamera in camPos, Blick auf lookPt, ohne Kippen und ohne Bauteil-Kamera (Runterfallen)
+  function still() {
+    camera.position.copy(camPos); camera.lookAt(lookPt);
+    if (camera.near !== 0.1) { camera.near = 0.1; camera.updateProjectionMatrix(); }
+    fade(false);
+    sun.position.set(lookPt.x + 6, lookPt.y + 14, lookPt.z + 6); sun.target.position.copy(lookPt);
+    renderer.render(scene, camera);
+  }
   function resize() {
     const w = innerWidth, h = innerHeight;
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -366,7 +396,15 @@ export function createView(THREE, renderer, game) {
     ballMesh.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
     // zerquetscht: platt auf dem Boden
     if (game.squashT > 0) { ballMesh.quaternion.set(0, 0, 0, 1); ballMesh.scale.set(1.6, 0.3, 1.6); ballMesh.position.y -= R * 0.7; }
-    else ballMesh.scale.set(1, 1, 1);
+    else if (popT >= 0 && popT < POP_T) { // einploppen: wächst mit kleinem Überschwingen
+      const s = popT / POP_T - 1; ballMesh.scale.setScalar(1 + 2.70158 * s * s * s + 1.70158 * s * s); popT += dt;
+    } else ballMesh.scale.set(1, 1, 1);
+    ballMesh.visible = !(game.holdT > 0); // wartet am Checkpoint, bis die Kamera dort ist
+    if (ringT >= 0) { // Ring nach dem Einploppen: wird grösser und blendet aus
+      ringT += dt; const k = Math.min(1, ringT / RING_FADE);
+      ring.material.opacity = 0.9 * (1 - k); ring.scale.setScalar(1 + k * 0.8);
+      if (k >= 1) { ring.visible = false; ringT = -1; }
+    }
     for (const t of ticks) t(dt, game);
     moveGhost();
     if (groundFx && groundFx.tick) groundFx.tick(dt, camera);
@@ -387,23 +425,37 @@ export function createView(THREE, renderer, game) {
     // Kamera hinter der Murmel, dreht mit der Bahn, kippt leicht mit der Eingabe
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw), rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
     const target = ballMesh.position, lat = Math.max(-4, Math.min(4, game.track.lateral || 0)) * 0.4;
+    if (game.time < lastTime) watch = false; // Level neu gestartet
+    lastTime = game.time;
+    if (game.holdT > 0) { // Flug im Bogen zum Checkpoint: Start = wo die Kamera beim Runterfallen stand, Ziel = hinter der wartenden Murmel
+      behind(target, fx, fz, rx, rz, 10, 0);
+      if (flyT < 0) {
+        flyT = 0; watch = false; elW = 0; flyP0.copy(camPos); flyL0.copy(lookPt);
+        ring.position.set(target.x, target.y - 1 + 0.04, target.z); ring.visible = true; ringT = -1;
+        flyArc = Math.min(8, flyP0.distanceTo(tmp) * 0.35); // weiter weg = höherer Bogen (Überblick über die Bahn)
+      }
+      flyT += dt;
+      const u = Math.min(1, flyT / RESPAWN_T), e = u * u * (3 - 2 * u);
+      camPos.lerpVectors(flyP0, tmp, e); camPos.y += flyArc * Math.sin(Math.PI * e);
+      lookPt.lerpVectors(flyL0, dir.set(target.x + fx * 3, target.y, target.z + fz * 3), e);
+      ring.material.opacity = 0.9 * Math.min(1, u * 3); ring.scale.setScalar(1 + 0.12 * Math.sin(flyT * 9));
+      return still();
+    }
+    flyT = -1;
+    // Fällt die Murmel ins Leere, bleibt die Kamera stehen und schaut ihr nach (bis sie doch wieder auf etwas landet;
+    // eine Kante streifen zählt nicht, danach fällt sie meist weiter)
+    const bv = game.ball.velocity;
+    if (watch && (game.groundBody || bv.y > 0 || game.squashT > 0)) watch = false;
+    if (!watch && !game.touchBody && !game.lock && !(game.squashT > 0) && bv.y < -3 && game.insLeere()) watch = true;
+    if (watch) { lookPt.lerp(target, 1 - Math.exp(-dt * 10)); return still(); }
     // Bei manchen Bauteilen (Looping, Nagelwand) übernimmt deren eigene Kamera, weich überblendet
     elW = Math.max(0, Math.min(1, elW + (elementCam([target.x, target.y, target.z]) ? dt : -dt) * 2.5));
     const w = elW * elW * (3 - 2 * elW);
-    let k = 0.08;
-    if (w < 1) {
-      const back = 10 + inZ * 1.5 * lean, side = -inX * 1.5 * lean - lat;
-      tmp.set(target.x - fx * back + rx * side, target.y + 7, target.z - fz * back + rz * side);
-      // Ist etwas zwischen Murmel und Kamera, rückt die Kamera näher heran
-      dir.subVectors(tmp, target); const dist = dir.length(); dir.divideScalar(dist);
-      ray.set(target, dir); ray.far = dist;
-      const hit = ray.intersectObjects(blockers, false)[0];
-      if (hit && hit.distance > 0.8) { tmp.copy(target).addScaledVector(dir, Math.max(2.5, hit.distance - 0.6)); k = 0.3; }
-    }
+    const k = w < 1 ? behind(target, fx, fz, rx, rz, 10 + inZ * 1.5 * lean, -inX * 1.5 * lean - lat) : 0.08;
     tmp.lerp(elPos, w);
     if (!camInit) { camPos.copy(tmp); camInit = true; } else camPos.lerp(tmp, k);
     camera.position.copy(camPos);
-    camera.lookAt(dir.set(target.x + fx * 3, target.y, target.z + fz * 3).lerp(elLook, w));
+    camera.lookAt(lookPt.set(target.x + fx * 3, target.y, target.z + fz * 3).lerp(elLook, w));
     // Bahn sichtbar mitkippen: rechts kippen = rechte Seite tiefer (nicht bei der Bauteil-Kamera)
     const roll = tiltDeg * 0.3 * Math.PI / 180 * lean * (1 - w);
     camera.rotateZ(inX * roll); camera.rotateX(inZ * roll * 0.4);
@@ -425,6 +477,6 @@ export function createView(THREE, renderer, game) {
     for (const m of thru.values()) m.dispose();
   }
 
-  const view = { scene, camera, ballMesh, burst, render, resize, setSkin, setTrail: trailFx.set, trailFx, splash, ball, setGhost, get ghost() { return ghost && ghost.mesh; }, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
+  const view = { scene, camera, ballMesh, burst, plopp, render, resize, setSkin, setTrail: trailFx.set, trailFx, splash, ball, setGhost, get ghost() { return ghost && ghost.mesh; }, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
   return view;
 }
