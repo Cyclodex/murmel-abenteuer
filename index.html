@@ -38,6 +38,7 @@
 <div class="overlay hidden" id="playerOv">
   <h1>👤 Wer spielt?</h1>
   <div id="playerList"></div>
+  <div class="rank hidden" id="worldRank" aria-label="Weltrangliste"></div>
   <form id="playerForm" class="row">
     <input id="playerName" maxlength="16" placeholder="Name" autocomplete="off" enterkeyhint="done" aria-label="Neuer Spieler: Name">
     <button type="submit" aria-label="Spieler anlegen">➕</button>
@@ -73,8 +74,10 @@
   <h1>🏆 Geschafft!</h1>
   <div class="pill" id="winStars">⭐⭐⭐⭐⭐</div>
   <div class="pill" id="winTime"></div>
+  <div class="pill" id="winScore"></div>
   <div class="pill hidden" id="winUnlock"></div>
   <div class="rank hidden" id="winRank"></div>
+  <button class="pill hidden" id="winGhost" aria-label="Gegen die Aufnahme des Besten fahren"></button>
   <div class="row">
     <button class="big" id="againBtn" aria-label="Nochmal">🔄</button>
     <button class="big" id="nextBtn" aria-label="Nächstes Level">▶️</button>

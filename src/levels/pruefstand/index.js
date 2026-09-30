@@ -8,3 +8,5 @@ import welt from './welt.js';
 
 export const GRUPPEN = { bahn, beweglich, kraefte, welt };
 export const PRUEFSTAND = Object.values(GRUPPEN).flat();
+// Markiert: keine Punkte-Rekorde (sonst landeten sie in der Online-Rangliste)
+for (const l of PRUEFSTAND) l.pruefstand = true;
