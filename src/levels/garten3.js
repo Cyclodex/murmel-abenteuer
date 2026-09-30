@@ -11,7 +11,7 @@ export default {
     { type: 'checkpoint', at: [0, 2, -8], size: [4, 3, 3] },
     // Dominos: umwerfen, um durchzukommen
     { type: 'weg', from: [0, 2, -12], to: [0, 2, -30], width: 5, walls: 0.8 },
-    { type: 'domino', from: [0, 2, -16], to: [0, 2, -23], count: 7, size: [3.6, 1.8, 0.3] },
+    { type: 'domino', from: [0, 2, -16], to: [0, 2, -23.6], count: 5, quer: 3 },
     // Ziel-Weg; links eine Nische mit Magnet, der die Murmel hineinzieht
     { type: 'weg', from: [0, 2, -30], to: [0, 2, -40], width: 5 },
     { type: 'wand', from: [2.7, 2, -30], to: [2.7, 2, -40] },
