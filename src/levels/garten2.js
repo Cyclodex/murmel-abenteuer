@@ -28,6 +28,10 @@ export default {
     { type: 'stern', at: [0, 8, -34] },
     { type: 'stern', at: [0, 6.9, -43] },
     { type: 'stern', at: [-5, 6.9, -41.25], bonus: true },
-    { type: 'klotz', at: [0, -3, -43], size: [1.6, 18, 1.6], look: 'stamm', deko: true }
+    { type: 'klotz', at: [0, -3, -43], size: [1.6, 18, 1.6], look: 'stamm', deko: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [-1.7, 0, -25.7], yaw: -12 },
+    { type: 'domino', at: [-1.7, 0, -4.2], yaw: 12 }
   ]
 };

@@ -41,6 +41,11 @@ export default {
     { type: 'stern', at: [-36.25, 0.9, -10.5], bonus: true },
 
     { type: 'klotz', at: [6, -8, -12], size: [2, 2, 2], look: 'abc', text: 'F', deko: true },
-    { type: 'klotz', at: [-22, -7.4, -4], size: [4, 3.2, 2], look: 'lego-rot', deko: true }
+    { type: 'klotz', at: [-22, -7.4, -4], size: [4, 3.2, 2], look: 'lego-rot', deko: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [-36, 0, -16.7], yaw: 138 },
+    { type: 'domino', at: [1.5, 0, -4.7], yaw: 13 },
+    { type: 'domino', at: [-9, 0, -9.2], yaw: 89 }
   ]
 };

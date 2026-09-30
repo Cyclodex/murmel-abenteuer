@@ -68,6 +68,13 @@ export default {
     { type: 'deko', form: 'teddy', at: [-9, -9, -70], yaw: -70, scale: 2.2 },
     { type: 'deko', form: 'truhe', at: [6, -9, -76], yaw: 90, scale: 1.6, farbe: 0xE53935 },
     { type: 'deko', form: 'wuerfel', at: [8, -9, -100], yaw: 30, farbe: 0x1E88E5 },
-    { type: 'deko', form: 'kreisel', at: [18, -9, -40], dreh: 100, scale: 1.5 }
+    { type: 'deko', form: 'kreisel', at: [18, -9, -40], dreh: 100, scale: 1.5 },
+
+    // einzelne Dominosteine
+    { type: 'domino', from: [-3, 5, -66], to: [-2.5, 5, -64.2], count: 2, quer: 3 },
+    { type: 'domino', at: [-1.5, 0, -4], yaw: 21 },
+    { type: 'domino', at: [-1.5, 0, -32.5], yaw: -22 },
+    { type: 'domino', at: [13, 5, -48.5], yaw: -7 },
+    { type: 'domino', at: [-1.5, 5, -46.5], yaw: 23 }
   ]
 };

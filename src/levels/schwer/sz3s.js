@@ -70,6 +70,12 @@ export default {
     { type: 'deko', form: 'wuerfel', at: [8, -9, -62], yaw: 15, farbe: 0xE53935 },
     { type: 'deko', form: 'wuerfel', at: [10.5, -9, -65], yaw: -20, farbe: 0x1E88E5 },
     { type: 'deko', form: 'kreisel', at: [-20, -9, -80], dreh: 150, scale: 1.4 },
-    { type: 'deko', form: 'teddy', at: [-10, -9, -100], yaw: -40, scale: 1.5, farbe: 0xFFCC80 }
+    { type: 'deko', form: 'teddy', at: [-10, -9, -100], yaw: -40, scale: 1.5, farbe: 0xFFCC80 },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [3, 0, -47.5], yaw: -90 },
+    { type: 'domino', at: [1.5, 0, -4], yaw: -20 },
+    { type: 'domino', at: [-2, 0, -66.5], yaw: 9 },
+    { type: 'domino', at: [-4, 0, -44], yaw: -15 }
   ]
 };

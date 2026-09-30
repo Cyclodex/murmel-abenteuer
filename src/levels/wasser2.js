@@ -34,6 +34,10 @@ export default {
     // unter dem Strudel: nur wer durch das Loch fällt, holt ihn
     { type: 'stern', at: [T[0], SY + 2.4, T[2]] },
     { type: 'stern', at: [T[0], SY + 0.9, T[2] - 9] },
-    { type: 'stern', at: [-5, 5.9, -18], bonus: true }
+    { type: 'stern', at: [-5, 5.9, -18], bonus: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [1.8, 5, -20.7], yaw: 6 },
+    { type: 'domino', at: [1.8, 0, -4.7], yaw: -7 }
   ]
 };

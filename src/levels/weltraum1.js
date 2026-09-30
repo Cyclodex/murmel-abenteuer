@@ -40,6 +40,9 @@ export default {
     { type: 'stern', at: wand(55, -1, -46) },
     { type: 'stern', at: wand(80, 1, -54) },
     { type: 'stern', at: [0, 0.9, -23.5] },
-    { type: 'stern', at: [5, 3.2, -12], bonus: true, r: 2.2 }
+    { type: 'stern', at: [5, 3.2, -12], bonus: true, r: 2.2 },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [-2.2, 0, -18], yaw: -11 }
   ]
 };

@@ -72,6 +72,9 @@ export default {
     { type: 'stern', at: [0, 0.9, -83] },
     { type: 'stern', at: [0, -2.9, -94.2], r: 1.8 },
     { type: 'stern', at: [0, -5.1, -112] },
-    { type: 'stern', at: [-3, 0.9, -71], bonus: true }
+    { type: 'stern', at: [-3, 0.9, -71], bonus: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', from: [-5.8, 0, -80], to: [-4.5, 0, -81.4], count: 2, quer: 3 }
   ]
 };
