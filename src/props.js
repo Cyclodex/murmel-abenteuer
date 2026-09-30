@@ -4,10 +4,10 @@
 //   PROP_SIZE[form]      -> ungefähre Grösse [b, h, t] für einen Kollisions-Klotz (deko mit fest:true)
 // opts.farbe überschreibt die Hauptfarbe.
 
-const mat = (T, color, extra = {}) => new T.MeshPhongMaterial({ color, shininess: 40, ...extra });
-const mesh = (T, geo, m, x = 0, y = 0, z = 0) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
-const group = (T, ...kids) => { const g = new T.Group(); kids.forEach(k => g.add(k)); return g; };
-const cyl = (T, rt, rb, h, n = 24, ...rest) => new T.CylinderGeometry(rt, rb, h, n, ...rest);
+export const mat = (T, color, extra = {}) => new T.MeshPhongMaterial({ color, shininess: 40, ...extra });
+export const mesh = (T, geo, m, x = 0, y = 0, z = 0) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
+export const group = (T, ...kids) => { const g = new T.Group(); kids.forEach(k => g.add(k)); return g; };
+export const cyl = (T, rt, rb, h, n = 24, ...rest) => new T.CylinderGeometry(rt, rb, h, n, ...rest);
 
 export const PROP_SIZE = {
   apfel: [4, 4, 4], orange: [3.6, 3.6, 3.6], tomate: [3, 2.6, 3], tasse: [5, 5, 4], teekanne: [7, 6, 5], toaster: [6, 4.1, 3.5],

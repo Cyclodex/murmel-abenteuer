@@ -137,6 +137,69 @@ test('Level schaffen speichert Fortschritt und schaltet frei', async ({ page }) 
   expect(errors).toEqual([]);
 });
 
+test('Ziel-Animation: Hochflug über das ganze Level mit Strecke, Tippen zeigt das Fenster sofort, Nochmal stellt zurück', async ({ page }) => {
+  const errors = watchErrors(page);
+  await play(page, 'ausflug');
+  const base = await page.evaluate(() => { const v = window.murmel.view; return { far: v.camera.far, fog: v.scene.fog.far }; });
+  await page.waitForFunction(() => window.murmel.game.time > 1.5); // Aufnahme alle 0.1 s: genug Punkte für die Strecke
+  await page.evaluate(() => window.murmel.game.spawn([0, 5, -69]));
+  await page.waitForFunction(() => window.murmel.view.cinemaT > 0);
+  await expect(page.locator('#winOv')).toBeHidden(); // erst der Zielmoment
+  await page.locator('#c').click(); // Tippen: Hochflug fertig, Fenster sofort
+  await expect(page.locator('#winOv')).toBeVisible({ timeout: 1000 });
+  // Weitsicht: Kamera hoch über dem Level, Nebel weiter weg, Strecke ganz gezeichnet
+  await page.waitForFunction(fog => { const v = window.murmel.view; return v.camera.position.y > v.ballMesh.position.y + 20 && v.scene.fog.far > fog; }, base.fog);
+  expect(await page.evaluate(() => window.murmel.view.scene.children.some(o => o.isInstancedMesh && o.userData.n > 10 && o.count === o.userData.n))).toBe(true);
+  await page.click('#cheerOv').catch(() => {});
+  await page.click('#againBtn');
+  await expect(page.locator('#winOv')).toBeHidden();
+  expect(await page.evaluate(() => window.murmel.running)).toBe(true);
+  await page.waitForTimeout(200);
+  const after = await page.evaluate(() => { const v = window.murmel.view; return { far: v.camera.far, fog: v.scene.fog.far, dots: v.scene.children.some(o => o.isInstancedMesh && o.userData.n !== undefined), t: v.cinemaT }; });
+  expect(after).toEqual({ ...base, dots: false, t: -1 });
+  expect(errors).toEqual([]);
+});
+
+test('Klo: Kamera schaut schräg (45°) von der Einfahrt her in die Schüssel, gespült wird im Abfluss', async ({ page }) => {
+  const errors = watchErrors(page);
+  await play(page, 'ausflug');
+  await page.evaluate(() => { const m = window.murmel; m.startLevel(m.LEVELS.findIndex(l => l.id === 'b1')); });
+  await page.waitForFunction(() => window.murmel.game.time > 0.3);
+  // Töne mitschreiben (Reihenfolge Spülen / Gewinnen)
+  await page.evaluate(() => { const a = window.murmel.audio, o = a.sfx; window.__sfx = []; a.sfx = (n, ...r) => { window.__sfx.push(n); return o(n, ...r); }; });
+  await page.evaluate(() => window.murmel.game.spawn([7.5, -5, -126])); // neben der Mitte über die Schüssel (at = [5, -8, -126], yaw 0)
+  // Kamera auf der Einfahrtseite (+z), so hoch über der Schüssel wie weit davor
+  await page.waitForFunction(() => {
+    const c = window.murmel.view.camera.position, dz = c.z + 126, dy = c.y + 7.5;
+    return Math.abs(c.x - 5) < 1 && dz > 3 && dy / dz > 0.8 && dy / dz < 1.25;
+  });
+  await expect(page.locator('#winOv')).toBeVisible({ timeout: 10_000 });
+  expect(await page.evaluate(() => window.__sfx.indexOf('spuel'))).toBeGreaterThanOrEqual(0);
+  expect(await page.evaluate(() => window.__sfx.indexOf('spuel') < window.__sfx.indexOf('win'))).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('Überflug beim Levelstart: erst die Weitsicht, dann (oder nach Tippen) läuft das Spiel', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/?flug');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  await page.click('#startJoy');
+  await newPlayer(page, 'Test');
+  await page.click('.lvl[data-level="ausflug"]');
+  await expect(page.locator('#hud')).toBeVisible();
+  expect(await page.evaluate(() => window.murmel.running)).toBe(false);
+  await page.waitForFunction(() => window.murmel.view.camera.position.y > window.murmel.game.ball.position.y + 20);
+  await page.locator('#c').click();
+  await page.waitForFunction(() => window.murmel.running);
+  await page.waitForFunction(() => window.murmel.view.camera.position.y < window.murmel.game.ball.position.y + 10);
+  // ohne Tippen: startet nach dem Hinunterfliegen von selbst
+  await page.evaluate(() => window.murmel.showMap());
+  await page.click('.lvl[data-level="ausflug"]');
+  expect(await page.evaluate(() => window.murmel.running)).toBe(false);
+  await page.waitForFunction(() => window.murmel.running, null, { timeout: 15_000 });
+  expect(errors).toEqual([]);
+});
+
 test('Mehrere Spieler: eigener Spielstand, Rangliste nach Punkten', async ({ page }) => {
   const errors = watchErrors(page);
   const win = async (id, stars, spot, falls = 0) => {
@@ -362,7 +425,7 @@ test('Treppe: alle Murmeln kommen unten an, der Flummi springt am höchsten', as
 });
 
 test('Menüs zeigen die Treppe im Hintergrund, Knopf 🪜 zeigt sie im Vollbild, die Murmeln werfen Dominos um', async ({ page }) => {
-  test.setTimeout(120_000); // bis die Murmeln die ersten Dominos treffen: 2.5 s Spielzeit, im Container gut 10 s
+  test.setTimeout(120_000); // bis die Murmeln die ersten Dominos treffen: gut 3 s Spielzeit, im Container gut 13 s
   const errors = watchErrors(page);
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.backdrop);
@@ -976,7 +1039,7 @@ test('Badezimmer: Schiffchen-Trampolin trifft mit jeder Murmel, ins Badewasser f
   expect(strahl.dirt).toBe(0);
   // Toilette: in die Schüssel fallen, durchs Loch hinunter ins Rohr = Ziel, dann wird gespült
   const klo = await fahre(page, [{ type: 'klo', at: [0, 0, 0] }, { type: 'ziel', at: [0, -2, 0] }], [1, 3, 0], 3);
-  expect(klo.ev).toEqual(['win', 'spuel']);
+  expect(klo.ev).toEqual(['spuel', 'win']);
   expect(klo.p[1]).toBeLessThan(-2.5); // liegt unten im Rohr
   const kloRand = await fahre(page, [{ type: 'klo', at: [0, 0, 0] }, { type: 'ziel', at: [0, -2, 0] }], [2.5, 3, 0], 0.8);
   expect(kloRand.ev).toEqual([]); // in der Schüssel ist man noch nicht im Ziel
@@ -1010,6 +1073,30 @@ test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
   expect(r.fell).toBe(true);
   expect(r.cp).toBe(0);
   expect(r.pos).toEqual([0, 2.5, -28]);
+});
+
+test('Checkpoint: Figur je Welt schläft, jubelt beim Erreichen, Band reisst, Neustart setzt zurück', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  const cp = () => page.evaluate(() => ({ ...window.murmel.view.scene.getObjectByName('checkpoint').userData }));
+  const welten = { ausflug: 'zwerg', sz2: 'springteufel', g1: 'zwerg', k1: 'toaster', b1: 'ente', w1: 'astronaut', u1: 'oktopus', v1: 'geysir' };
+  for (const [id, figur] of Object.entries(welten)) {
+    await page.evaluate(i => { const m = window.murmel; m.startLevel(m.LEVELS.findIndex(l => l.id === i)); }, id);
+    await expect.poll(cp, { message: id }).toMatchObject({ figur, zustand: 'schlaf', band: 'ganz' });
+    // Murmel auf den ersten Checkpoint setzen und dort festhalten; gespielte Klänge mitschreiben
+    await page.evaluate(() => {
+      const g = window.murmel.game, a = g.checkpoints[0].at, au = window.murmel.audio;
+      window.__klaenge = []; au.__sfx = au.__sfx || au.sfx; au.sfx = (n, s) => { window.__klaenge.push(n); au.__sfx(n, s); };
+      window.__halt = setInterval(() => { g.ball.position.set(a[0], a[1] + 0.5, a[2]); g.ball.velocity.set(0, 0, 0); }, 4);
+    });
+    await expect.poll(cp, { message: id }).toMatchObject({ zustand: 'jubel' });
+    expect(await page.evaluate(() => window.__klaenge), id).toContain('cp-' + figur);
+    await expect.poll(cp, { message: id, timeout: 10000 }).toMatchObject({ zustand: 'winken', band: 'gerissen' });
+    await page.evaluate(() => { clearInterval(window.__halt); window.murmel.game.reset(); });
+    await expect.poll(cp, { message: id }).toMatchObject({ zustand: 'schlaf', band: 'ganz' });
+  }
+  expect(errors).toEqual([]);
 });
 
 test('Kippen: Kennlinie der drei Stärken', async ({ page }) => {
@@ -1063,7 +1150,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
@@ -1075,7 +1162,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }

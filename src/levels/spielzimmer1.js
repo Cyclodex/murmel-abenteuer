@@ -36,6 +36,9 @@ export default {
     { type: 'klotz', at: [-7, -8, -4], size: [2, 2, 2], look: 'abc', text: 'A', deko: true },
     { type: 'klotz', at: [-7, -6, -4], size: [2, 2, 2], look: 'abc', text: 'B', deko: true, yaw: 20 },
     { type: 'klotz', at: [9, -8, -12], size: [2, 2, 2], look: 'abc', text: 'C', deko: true },
-    { type: 'klotz', at: [24, -7.4, -34], size: [4, 3.2, 2], look: 'lego-gruen', deko: true }
+    { type: 'klotz', at: [24, -7.4, -34], size: [4, 3.2, 2], look: 'lego-gruen', deko: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [5, 0, -26.5], yaw: -83 }
   ]
 };

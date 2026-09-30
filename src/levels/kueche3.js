@@ -38,6 +38,11 @@ export default {
     { type: 'stern', at: [24, 4.4, -30] },
     // unter dem Trichterloch: nur wer durch den Trichter fällt, holt ihn
     { type: 'stern', at: [T[0], SY + 2.4, T[2]] },
-    { type: 'stern', at: [13.75, 2.9, -35], bonus: true }
+    { type: 'stern', at: [13.75, 2.9, -35], bonus: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [15.3, 2, -31.8], yaw: -85 },
+    { type: 'domino', at: [11.3, 2, -28.3], yaw: -79 },
+    { type: 'domino', at: [1.8, 0, -3.8], yaw: 1 }
   ]
 };

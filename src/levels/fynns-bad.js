@@ -77,6 +77,9 @@ export default {
     { type: 'stern', at: [5, 0.9, -46.5] },
     { type: 'stern', at: [5, 0.9, -60] },
     { type: 'stern', at: [5, -6.6, -112.5] },
-    { type: 'stern', at: [-0.5, 0.9, -37.25], bonus: true }
+    { type: 'stern', at: [-0.5, 0.9, -37.25], bonus: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [2.1, 1, -132.3], yaw: 198 }
   ]
 };

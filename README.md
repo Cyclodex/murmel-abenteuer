@@ -28,10 +28,11 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/elements-bahn.js` | Kugelbahn: Rinne (schmal = Rutsche, auch als Kurve/Spirale; breit = Halfpipe), Spiraltrichter; `ringSolids` baut runde Flächen (auch Schüsseln) aus Klötzen, `rohrSolids` ein geschlossenes Rohr (Abfluss, Klo) |
 | `src/elements-bad.js` | Badezimmer: Badewanne mit Wasser (hineinfallen = zurück zum Checkpoint), Schiffchen mit Trampolin, Wasserstrahl aus dem Hahn (wäscht), Toilette als Ziel |
 | `src/props.js` | Riesige Alltagsgegenstände aus einfachen Formen (Apfel, Tasse, Toaster, Ente, Zwerg, Sandburg …) |
+| `src/checkpoint-figuren.js` | Checkpoint-Grafik: Zielband, das beim Durchfahren reisst, und eine Figur je Welt (Springteufel, Gartenzwerg, Toaster, Quietscheente, Astronaut, Oktopus, Geysir), die schläft und beim Erreichen mit der Fahne und eigenem Jubel-Klang (`cp-<figur>` in `src/audio.js`) jubelt |
 | `src/bauteile.js` | Sammelt alle Bauteil-Typen |
 | `src/themes.js` | Aussehen der Welten (Boden, Wände, Himmel, Untergrund, Partikel) |
 | `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm, Pfütze, Keramik, Kunststoff), Dreck (`g.dirt`: Schlamm macht dreckig, Pfütze/Wind/Wasser waschen), Hangabtrieb bergab (`SLOPE_PUSH`), Bremsen (`BREMSE`: Rollwiderstand gleichmässig in der Ebene, ausser beim Gasgeben in Fahrtrichtung; Luftwiderstand ∝ v²), Bremshilfe nur in der Ebene; runde Flächen (`rund`) geben den an den Nähten der Klötze verlorenen Schwung zurück und behalten Reibung auch an steilen Stellen; eigene Breitphase und Kontakt-Tabelle (schnell auch mit Hunderten Klötzen) |
-| `src/view.js` | three.js-Szene, Themen (Spielzimmer), Kamera (Bauteile wie Looping und Nagelwand können eine eigene Kamera liefern: `view()` gibt `cam(p)` zurück) |
+| `src/view.js` | three.js-Szene, Themen (Spielzimmer), Kamera (Bauteile wie Looping, Nagelwand und Klo können eine eigene Kamera liefern: `view()` gibt `cam(p)` zurück), Kamerafahrt `cinema()`: Überflug beim Levelstart und nach dem Gewinn Hochflug in die Weitsicht über das ganze Level mit der gefahrenen Strecke (Tippen überspringt; in Playwright-Tests nur mit `?flug`) |
 | `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen; Knopf 📱/🕹️ wechselt jederzeit), Pfeiltasten, Stärken 🐢/🐇/🚀 (`POWERS`) |
 | `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
 | `src/skins.js` | Murmel-Designs, ab wie vielen Sternen sie frei sind, Sprungkraft an Wand/Boden, Schwerkraft, Rollen und Dichte (`ball: {wand, boden, schwere, rollen, dichte}`, dichte in g/cm³: unter 1 schwimmt die Murmel im Fluss), optional Struktur (`bump`) |
@@ -81,7 +82,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `klotz` | `at` (Mitte), `size: [b, h, t]`, `yaw`, `look` (`'lego-rot'`, `'klotz-blau'`, `'abc'` + `text`), `deko: true` = ohne Physik |
 | `nische` | `at` (Mitte der Öffnung am Wegrand), `yaw` (nach aussen), `width`, `depth` – Wand dort mit Lücke bauen |
 | `stern` | `at`, `bonus: true` (lila, versteckt), `r` (Sammelradius) |
-| `checkpoint` | `at` (Boden, dort geht es weiter), `size: [b, h, t]`, `yaw` (Fahrtrichtung: dorthin schaut die Kamera, wenn sie nach dem Runterfallen hinfliegt) |
+| `checkpoint` | `at` (Boden, dort geht es weiter), `size: [b, h, t]`, `yaw` (Fahrtrichtung: dorthin schaut die Kamera, wenn sie nach dem Runterfallen hinfliegt), `side` (Figur nur rechts 1 / links -1, sonst wo Platz ist), `figur` (andere Figur als die der Welt) |
 | `trampolin` | `at`, `size: [b, t]`, `jump`, `push` oder `tempo` (fester Schwung), `yaw` |
 | `turbo` | `at`, `size: [b, t]`, `yaw`, `speed` |
 | `plattform` | `from`, `to` (Mitte Oberkante), `size: [b, t]`, `yaw`, `time`, `pause`, `rim` |
@@ -116,7 +117,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `wanne` | `at` (Mitte der Wasseroberfläche), `size: [b, lang]`, `yaw`, `rim`, `depth`, `enten: [[x, z]]` – Badewanne, ins Wasser fallen = zurück zum Checkpoint |
 | `schiff` | `at` (Wasseroberfläche), `size: [b, lang]`, `yaw`, `deck`, `bob`, `to`/`time`/`pause`/`offset` (fährt wie die Plattform), `farbe`, `segel`, `surface` (Standard Frottee; `'normal'` = Holz, z. B. für eine Fähre), `trampolin: { vorne, size, ziel, time, bremse }` – springt immer genau auf `ziel` (Flug je Murmel ausgerechnet), Frottee-Deck fängt auf |
 | `strahl` | `at` (Auslauf oben), `unten` (y), `r`, `wash`, `push`, `hahn`, `yaw`, `lang` – Wasserstrahl, wäscht die Murmel |
-| `klo` | `at` (Schüsselboden), `yaw`, `r`, `R`, `h`, `rim`, `tief` (Rohr, Standard 3.5) – Toilette mit Deckel und Spülkasten, in der Mitte ein Loch mit geschlossenem Rohr darunter. `ziel` 2 m unter `at` ins Rohr legen: gewonnen, wenn die Murmel hinuntergespült ist; spült beim Gewinnen |
+| `klo` | `at` (Schüsselboden), `yaw`, `r`, `R`, `h`, `rim`, `tief` (Rohr, Standard 3.5) – Toilette mit Deckel und Spülkasten, in der Mitte ein Loch mit geschlossenem Rohr darunter. `ziel` 2 m unter `at` ins Rohr legen: gewonnen, wenn die Murmel hinuntergespült ist; spült, sobald die Murmel im Abfluss ist; Kamera 45° von oben, solange die Murmel über der Schüssel ist |
 
 Neues Hindernis erfinden: in `src/elements.js` einen Typ ergänzen (`solids`, `init`, `reset`, `pre`, `step`, `view`), danach kann es in jedem Level verwendet werden.
 Neues Bauteil: im Prüfstand (`src/levels/pruefstand/<gruppe>.js`) ein Mini-Level dafür anlegen, Route in `tests/routes/pruefstand/<gruppe>.js`; der Test „Prüfstand …“ fährt es bei jedem PR mit jeder Stärke und jeder Murmel.

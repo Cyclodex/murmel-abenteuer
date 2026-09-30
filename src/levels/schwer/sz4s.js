@@ -72,6 +72,10 @@ export default {
     { type: 'deko', form: 'auto', at: [16, -4, -60], yaw: 20, farbe: 0xFDD835 },
     { type: 'deko', form: 'kreisel', at: [-8, -4, -80], dreh: 130, scale: 1.5 },
     { type: 'deko', form: 'wuerfel', at: [22, -4, -80], yaw: 40, farbe: 0x43A047 },
-    { type: 'deko', form: 'teddy', at: [34, -4, -100], yaw: -100, scale: 1.4, farbe: 0xFFCC80 }
+    { type: 'deko', form: 'teddy', at: [34, -4, -100], yaw: -100, scale: 1.4, farbe: 0xFFCC80 },
+
+    // einzelne Dominosteine
+    { type: 'domino', from: [-4, 3, -48.7], to: [-4, 3, -50.6], count: 2, quer: 3 },
+    { type: 'domino', at: [23, 3, -95.2], yaw: -97 }
   ]
 };
