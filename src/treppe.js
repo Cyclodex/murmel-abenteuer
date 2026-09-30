@@ -22,10 +22,12 @@ export function treppenLevel(n) {
   const e = w / 2 + 0.4, zg = RUN + 0.2;
   parts.push(
     { type: 'weg', from: [0, 0, 0], to: [0, 0, RUN], width: w, walls: 1, thick: 1 },
-    { type: 'wand', from: [-e, -1, zg], to: [e, -1, zg], height: GLASS + 1, look: 'plexi' },
+    // der Boden geht unter der Scheibe durch (0.3 m weiter), Scheibe und Rahmen stehen darauf
+    { type: 'klotz', at: [0, -0.5, RUN + 0.35], size: [w + 0.8, 1, 0.7], look: 'floor' },
+    { type: 'wand', from: [-e, 0, zg], to: [e, 0, zg], height: GLASS, look: 'plexi' },
     // Rahmen der Scheibe
-    { type: 'klotz', at: [-w / 2 - 0.2, (GLASS - 1) / 2, zg], size: [0.6, GLASS + 1, 0.6], look: 'lego-rot', deko: true },
-    { type: 'klotz', at: [w / 2 + 0.2, (GLASS - 1) / 2, zg], size: [0.6, GLASS + 1, 0.6], look: 'lego-blau', deko: true },
+    { type: 'klotz', at: [-w / 2 - 0.2, GLASS / 2, zg], size: [0.6, GLASS, 0.6], look: 'lego-rot', deko: true },
+    { type: 'klotz', at: [w / 2 + 0.2, GLASS / 2, zg], size: [0.6, GLASS, 0.6], look: 'lego-blau', deko: true },
     { type: 'klotz', at: [0, GLASS + 0.25, zg], size: [w + 1.4, 0.5, 0.6], look: 'lego-gelb', deko: true }
   );
   return { id: 'treppe', name: 'Treppe', emoji: '🪜', theme: 'spielzimmer', start: [0, top, -STEPS * TREAD + 1], killY: -8, parts };
