@@ -11,13 +11,14 @@ vm.runInContext(fs.readFileSync(new URL('../vendor/cannon.min.js', import.meta.u
 const CANNON = ctx.CANNON || ctx.window.CANNON;
 const { createGame } = await import('../src/game.js');
 const { LEVELS } = await import('../src/levels/index.js');
+const { PRUEFSTAND } = await import('../src/levels/pruefstand/index.js');
 const { checkLevel, createPilot, mainRoute, ROUTES } = await import('./autopilot.js');
 const { SKINS } = await import('../src/skins.js');
 const { POWERS } = await import('../src/input.js');
 
 const [id, mode, ...args] = process.argv.slice(2);
-const L = LEVELS.find(l => l.id === id);
-if (!L) { console.log('Unbekanntes Level:', id, '\nVorhanden:', LEVELS.map(l => l.id).join(' ')); process.exit(1); }
+const L = [...LEVELS, ...PRUEFSTAND].find(l => l.id === id);
+if (!L) { console.log('Unbekanntes Level:', id, '\nVorhanden:', [...LEVELS, ...PRUEFSTAND].map(l => l.id).join(' ')); process.exit(1); }
 if (!ROUTES[id]) { console.log('Keine Route für', id, 'in tests/autopilot.js bzw. tests/routes/'); process.exit(1); }
 const mk = (P, S) => () => { const g = createGame(CANNON, L, S.ball); g.tilt = P.tilt * Math.PI / 180; return g; };
 
