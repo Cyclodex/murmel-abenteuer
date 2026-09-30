@@ -1,8 +1,8 @@
 // Echte Dinge aus der Umgebung: Schüssel (Pfanne, Topf, Lavabo, Badewanne-Becken), Deko-Gegenstände,
 // Herdplatte, Rasensprenger. Gleiche Schnittstelle wie in elements.js.
 import { DEG, quatYawPitch, add, scale, fwdOf, yawOf } from './math.js';
-import { segment } from './elements.js';
 import { buildProp, PROP_SIZE } from './props.js';
+import { ringSolids } from './elements-bahn.js';
 
 const R = 0.5;
 
@@ -25,8 +25,19 @@ export const WELT = {
   // (z. B. für eine Rampe hinein/hinaus), luecke = Breite der Lücke, aussen:false = keine Aussenwand (z. B. in einer Ablage),
   // griff = yaw des Pfannenstiels, hahn = yaw des Wasserhahns (Lavabo), abfluss:true = Abfluss in der Mitte zeigen
   // (dazu eine roehre mit down:true bei at legen). surface = Oberfläche innen.
-  // {type:'schuessel', at, r?, R?, h?, rim?, art?, offen?, luecke?, aussen?, griff?, hahn?, abfluss?, surface?}
+  // boden:'rund' = gewölbt bis zur Mitte (wie ein echtes Lavabo, dort Standard, Oberfläche keramik): die Murmel springt
+  // und kreist, bis sie in der Mitte zur Ruhe kommt; sonst flacher Boden mit Radius r und schräger Wand.
+  // {type:'schuessel', at, r?, R?, h?, rim?, art?, boden?, offen?, luecke?, aussen?, griff?, hahn?, abfluss?, surface?}
   schuessel: {
+    rund: d => (d.boden ?? (d.art === 'lavabo' ? 'rund' : 'flach')) === 'rund',
+    // Querschnitt der Innenfläche von der Mitte nach aussen: [radius, höhe]
+    profil(d) {
+      const Rr = d.R ?? 4, h = d.h ?? 1.2;
+      if (!WELT.schuessel.rund(d)) return [[d.r ?? 2, 0], [Rr, h]];
+      const r0 = 0.6, n = 6, out = [];
+      for (let i = 0; i <= n; i++) out.push([r0 + (Rr - r0) * i / n, h * Math.pow(i / n, 1.7)]); // unten flach, aussen steil
+      return out;
+    },
     segs(d) {
       const n = d.n ?? 32, Rr = d.R ?? 4, gap = (d.luecke ?? 2.6) / 2 / Rr;
       const gaps = (d.offen || []).map(y => { const f = fwdOf(y * DEG); return Math.atan2(f[2], f[0]); });
@@ -39,24 +50,23 @@ export const WELT = {
       return { n, list: out };
     },
     solids(d) {
-      const r = d.r ?? 2, Rr = d.R ?? 4, h = d.h ?? 1.2, rim = d.rim ?? 0.5, th = 0.4, c = d.at, out = [];
-      const { n, list } = WELT.schuessel.segs(d), surface = d.surface;
-      out.push({ pos: add(c, [0, -0.5, 0]), half: [r, 0.5, r], quat: [0, 0, 0, 1], look: 'floor', surface, hide: true });
+      const Rr = d.R ?? 4, h = d.h ?? 1.2, rim = d.rim ?? 0.5, th = 0.4, c = d.at;
+      const { n, list } = WELT.schuessel.segs(d), surface = d.surface ?? (WELT.schuessel.rund(d) ? 'keramik' : undefined), prof = WELT.schuessel.profil(d);
+      const out = [{ pos: add(c, [0, -0.5, 0]), half: [prof[0][0], 0.5, prof[0][0]], quat: [0, 0, 0, 1], look: 'floor', surface, hide: true }];
+      const open = new Set(list.filter(x => x.open).map(x => x.k));
+      out.push(...ringSolids(c, [[prof[0][0] - 0.05, prof[0][1]], ...prof.slice(1)], { n, surface, skip: a => open.has(Math.round(a * n / (2 * Math.PI) - 0.5)), th }));
       for (const { a, open } of list) {
         if (open) continue;
-        const u = dirOf(a), s = segment(add(c, scale(u, r - 0.05)), add(add(c, scale(u, Rr)), [0, h, 0]));
-        const wid = 2 * Rr * Math.sin(Math.PI / n) + 0.1;
-        out.push({ pos: add(s.mid, scale(s.up, -th / 2)), half: [wid / 2, th / 2, s.L / 2 + 0.05], quat: s.q, look: 'floor', surface, hide: true });
-        const q = quatYawPitch(yawOf(u[0], u[2]), 0), wr = 2 * (Rr + rim) * Math.sin(Math.PI / n) + 0.1;
+        const u = dirOf(a), q = quatYawPitch(yawOf(u[0], u[2]), 0), wr = 2 * (Rr + rim) * Math.sin(Math.PI / n) + 0.1;
         if (rim > 0) out.push({ pos: add(add(c, scale(u, Rr + rim / 2)), [0, h - th / 2, 0]), half: [wr / 2, th / 2, rim / 2 + 0.02], quat: q, look: 'floor', hide: true });
         if (d.aussen !== false) out.push({ pos: add(add(c, scale(u, Rr + rim - 0.15)), [0, (h - th) / 2 - 0.5, 0]), half: [wr / 2, (h - th) / 2 + 0.5, 0.15], quat: q, look: 'wall', hide: true });
       }
       return out;
     },
     view(el, v) {
-      const T = v.THREE, r = el.r ?? 2, Rr = el.R ?? 4, h = el.h ?? 1.2, rim = el.rim ?? 0.5, c = el.at, st = BOWL[el.art] || BOWL.schuessel;
-      const V2 = (x, y) => new T.Vector2(x, y);
-      const prof = [V2(0.01, 0), V2(r, 0), V2(Rr, h), V2(Rr + rim, h)];
+      const T = v.THREE, Rr = el.R ?? 4, h = el.h ?? 1.2, rim = el.rim ?? 0.5, c = el.at, st = BOWL[el.art] || BOWL.schuessel;
+      const V2 = (x, y) => new T.Vector2(x, y), inner0 = WELT.schuessel.profil(el), r = inner0[0][0];
+      const prof = [V2(0.01, 0), ...inner0.map(([x, y]) => V2(x, y)), V2(Rr + rim, h)];
       if (el.aussen !== false) prof.push(V2(Rr + rim, -0.02));
       const inner = new T.MeshPhongMaterial({ color: st.inner, shininess: st.shine, side: T.DoubleSide, specular: 0x666666 });
       const { n, list } = WELT.schuessel.segs(el), grp = new T.Group();

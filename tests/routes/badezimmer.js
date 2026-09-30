@@ -11,7 +11,7 @@ const b1sB = [
   { x: 5, z: -62, speed: 2 }, { x: 5, z: -65.5, speed: 1.5, r: 0.6 },
   { x: 5, z: -70.25, speed: 4, r: 0.6, wait: ['phase', ['felsen', 0, 0.8, 0.95]] }, { x: 5, z: -74.75, speed: 4, r: 0.6, wait: ['phase', ['felsen', 1, 0.8, 0.95]] },
   { x: 5, z: -79.25, speed: 4, r: 0.6, wait: ['phase', ['felsen', 2, 0.8, 0.95]] }, { x: 5, z: -83, speed: 3 },
-  { x: 5, z: -97, speed: 6 }, { x: 5, z: -99, speed: 9 }, { x: 5, z: -109, free: true, r: 2 }, { x: 5, z: -112, speed: 1, r: 0.8 },
+  { x: 5, z: -97, speed: 6 }, { x: 5, z: -99, speed: 9 }, { x: 5, z: -109, free: true, r: 2 }, { x: 5, z: -112, speed: 1, r: 0.3 }, { x: 5, z: -134.1, speed: 2, wait: ['tiefer', -4] },
   { x: 5, z: -134.1, speed: 2 }, { x: 5, z: -140.5, speed: 1.5, r: 0.6 }, { x: 5, z: -141.3, speed: 1, r: 0.4, wait: ['phase', ['schiff', 2, 0, 0.05]] },
   { x: 5, z: -144.5, speed: 3, r: 0.8 }, { x: 5, z: -152.5, speed: 1.5, r: 0.6, wait: ['phase', ['schiff', 2, 0.5, 0.58]] },
   { x: 5, z: -158, speed: 2 }, { x: 5, z: -166.5, speed: 2 }, { x: 5, z: -176, speed: 6 }, { x: 5, z: -183 }
@@ -25,7 +25,7 @@ export default {
       { x: 5, z: -18, speed: 2, wait: 'platAtFrom' }, { x: 5, z: -20.5, speed: 1.5, r: 0.5 }, { x: 5, z: -28, speed: 1.5, r: 0.5, wait: 'platAtTo' },
       { x: 5, z: -32, speed: 2 }, { x: 5, z: -40, speed: 3 }, { x: 5, z: -41.5, speed: 1.5, r: 0.6 },
       { x: 5, z: -46.5, speed: 4, r: 0.6, wait: ['phase', ['felsen', 0, 0.75, 0.9]] }, { x: 5, z: -51.5, speed: 4, r: 0.6, wait: ['phase', ['felsen', 1, 0.75, 0.9]] },
-      { x: 5, z: -55, speed: 3 }, { x: 5, z: -66, speed: 9 }, { x: 5, z: -76, free: true, r: 2 }, { x: 5, z: -79, speed: 1, r: 0.8 },
+      { x: 5, z: -55, speed: 3 }, { x: 5, z: -66, speed: 9 }, { x: 5, z: -76, free: true, r: 2 }, { x: 5, z: -79, speed: 1, r: 0.3 }, { x: 5, z: -100.5, speed: 2, wait: ['tiefer', -2.5] },
       { x: 5, z: -100.5, speed: 2 }, { x: 5, z: -108.5, speed: 2 }, { x: 5, z: -115.5, speed: 2 }, { x: 5, z: -126 }
     ],
     // Umweg durch den Matsch in die Nische zum Bonusstern

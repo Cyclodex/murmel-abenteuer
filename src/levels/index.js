@@ -6,6 +6,7 @@ import sz1 from './spielzimmer1.js';
 import sz2 from './spielzimmer2.js';
 import sz3 from './spielzimmer3.js';
 import sz4 from './spielzimmer4.js';
+import sz5 from './spielzimmer5.js';
 import g1 from './garten1.js';
 import g2 from './garten2.js';
 import g3 from './garten3.js';
@@ -32,7 +33,7 @@ import vulkanS from './schwer/vulkan.js';
 
 export const WORLDS = [
   { id: 'uebung', name: 'Übung', emoji: '🌳', levels: [ausflug], hard: uebungS },
-  { id: 'spielzimmer', name: 'Spielzimmer', emoji: '🧸', levels: [sz1, sz2, sz3, sz4], hard: spielzimmerS },
+  { id: 'spielzimmer', name: 'Spielzimmer', emoji: '🧸', levels: [sz1, sz2, sz3, sz4, sz5], hard: spielzimmerS },
   { id: 'garten', name: 'Garten', emoji: '🌻', levels: [g1, g2, g3], hard: gartenS },
   { id: 'kueche', name: 'Küche', emoji: '🍳', levels: [k1, k2, k3], hard: kuecheS },
   ...(bad.levels.length ? [{ id: 'badezimmer', name: 'Badezimmer', emoji: '🛁', levels: bad.levels, hard: bad.hard }] : []),

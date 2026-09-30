@@ -228,6 +228,7 @@ export function createView(THREE, renderer, game) {
   const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpP = new THREE.Vector3(), tmpS = new THREE.Vector3();
   const STUD_R = 0.3, STUD_H = 0.2125; // relativ zum Rastermass (Original: 4.8 mm bzw. 1.7 mm bei 8 mm Raster)
   const pillars = [], blockers = [];
+  v.blocker = mesh => blockers.push(mesh); // Bauteile mit eigener Grafik: Kamera rückt davor näher an die Murmel
   for (const s of game.solids) {
     if (s.hide) continue; // nur Physik, die Grafik baut das Bauteil selbst (z. B. Schüssel)
     const m0 = s.look === 'abc' ? abcMat(s.text) : mat(s.look);

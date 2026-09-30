@@ -21,11 +21,12 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/elements-extra.js` | Weitere Bauteile (Röhre, Band, Wind, Balken, Magnet, Kanone, Domino, Spirale) |
 | `src/elements-fallen.js` | Fallen für schwere Level (Feld mit Löchern, Falltür, Schieber, Hammer, Treppe, Fluss, Felsen) |
 | `src/elements-welt.js` | Echte Dinge der Welten (Schüssel = Pfanne/Topf/Lavabo, Deko-Gegenstände, Herdplatte, Rasensprenger) |
+| `src/elements-bahn.js` | Kugelbahn: Rinne (schmal = Rutsche, auch als Kurve/Spirale; breit = Halfpipe), Spiraltrichter; `ringSolids` baut runde Flächen (auch Schüsseln) aus Klötzen |
 | `src/elements-bad.js` | Badezimmer: Badewanne mit Wasser (hineinfallen = zurück zum Checkpoint), Schiffchen mit Trampolin, Wasserstrahl aus dem Hahn (wäscht), Toilette als Ziel |
 | `src/props.js` | Riesige Alltagsgegenstände aus einfachen Formen (Apfel, Tasse, Toaster, Ente, Zwerg, Sandburg …) |
 | `src/bauteile.js` | Sammelt alle Bauteil-Typen |
 | `src/themes.js` | Aussehen der Welten (Boden, Wände, Himmel, Untergrund, Partikel) |
-| `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm, Pfütze), Dreck (`g.dirt`: Schlamm macht dreckig, Pfütze/Wind/Wasser waschen), Hangabtrieb bergab (`SLOPE_PUSH`), Bremsen (`BREMSE`: Rollwiderstand gleichmässig in der Ebene, ausser beim Gasgeben in Fahrtrichtung; Luftwiderstand ∝ v²), Bremshilfe nur in der Ebene |
+| `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm, Pfütze, Keramik, Kunststoff), Dreck (`g.dirt`: Schlamm macht dreckig, Pfütze/Wind/Wasser waschen), Hangabtrieb bergab (`SLOPE_PUSH`), Bremsen (`BREMSE`: Rollwiderstand gleichmässig in der Ebene, ausser beim Gasgeben in Fahrtrichtung; Luftwiderstand ∝ v²), Bremshilfe nur in der Ebene; runde Flächen (`rund`) geben den an den Nähten der Klötze verlorenen Schwung zurück und behalten Reibung auch an steilen Stellen; eigene Breitphase und Kontakt-Tabelle (schnell auch mit Hunderten Klötzen) |
 | `src/view.js` | three.js-Szene, Themen (Spielzimmer), Kamera |
 | `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen; Knopf 📱/🕹️ wechselt jederzeit), Pfeiltasten, Stärken 🐢/🐇/🚀 (`POWERS`) |
 | `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
@@ -79,8 +80,10 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `fluss` | `from`, `to` (Wasseroberfläche), `width`, `depth`, `speed`, `banks` – trägt die Murmel mit (bremst sie bergab nicht auf `speed` ab), Auftrieb nach Dichte (leichte schwimmen, schwere rollen am Grund), wäscht |
 | `nagelbrett` | `at` (Mitte der oberen Vorderkante, Höhe des Wegs, der hineinführt), `yaw`, `breite`, `hoehe`, `abstand`, `tiefe` – Nagelwand: die Murmel fällt senkrecht und prallt von Nagel zu Nagel; vorne Glas, unten offen (quer darunter einen Weg legen) |
 | `felsen` | `from`, `dir: [x, z]`, `speed`, `every` (s), `r`, `offset`, `farbe` – rollende Felsen (oder Kartoffeln, Äpfel …), bergab einsetzen |
-| `schuessel` | `at` (Bodenmitte), `r`, `R`, `h`, `rim`, `art` (`'pfanne'`/`'topf'`/`'lavabo'`/`'schuessel'`/`'sandkuchen'`), `offen: [yaw]` (Lücke für eine Rampe), `aussen`, `griff`, `hahn`, `abfluss` |
-| `roehre` mit `down: true` | Abfluss: bei `from` geht es senkrecht hinunter, `fang` = Fangradius (z. B. Mitte vom Lavabo) |
+| `schuessel` | `at` (Bodenmitte), `r`, `R`, `h`, `rim`, `art` (`'pfanne'`/`'topf'`/`'lavabo'`/`'schuessel'`/`'sandkuchen'`), `boden: 'rund'` (gewölbt bis zur Mitte; beim Lavabo Standard, dazu Oberfläche Keramik: Bälle springen und kreisen hinunter), `offen: [yaw]` (Lücke für eine Rampe), `aussen`, `griff`, `hahn`, `abfluss` |
+| `rinne` | gerade: `from`, `to` (Mitte unten); oder Kurve/Spirale: `at`, `yaw`, `turn`, `radius`, `rise`; dazu `r` (Radius des Querschnitts: ~1.6 Rutsche, ~4 Halfpipe), `bogen` (Grad je Seite), `surface`, `farbe` – runde Bahn, in Kurven fährt die Murmel die Wand hoch |
+| `trichter` | `at` (Mitte des Lochs), `R`, `h`, `loch`, `rim`, `wand` (Bande), `offen`, `farbe` – Spiraltrichter: schräg über die Bande hinein, die Murmel kreist immer schneller hinunter und fällt durchs Loch (darunter auffangen) |
+| `roehre` mit `down: true` | Abfluss: bei `from` geht es senkrecht hinunter, `fang` = Fangradius (z. B. Mitte vom Lavabo); schluckt nur, wenn die Murmel unten und langsamer als 3 m/s ist |
 | `wind` mit `look` | `'schlauch'` (Gartenschlauch) oder `'hahn'` (Wasserhahn): Wasserstrahl statt Ventilator |
 | `sprenger` | `at`, `length` (Reichweite), `speed` (°/s), `strength`, `breite` – Rasensprenger schiebt die Murmel weg |
 | `herdplatte` | `at` (auf einem Weg), `r`, `jump` – heiss, die Murmel hüpft |

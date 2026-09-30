@@ -21,7 +21,10 @@ export const SURFACES = {
   seife: { friction: 0.02, bounce: 1, grip: 0.4, drag: -0.15, wash: 0.8, roll: 0.2 },
   handtuch: { friction: 0.9, bounce: 0.1, grip: 1, drag: 1.8, wash: 0.3 },
   nagel: { friction: 0.3, bounce: 0.55, grip: 1, drag: 0 }, // Nägel der Nagelwand schlucken etwas Schwung
-  flussbett: { friction: 0.4, bounce: 0.05, grip: 1, drag: 0, wash: 0.5 } // Grund im Fluss: Wasser schluckt den Aufprall
+  flussbett: { friction: 0.4, bounce: 0.05, grip: 1, drag: 0, wash: 0.5 }, // Grund im Fluss: Wasser schluckt den Aufprall
+  keramik: { friction: 0.3, bounce: 1, grip: 1, drag: 0.9, wash: 0.5 }, // nasses Lavabo: hart (Bälle springen), ein Wasserfilm bremst etwas
+  kunststoff: { friction: 0.3, bounce: 1, grip: 1, drag: 0 }, // Kugelbahn: Rinne
+  trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 } // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
 };
 const DIRT_STILL = 0.08; // so viel Dreck pro Sekunde auch im Stehen im Schlamm
 const WASH_WATER = 0.6;  // Unterwasser: Abwaschen pro Sekunde
@@ -50,7 +53,23 @@ export function createGame(CANNON, level, ballProps = BALL) {
   const phys = level.physik || {}, gy = G * (phys.schwerkraft ?? 1), water = phys.wasser ?? 0, bounceF = phys.abprall ?? 1;
   const world = new CANNON.World();
   world.gravity.set(0, -gy, 0);
-  world.broadphase = new CANNON.NaiveBroadphase();
+  // Kontakt-Tabelle nur für echte Kontakte statt n² Felder, die cannon.js jeden Schritt leert
+  // (1000 Klötze: 3.9 statt 0.4 ms pro Schritt). Dient nur für Ereignisse, die Physik bleibt gleich.
+  world.collisionMatrix = new CANNON.ObjectCollisionMatrix();
+  world.collisionMatrixPrevious = new CANNON.ObjectCollisionMatrix();
+  // Breitphase: feste Klötze nie gegeneinander prüfen, nur bewegliche Körper (Murmel, Dominos, bewegte Teile) gegen alle.
+  // Gleiche Paare in gleicher Reihenfolge wie NaiveBroadphase, aber nicht alle n² Paare (Kugelbahn-Teile haben Hunderte Klötze).
+  const bp = world.broadphase = new CANNON.NaiveBroadphase(), STATIC = CANNON.Body.STATIC, moving = [];
+  bp.collisionPairs = function (w, p1, p2) {
+    const l = w.bodies, n = l.length;
+    moving.length = 0;
+    for (let i = 0; i < n; i++) if (l[i].type !== STATIC) moving.push(i);
+    for (let i = 0; i < n; i++) {
+      const bi = l[i];
+      if (bi.type !== STATIC) { for (let j = 0; j < i; j++) if (this.needBroadphaseCollision(bi, l[j])) this.intersectionTest(bi, l[j], p1, p2); continue; }
+      for (const j of moving) { if (j >= i) break; if (this.needBroadphaseCollision(bi, l[j])) this.intersectionTest(bi, l[j], p1, p2); }
+    }
+  };
   world.solver.iterations = 12;
 
   const mBall = new CANNON.Material('ball');
@@ -67,17 +86,19 @@ export function createGame(CANNON, level, ballProps = BALL) {
 
   // Wände ohne Reibung: cannon.js begrenzt Reibung nicht pro Zeitschritt (viel zu stark), die Murmel
   // würde nach dem Aufprall zwischen Wand- und Bodenreibung festklemmen.
+  // Ausnahme runde Flächen (Rinne, Trichter, Schüssel): dort gibt es keine Ecke zum Klemmen, und ohne Reibung
+  // dreht die Murmel oben an der Halfpipe-Wand in die alte Richtung weiter und verliert beim Zurückrollen viel Schwung.
   const np = world.narrowphase, makeFriction = np.createFrictionEquationsFromContact;
   np.createFrictionEquationsFromContact = function (c, out) {
-    const made = makeFriction.call(this, c, out);
-    if (made && Math.abs(c.ni.y) < 0.7) for (const f of out.slice(-2)) f.minForce = f.maxForce = 0;
+    const made = makeFriction.call(this, c, out), u = (c.bi.userData && c.bi.userData.rund) || (c.bj.userData && c.bj.userData.rund);
+    if (made && !u && Math.abs(c.ni.y) < 0.7) for (const f of out.slice(-2)) f.minForce = f.maxForce = 0;
     return made;
   };
 
   const g = {
     C: CANNON, world, level, matFor, els: [], solids: [], checkpoints: [], switches: {},
     st: { stars: 0, starTotal: 0, cp: -1, won: false },
-    groundBody: null, groundN: [0, 1, 0], touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0, dirt: 0, washK: 0,
+    groundBody: null, groundN: [0, 1, 0], rundN: null, touchBody: null, surface: SURFACES.normal, tilt: MAX_TILT, brake: 0, dirt: 0, washK: 0,
     // Leichte Murmel (schwere < 1) nur in Welten mit normaler Schwerkraft; im Weltraum gilt die Level-Schwerkraft
     // gy = Schwerkraft des Levels für lose Teile (Dominos): ohne Kippen und ohne Murmel-Schwere
     ballProps, G: phys.schwerkraft ? gy : gy * (ballProps.schwere ?? 1), gy, lock: false, track: { yaw: (level.startYaw || 0) * Math.PI / 180, lateral: 0 }
@@ -115,7 +136,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
 
   g.spawn = p => {
     ball.position.set(...p); ball.velocity.set(0, 0, 0); ball.angularVelocity.set(0, 0, 0);
-    g.groundBody = g.touchBody = null; g.lock = false; g.squashT = 0; last = null;
+    g.groundBody = g.touchBody = null; g.rundN = null; g.lock = false; g.squashT = 0; last = null;
   };
   // Zerquetscht (z. B. Hammer): Murmel bleibt kurz platt liegen, dann geht es am Checkpoint weiter.
   // Events: 'quetsch' sofort, 'zurueck' beim Neustart.
@@ -138,7 +159,8 @@ export function createGame(CANNON, level, ballProps = BALL) {
 
   // Welcher Körper berührt die Murmel? (Boden = Berührung von unten)
   function contacts() {
-    let best = null, bestNy = -2, ground = null;
+    let best = null, bestNy = -2, ground = null, rundNy = -2;
+    g.rundN = null;
     for (const c of world.contacts) {
       let other = null, s = 1;
       if (c.bi === ball) { other = c.bj; s = -1; } else if (c.bj === ball) other = c.bi;
@@ -146,6 +168,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
       const ny = c.ni.y * s; // Normale zeigt vom Körper zur Murmel
       if (ny > bestNy) { bestNy = ny; best = other; }
       if (ny > 0.3) { ground = other; g.groundN = [c.ni.x * s, ny, c.ni.z * s]; }
+      if (other.userData && other.userData.rund && ny > rundNy) { rundNy = ny; g.rundN = [c.ni.x * s, ny, c.ni.z * s]; }
     }
     g.touchBody = best; g.groundBody = ground;
     const u = best && best.userData;
@@ -211,15 +234,29 @@ export function createGame(CANNON, level, ballProps = BALL) {
     if (g.dirty && g.dirt === 0) { g.dirty = false; g.washed = true; ev.push('sauber'); }
   }
 
-  // Hangabtrieb auf festen Bahnstücken (nicht im Looping, nicht auf bewegten Teilen wie Wippe oder Falltür)
+  // Hangabtrieb auf festen Bahnstücken (nicht im Looping, nicht an den Seiten einer Rinne, nicht auf bewegten Teilen wie Wippe oder Falltür)
   function slope() {
     const gb = g.groundBody, u = gb && gb.userData;
-    if (g.lock || !u || !u.track || u.loop || gb.type !== CANNON.Body.STATIC) return;
+    if (g.lock || !u || !u.track || u.loop || u.pendel || gb.type !== CANNON.Body.STATIC) return;
     // Richtung bergab = Schwerkraft entlang der Fläche: (0, -1, 0) + n * ny, Länge = sin(Neigung)
     const [nx, ny, nz] = g.groundN, dx = nx * ny, dy = ny * ny - 1, dz = nz * ny, v = ball.velocity;
     if (v.x * dx + v.y * dy + v.z * dz <= 0) return; // nur bergab, bergauf bleibt es wie bisher
     const k = SLOPE_PUSH * g.G * H;
     v.x += dx * k; v.y += dy * k; v.z += dz * k;
+  }
+
+  // Runde Flächen (Rinne, Trichter, Lavabo) bestehen aus geraden Latten: an jeder Naht schluckt cannon.js den Teil
+  // des Tempos, der in die nächste Latte zeigt (bei 12° rund 4 % der Energie, in der Halfpipe ~40 % pro Schwung).
+  // Diesen Teil entlang der Fläche zurückgeben (nur beim Übergang zwischen zwei Latten, nicht bei echten Aufprallen).
+  function seam(vx, vy, vz, n0) {
+    const n1 = g.rundN;
+    if (!n0 || !n1) return;
+    const c = n0[0] * n1[0] + n0[1] * n1[1] + n0[2] * n1[2];
+    if (c > 0.99995 || c < 0.9) return; // gleiche Latte oder Knick über 25°
+    const vin = vx * n1[0] + vy * n1[1] + vz * n1[2], v = ball.velocity, w = ball.angularVelocity, sp = Math.hypot(v.x, v.y, v.z);
+    if (vin >= 0 || sp < 1e-6) return;
+    const k = Math.sqrt(sp * sp + vin * vin) / sp;
+    v.x *= k; v.y *= k; v.z *= k; w.x *= k; w.y *= k; w.z *= k;
   }
 
   // Roll- und Luftwiderstand (siehe BREMSE). Nicht, solange Röhre, Kanone oder Schiffchen die Murmel steuern (lock).
@@ -253,7 +290,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
     world.gravity.set(Math.sin(g.tilt) * G * ix * grip, -g.G, Math.sin(g.tilt) * G * iz * grip);
     for (const el of g.els) TYPES[el.type].pre?.(el, g, H);
     if (g.squashNew) { g.squashNew = false; ev.push('quetsch'); }
-    const v = ball.velocity, vx = v.x, vy = v.y, vz = v.z, gr = world.gravity;
+    const v = ball.velocity, vx = v.x, vy = v.y, vz = v.z, gr = world.gravity, n0 = g.rundN;
     world.step(H);
     if (g.squashT > 0) { // platt liegen bleiben
       ball.position.set(...g.squashPos); ball.velocity.set(0, 0, 0); ball.angularVelocity.set(0, 0, 0);
@@ -269,6 +306,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
     if (hit > HIT_MIN && g.hitCool <= 0) { g.hitStrength = (hit - HIT_MIN) / 4; g.hitCool = 0.12; ev.push('hit'); }
     g.time += H;
     contacts();
+    seam(vx, vy, vz, n0);
     if (water) { const f = Math.exp(-water * H); ball.velocity.x *= f; ball.velocity.y *= f; ball.velocity.z *= f; }
     if (g.surface.drag) { const f = Math.exp(-g.surface.drag * H); ball.velocity.x *= f; ball.velocity.z *= f; }
     slope();

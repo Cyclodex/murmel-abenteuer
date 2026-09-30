@@ -4,6 +4,7 @@ import { DEG, quatYawPitch, rotate, add, sub, scale, lerp3, toLocal, fwdOf } fro
 import { TYPES, segment, kinematicBody, ballPos } from './elements.js';
 
 const R = 0.5;
+const DRAIN_V = 3; // Abfluss schluckt nur langsamere Murmeln (m/s)
 const UP = [0, 1, 0];
 const norm = v => { const l = Math.hypot(...v) || 1; return scale(v, 1 / l); };
 const bezier = (P, t) => {
@@ -38,7 +39,9 @@ export const EXTRA = {
       el.cool -= h;
       if (el.t < 0) {
         const p = g.ball.position, m = el.P[0];
-        if (el.cool <= 0 && Math.hypot(p.x - m[0], p.z - m[2]) < (el.fang ?? 0.9) && Math.abs(p.y - m[1]) < 1) { el.t = 0; g.lock = true; ev.push(el.down ? 'gurgel' : 'roehre'); }
+        // Abfluss: nur wenn die Murmel unten ankommt und langsam genug ist (sonst springt oder rollt sie darüber hinweg)
+        const catchY = el.down ? p.y < m[1] && Math.hypot(g.ball.velocity.x, g.ball.velocity.y, g.ball.velocity.z) < DRAIN_V : Math.abs(p.y - m[1]) < 1;
+        if (el.cool <= 0 && Math.hypot(p.x - m[0], p.z - m[2]) < (el.fang ?? 0.9) && catchY) { el.t = 0; g.lock = true; ev.push(el.down ? 'gurgel' : 'roehre'); }
         return;
       }
       el.t += h * (el.speed ?? 9) / el.len;

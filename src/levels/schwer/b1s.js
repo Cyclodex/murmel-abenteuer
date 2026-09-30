@@ -68,7 +68,7 @@ export default {
     { type: 'weg', from: [5, 0, -98], to: [5, 0, -101], width: 3, walls: 0.8 },
     { type: 'turbo', at: [5, 0, -99.5], size: [2.6, 2], speed: 10 },
     { type: 'weg', from: [5, 0, -101], to: [5, 1.2, -104], width: 3, walls: 0.5 },
-    { type: 'schuessel', at: [5, -1.5, -112], r: 1.5, R: 4.5, h: 2, rim: 1, art: 'lavabo', abfluss: true, surface: 'pfuetze' },
+    { type: 'schuessel', at: [5, -1.5, -112], r: 1.5, R: 4.5, h: 2, rim: 1, art: 'lavabo', abfluss: true },
     { type: 'strahl', at: [5, 4, -109], unten: -0.4, r: 0.6, hahn: true, yaw: 90, lang: 3.8, fuss: 3.6 },
     { type: 'wand', from: [-1, 0.5, -116.7], to: [11, 0.5, -116.7], height: 6 },
     { type: 'klotz', at: [5, 3.8, -116.45], size: [7, 4, 0.1], look: 'spiegel', deko: true },
