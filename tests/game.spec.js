@@ -1214,7 +1214,7 @@ test('Sticker werden vergeben, gespeichert und im Album gezeigt; Jubel erscheint
   await expect(page.locator('#cheerOv .items')).toContainText('⚽');  // neue Murmel
   await expect(page.locator('#cheerOv .items')).toContainText('🏆');  // Welt komplett
   const st = (await saved(page)).stickers;
-  expect(Object.keys(st).sort()).toEqual(['lvl:ausflug', 'sterne:ausflug', 'welt:uebung', 'x:murmel', 'x:spur'].sort());
+  expect(Object.keys(st).sort()).toEqual(['welt:uebung', 'x:murmel', 'x:spur'].sort()); // 🌟 der Welt braucht auch das schwere Level
   await page.click('#cheerOv');                                        // Antippen schliesst
   await expect(page.locator('#cheerOv')).toBeHidden();
 
@@ -1222,10 +1222,9 @@ test('Sticker werden vergeben, gespeichert und im Album gezeigt; Jubel erscheint
   await page.click('#mapBtn');
   await page.click('.lvl[data-level="sz1"]');
   await winLevel(page, 3, true);
-  const st2 = (await saved(page)).stickers;
-  expect(st2['bonus:sz1']).toBe(true);
-  expect(st2['sterne:sz1']).toBeUndefined();
-  expect(st2['welt:spielzimmer']).toBeUndefined();
+  const p2 = await saved(page);
+  expect(p2.bonus).toEqual({ sz1: true });
+  expect(Object.keys(p2.stickers).sort()).toEqual(['welt:uebung', 'x:murmel', 'x:spur'].sort());
 
   // nach Neuladen im Album sichtbar
   await page.reload();
@@ -1233,13 +1232,17 @@ test('Sticker werden vergeben, gespeichert und im Album gezeigt; Jubel erscheint
   await page.click('#btnAlbum');
   await expect(page.locator('#albumOv')).toBeVisible();
   const total = await page.evaluate(() => window.murmel.ALBUM.all.length);
-  await expect(page.locator('#albumCount')).toHaveText(`🏅 7/${total}`);
-  await expect(page.locator('.sticker[data-sticker="lvl:ausflug"]')).toHaveClass(/got/);
+  await expect(page.locator('#albumCount')).toHaveText(`🏅 3/${total}`);
+  await expect(page.locator('.srow')).toHaveCount(await page.evaluate(() => window.murmel.WORLDS.length + 1)); // pro Welt + Extras
   await expect(page.locator('.sticker[data-sticker="welt:uebung"]')).toHaveClass(/got/);
-  await page.click('.tab[data-page="spielzimmer"]');
-  await expect(page.locator('.sticker[data-sticker="bonus:sz1"]')).toHaveClass(/got/);
-  await expect(page.locator('.sticker[data-sticker="sterne:sz1"]')).not.toHaveClass(/got/);
-  await expect(page.locator('.sticker[data-sticker="sterne:sz1"]')).toContainText('🔒');
+  await expect(page.locator('.sticker[data-sticker="bonus-alle:spielzimmer"]')).not.toHaveClass(/got/);
+  await expect(page.locator('.sticker[data-sticker="bonus-alle:spielzimmer"]')).toContainText('🔒');
+  // Antippen erklärt, wofür es den Sticker gibt
+  await expect(page.locator('#albumInfo')).toHaveText('👆 Tippe auf einen Sticker');
+  await page.click('.sticker[data-sticker="bonus-alle:spielzimmer"]');
+  await expect(page.locator('#albumInfo')).toHaveText('💎 🧸 Spielzimmer: in jedem Level den lila Bonusstern finden, auch in den schweren 💀');
+  await page.click('.sticker[data-sticker="welt:uebung"]');
+  await expect(page.locator('#albumInfo')).toHaveText('🏆 🌳 Übung: alle Level schaffen ✅');
   await page.click('#albumBack');
   await expect(page.locator('#mapOv')).toBeVisible();
   expect(errors).toEqual([]);
@@ -1248,13 +1251,15 @@ test('Sticker werden vergeben, gespeichert und im Album gezeigt; Jubel erscheint
 test('Alter Spielstand ohne Sticker: verdiente Sticker werden nachgetragen, Sticker pro Spieler', async ({ page }) => {
   await page.addInitScript(() => {
     if (!localStorage.getItem('murmel-abenteuer-v2'))
-      localStorage.setItem('murmel-abenteuer-v1', JSON.stringify({ done: { ausflug: true, sz1: true }, best: { ausflug: 2, sz1: 6 }, skin: 'standard' }));
+      localStorage.setItem('murmel-abenteuer-v1', JSON.stringify({ done: { ausflug: true, sz1: true }, best: { ausflug: 2, sz1: 6 }, skin: 'standard',
+        stickers: { 'lvl:sz1': true, 'sterne:sz1': true, 'bonus:k1': true } })); // Sticker pro Level von früher
   });
   await page.goto('/');
   await page.click('#startJoy');
   await newPlayer(page, 'Alt');
-  const st = (await saved(page)).stickers;
-  expect(Object.keys(st).sort()).toEqual(['bonus:sz1', 'lvl:ausflug', 'lvl:sz1', 'sterne:sz1', 'welt:uebung', 'x:murmel', 'x:spur'].sort());
+  const p = await saved(page);
+  expect(Object.keys(p.stickers).sort()).toEqual(['welt:uebung', 'x:murmel', 'x:spur'].sort());
+  expect(p.bonus).toEqual({ k1: true }); // Bonusstern aus dem alten Sticker übernommen
   await expect(page.locator('#cheerOv')).toBeHidden(); // kein Jubel beim Nachtragen
   // zweiter Spieler hat ein leeres Album
   await page.click('#btnPlayer');
@@ -1276,7 +1281,7 @@ test('Spur auswählbar, gespeichert und sichtbar hinter der Murmel', async ({ pa
   await page.click('#btnSkins');
   await expect(page.locator('.skin[data-trail="keine"]')).toHaveClass(/sel/);
   await expect(page.locator('.skin[data-trail="funken"]')).toBeEnabled();   // 3 Sterne
-  await expect(page.locator('.skin[data-trail="blasen"]')).toBeEnabled();   // 3 Sticker
+  await expect(page.locator('.skin[data-trail="blasen"]')).toBeEnabled();   // 2 Sticker
   await expect(page.locator('.skin[data-trail="sterne"]')).toBeDisabled();  // 12 Sterne
   await expect(page.locator('.skin[data-trail="sterne"]')).toContainText('12⭐');
   await page.click('.skin[data-trail="funken"]');
@@ -1481,7 +1486,7 @@ test('Ohne localStorage: gewinnen, Sticker, Album und Spur funktionieren', async
   await page.click('#cheerOv');
   await page.click('#mapBtn');
   await page.click('#btnAlbum');
-  await expect(page.locator('.sticker[data-sticker="lvl:ausflug"]')).toHaveClass(/got/);
+  await expect(page.locator('.sticker[data-sticker="welt:uebung"]')).toHaveClass(/got/);
   await page.click('#albumBack');
   await page.click('#btnSkins');
   await page.click('.skin[data-trail="funken"]');

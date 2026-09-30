@@ -33,22 +33,22 @@ const ALL_STARS = LEVELS.reduce((n, l) => n + l.parts.filter(p => p.type === 'st
 const skinNeed = s => (s.need === 'alle' ? ALL_STARS : s.need);
 const skinOpen = s => progress.totalStars() >= skinNeed(s);
 const currentSkin = () => { const s = SKINS.find(k => k.id === progress.skin); return s && skinOpen(s) ? s : SKINS[0]; };
-const trailOpen = t => (t.need.stars ? progress.totalStars() >= t.need.stars : progress.stickerCount() >= (t.need.stickers || 0));
+const trailOpen = t => (t.need.stars ? progress.totalStars() >= t.need.stars : stickerCount() >= (t.need.stickers || 0));
 const trailNeed = t => (t.need.stars ? t.need.stars + '⭐' : t.need.stickers + '🏅');
 const currentTrail = () => { const t = TRAILS.find(k => k.id === progress.trail); return t && trailOpen(t) ? t : TRAILS[0]; };
 const ALBUM = buildAlbum(WORLDS);
+const stickerCount = () => ALBUM.all.filter(st => progress.hasSticker(st.id)).length;
 const cheer = createCheer($('cheerOv'), audio);
 const rec = createRecorder(); // Fahrt aufnehmen (für die Geistermurmel der Bestzeit und die Online-Rangliste)
 const online = createOnline(progress);
 let race = null; // { level, name, track }: Online-Geist, gegen den gerade gefahren wird (statt der eigenen Bestzeit)
 
-// Neu verdiente Sticker ins Album kleben, gibt sie zurück. bonus = Level-ID, in dem gerade der Bonusstern gesammelt wurde,
-// run = was in diesem Lauf passiert ist ({ dreckig, sauber })
-function syncStickers(bonus = null, run = {}) {
+// Neu verdiente Sticker ins Album kleben, gibt sie zurück. run = was in diesem Lauf passiert ist ({ dreckig, sauber, geist })
+function syncStickers(run = {}) {
   const fresh = [];
   for (let pass = 0, added = true; added && pass < 4; pass++) { // Extras hängen von anderen Stickern ab
     added = false;
-    const ctx = { ...run, bonus, skinsOpen: SKINS.filter(skinOpen).length, trailsOpen: TRAILS.filter(trailOpen).length };
+    const ctx = { ...run, skinsOpen: SKINS.filter(skinOpen).length, trailsOpen: TRAILS.filter(trailOpen).length };
     for (const st of ALBUM.all) if (!progress.hasSticker(st.id) && st.has(progress, ctx)) { progress.addSticker(st.id); fresh.push(st); added = true; }
   }
   if (fresh.length) progress.save();
@@ -225,23 +225,29 @@ function showSkins() {
 }
 
 // ---------- Sticker-Album ----------
-let albumPage = 0;
-function showAlbum(k = albumPage) {
-  albumPage = k;
-  $('albumCount').textContent = `🏅 ${ALBUM.all.filter(st => progress.hasSticker(st.id)).length}/${ALBUM.all.length}`;
-  const tabs = $('albumTabs'); tabs.textContent = '';
-  ALBUM.pages.forEach((pg, i) => {
-    const b = document.createElement('button');
-    b.className = 'tab' + (i === k ? ' sel' : ''); b.textContent = pg.emoji; b.dataset.page = pg.id;
-    b.onclick = () => { audio.sfx('tap'); showAlbum(i); };
-    tabs.appendChild(b);
-  });
+// eine Zeile pro Welt; Antippen eines Stickers zeigt, wofür es ihn gibt
+const ALBUM_HINT = '👆 Tippe auf einen Sticker';
+function showAlbum() {
+  $('albumCount').textContent = `🏅 ${stickerCount()}/${ALBUM.all.length}`;
+  const info = $('albumInfo'); info.textContent = ALBUM_HINT;
   const grid = $('albumGrid'); grid.textContent = '';
-  for (const st of ALBUM.pages[k].stickers) {
-    const d = document.createElement('div'), got = progress.hasSticker(st.id);
-    d.className = 'sticker' + (got ? ' got' : ''); d.dataset.sticker = st.id;
-    d.innerHTML = got ? `<span>${st.emoji}</span>` : `<span>${st.emoji}</span><b>🔒</b>`;
-    grid.appendChild(d);
+  for (const r of ALBUM.rows) {
+    const row = document.createElement('div'); row.className = 'srow'; row.dataset.row = r.id;
+    row.innerHTML = `<div class="wicon">${r.emoji}</div><div class="list"></div>`;
+    for (const st of r.stickers) {
+      const b = document.createElement('button'), got = progress.hasSticker(st.id);
+      b.className = 'sticker' + (got ? ' got' : ''); b.dataset.sticker = st.id;
+      b.setAttribute('aria-label', st.text);
+      b.innerHTML = got ? `<span>${st.emoji}</span>` : `<span>${st.emoji}</span><b>🔒</b>`;
+      b.onclick = () => {
+        audio.sfx('tap');
+        grid.querySelectorAll('.sticker.sel').forEach(x => x.classList.remove('sel'));
+        b.classList.add('sel');
+        info.textContent = `${st.emoji} ${st.text}` + (got ? ' ✅' : '');
+      };
+      row.lastChild.appendChild(b);
+    }
+    grid.appendChild(row);
   }
   show('mapOv', false); show('albumOv');
 }
@@ -294,7 +300,8 @@ addEventListener('resize', () => { if (view) view.resize(); treppe.resize(); });
 function onWin() {
   running = false;
   const lv = LEVELS[levelIdx], before = progress.totalStars(), trailsBefore = TRAILS.filter(trailOpen);
-  progress.finish(lv.id, game.st.stars);
+  const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got);
+  progress.finish(lv.id, game.st.stars, bonus);
   // Bestzeit: neue Bestzeit speichert die Fahrt als Geistermurmel
   const t = game.time, had = progress.bestTime(lv.id), fastest = progress.setTime(lv.id, t);
   if (fastest) progress.setGhost(lv.id, rec.track(t, currentSkin().id));
@@ -307,8 +314,7 @@ function onWin() {
   $('winScore').textContent = `🏆 ${run.score}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : hadRun ? ` · 🏆 ${hadRun.score}` : '');
   $('winTime').textContent = `⏱ ${formatTime(t)}` + (fastest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
   const after = progress.totalStars();
-  const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got) ? lv.id : null;
-  const stickers = syncStickers(bonus, { dreckig: game.dirtPeak >= 1, sauber: game.washed, geist: fastest && had > 0 });
+  const stickers = syncStickers({ dreckig: game.dirtPeak >= 1, sauber: game.washed, geist: fastest && had > 0 });
   const fresh = SKINS.filter(s => skinNeed(s) > before && skinNeed(s) <= after);
   const freshTrails = TRAILS.filter(t => trailOpen(t) && !trailsBefore.includes(t));
   const news = [...fresh, ...freshTrails];
