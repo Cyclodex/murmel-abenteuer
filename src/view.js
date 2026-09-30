@@ -143,9 +143,14 @@ export function createView(THREE, renderer, game) {
   // Werkzeuge für die Welt-Themen (themes.js)
   const tools = {
     THREE, scene, lambert,
+    // Boden unter dem Level. Reicht in der Weitsicht bis hinter den Nebel, sonst sieht man seine Kante: Kamera bis ~5 Level-Radien
+    // von der Mitte (0.64 davon waagrecht), Nebel bis 2 Radien hinter der Mitte -> 11 Radien ringsum.
+    // tex.repeat ist für 240 m gedacht und wächst mit, damit die Kacheln gleich gross bleiben
     plane(tex, y) {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), lambert(0xffffff, { map: tex }));
-      m.rotation.x = -Math.PI / 2; m.position.y = y; scene.add(m); return m;
+      const S = 2 * Math.max(120, 11 * lvR);
+      if (tex) tex.repeat.multiplyScalar(S / 240);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(S, S), lambert(0xffffff, { map: tex }));
+      m.rotation.x = -Math.PI / 2; m.position.set(lvC.x, y, lvC.z); scene.add(m); return m;
     }
   };
   function mat(look) {
@@ -169,6 +174,7 @@ export function createView(THREE, renderer, game) {
     else if (look === 'pfuetze') m = new THREE.MeshPhongMaterial({ map: puddleTex(THREE), shininess: 120, specular: 0xCCE8FF });
     else if (look === 'band') m = lambert(0x3A3F47);
     else if (look === 'glas') m = new THREE.MeshPhongMaterial({ color: 0xDFF4FF, transparent: true, opacity: 0.16, shininess: 150, depthWrite: false });
+    else if (look === 'plexi') m = new THREE.MeshPhongMaterial({ color: 0xA9DCF7, transparent: true, opacity: 0.35, shininess: 150, depthWrite: false }); // sichtbarer als Glas
     else if (look === 'nagelwand') m = lambert(0xffffff, { map: woodTex(THREE, '#D9A066', '#7A4A1E') });
     else if (look === 'falltuer') m = lambert(0xffffff, { map: stripeTex(THREE) });
     else if (look === 'schieber') m = new THREE.MeshPhongMaterial({ color: 0x8E24AA, shininess: 50 });
@@ -231,6 +237,15 @@ export function createView(THREE, renderer, game) {
   v.blocker = mesh => blockers.push(mesh); // Bauteile mit eigener Grafik: Kamera rückt davor näher an die Murmel
   // halb durchsichtig (Looping-Schienen, was vor der Bauteil-Kamera liegt): die Murmel bleibt dahinter sichtbar
   const seeThrough = m => thru.get(m) || thru.set(m, Object.assign(m.clone(), { transparent: true, opacity: 0.45, depthWrite: false })).get(m);
+  // Ausdehnung des Levels (alle Klötze ausser Deko): für den Boden und die Weitsicht
+  const lvBox = new THREE.Box3();
+  for (const s of game.solids) {
+    if (s.deko) continue;
+    tmpQ.set(...s.quat);
+    for (let k = 0; k < 8; k++) lvBox.expandByPoint(tmpP.set(k & 1 ? s.half[0] : -s.half[0], k & 2 ? s.half[1] : -s.half[1], k & 4 ? s.half[2] : -s.half[2]).applyQuaternion(tmpQ).add(tmpS.set(...s.pos)));
+  }
+  if (lvBox.isEmpty()) lvBox.setFromCenterAndSize(tmpP.set(0, 0, 0), tmpS.set(20, 5, 20));
+  const lvC = lvBox.getCenter(new THREE.Vector3()), lvR = Math.max(10, lvBox.getSize(new THREE.Vector3()).length() / 2); // Mitte, Radius
   for (const s of game.solids) {
     if (s.hide) continue; // nur Physik, die Grafik baut das Bauteil selbst (z. B. Schüssel)
     let m0 = s.look === 'abc' ? abcMat(s.text) : mat(s.look);
@@ -389,6 +404,77 @@ export function createView(THREE, renderer, game) {
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   }
 
+  // ---------- Kamerafahrt: Zielmoment, Hochflug über das ganze Level, Überflug beim Start ----------
+  // cinema('win', {track}): 0–1.3 s nah am Ziel (Ring: Kamera kreist darum, Klo: dessen Kamera), 1.3–3.3 s hoch in die
+  //   Weitsicht, dabei zeichnet sich die gefahrene Strecke als Punktspur nach; danach kreist die Kamera langsam über dem Level.
+  // cinema('intro'): 1 s Weitsicht, dann in 2 s hinunter zur Murmel. cinema(null): Kamera, Nebel und Schatten wie vorher.
+  const WIN = { near: 1.3, up: 2 }, INTRO = { hold: 1, down: 2 }, OV_PITCH = 50 * Math.PI / 180;
+  const CONFETTI = [0xFF5A8A, 0xFFC928, 0x3BB273, 0x2F6FEB];
+  const FOG0 = [scene.fog.near, scene.fog.far], FAR0 = camera.far, sc = sun.shadow.camera;
+  const SHADOW0 = { left: sc.left, right: sc.right, top: sc.top, bottom: sc.bottom, far: sc.far };
+  const ovPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+  const cF = new THREE.Vector3(), cR = new THREE.Vector3(), cU = new THREE.Vector3(), cC = new THREE.Vector3();
+  let cin = null, shadowWide = false;
+  const smoother = x => (x = Math.max(0, Math.min(1, x))) * x * x * (x * (x * 6 - 15) + 10);
+  // Abstand zur Level-Mitte, aus dem die ganze Level-Box ins Bild passt (Blick aus Richtung yaw, OV_PITCH nach unten);
+  // setzt cF = Blickrichtung
+  function fitDist(yaw) {
+    cF.set(-Math.sin(yaw) * Math.cos(OV_PITCH), -Math.sin(OV_PITCH), -Math.cos(yaw) * Math.cos(OV_PITCH));
+    cR.set(Math.cos(yaw), 0, -Math.sin(yaw)); cU.crossVectors(cR, cF);
+    const tv = Math.tan(camera.fov * Math.PI / 360) * 0.9, th = tv * camera.aspect; // 10 % Rand
+    let d = lvR * 0.5;
+    for (let k = 0; k < 8; k++) {
+      cC.set(k & 1 ? lvBox.max.x : lvBox.min.x, k & 2 ? lvBox.max.y : lvBox.min.y, k & 4 ? lvBox.max.z : lvBox.min.z).sub(lvC);
+      const z = cC.dot(cF);
+      d = Math.max(d, Math.abs(cC.dot(cR)) / th - z, Math.abs(cC.dot(cU)) / tv - z);
+    }
+    return d;
+  }
+  // Blick vom Start her auf die Level-Mitte; um 90° gedreht, wenn das Level so deutlich besser ins Bild passt (Hochformat)
+  function baseYaw() {
+    const s = game.level.start || [0, 0, 0], y0 = Math.atan2(-(lvC.x - s[0]), -(lvC.z - s[2]));
+    return fitDist(y0 + Math.PI / 2) < fitDist(y0) * 0.8 ? y0 + Math.PI / 2 : y0;
+  }
+  // Gefahrene Strecke als Punkte (Aufnahme alle 0.1 s, in cm); Sprünge über 3 m (Absturz, zurück zum Checkpoint) auslassen
+  function trackDots(track, dist) {
+    const p = track && track.p, n = p ? p.length / 3 : 0;
+    if (n < 2) return null;
+    const every = Math.ceil(n / 1500), im = new THREE.InstancedMesh(new THREE.SphereGeometry(Math.max(0.3, dist * 0.006), 8, 6), new THREE.MeshBasicMaterial({ color: 0xFFE066, fog: false }), n);
+    let k = 0;
+    for (let i = 1; i < n; i++) {
+      tmp.set(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]).divideScalar(100);
+      if (tmp.distanceTo(dir.set(p[i * 3 - 3], p[i * 3 - 2], p[i * 3 - 1]).divideScalar(100)) > 3 || i % every) continue;
+      im.setMatrixAt(k++, tmpM.makeTranslation(tmp.x, tmp.y, tmp.z));
+    }
+    im.userData.n = k; im.count = 0; im.frustumCulled = false; scene.add(im);
+    return im;
+  }
+  function wideShadow(on) {
+    if (on === shadowWide) return;
+    shadowWide = on;
+    Object.assign(sun.shadow.camera, on ? { left: -lvR, right: lvR, top: lvR, bottom: -lvR, far: lvR * 4 } : SHADOW0);
+    sun.shadow.camera.updateProjectionMatrix();
+  }
+  function restoreCam() {
+    scene.fog.near = FOG0[0]; scene.fog.far = FOG0[1];
+    if (camera.far !== FAR0) { camera.far = FAR0; camera.updateProjectionMatrix(); }
+    wideShadow(false);
+  }
+  function cinema(kind, opts = {}) {
+    if (cin && cin.dots) { scene.remove(cin.dots); cin.dots.geometry.dispose(); cin.dots.material.dispose(); }
+    cin = null;
+    if (!kind) { restoreCam(); return; }
+    cin = { kind, t: 0, yaw: baseYaw(), bursts: 0 };
+    if (kind === 'win') {
+      cin.orbit = !!v.goal && elW < 0.5; // Ring-Ziel; beim Klo bleibt dessen Kamera
+      cin.focus = (cin.orbit ? v.goal.position : elW >= 0.5 ? elLook : ballMesh.position).clone();
+      cin.azi = Math.atan2(camera.position.x - cin.focus.x, camera.position.z - cin.focus.z);
+      cin.dots = trackDots(opts.track, fitDist(cin.yaw));
+    }
+  }
+  // Anteil der Weitsicht (0 = normale Kamera, 1 = ganzes Level)
+  const overWeight = () => !cin ? 0 : cin.kind === 'win' ? smoother((cin.t - WIN.near) / WIN.up) : 1 - smoother((cin.t - INTRO.hold) / INTRO.down);
+
   // lean = 1: Welt kippt sichtbar mit (Kippen), 0: ruhige Kamera, nur die Kugel rollt (Joystick)
   function render(dt, inX, inZ, camYaw, tiltDeg = 25, lean = 1) {
     const b = game.ball;
@@ -404,6 +490,13 @@ export function createView(THREE, renderer, game) {
       ringT += dt; const k = Math.min(1, ringT / RING_FADE);
       ring.material.opacity = 0.9 * (1 - k); ring.scale.setScalar(1 + k * 0.8);
       if (k >= 1) { ring.visible = false; ringT = -1; }
+    }
+    if (cin) {
+      cin.t += dt;
+      // Ring-Ziel: Freudensprung (nur Grafik), Konfetti in drei Schüben, Strecke zeichnet sich beim Hochflug nach
+      if (cin.orbit && cin.t < WIN.near) ballMesh.position.y += Math.abs(Math.sin(cin.t * 8)) * 0.6 * (1 - cin.t / WIN.near);
+      while (cin.kind === 'win' && cin.bursts < 3 && cin.t >= cin.bursts * 0.4) burst(cin.focus, cin.bursts++ ? 30 : 60, CONFETTI);
+      if (cin.dots) cin.dots.count = Math.round(cin.dots.userData.n * Math.max(0, Math.min(1, (cin.t - WIN.near) / WIN.up)));
     }
     for (const t of ticks) t(dt, game);
     moveGhost();
@@ -451,19 +544,39 @@ export function createView(THREE, renderer, game) {
     // Bei manchen Bauteilen (Looping, Nagelwand) übernimmt deren eigene Kamera, weich überblendet
     elW = Math.max(0, Math.min(1, elW + (elementCam([target.x, target.y, target.z]) ? dt : -dt) * 2.5));
     const w = elW * elW * (3 - 2 * elW);
-    const k = w < 1 ? behind(target, fx, fz, rx, rz, 10 + inZ * 1.5 * lean, -inX * 1.5 * lean - lat) : 0.08;
+    let k = w < 1 ? behind(target, fx, fz, rx, rz, 10 + inZ * 1.5 * lean, -inX * 1.5 * lean - lat) : 0.08;
     tmp.lerp(elPos, w);
-    if (!camInit) { camPos.copy(tmp); camInit = true; } else camPos.lerp(tmp, k);
-    camera.position.copy(camPos);
-    camera.lookAt(lookPt.set(target.x + fx * 3, target.y, target.z + fz * 3).lerp(elLook, w));
-    // Bahn sichtbar mitkippen: rechts kippen = rechte Seite tiefer (nicht bei der Bauteil-Kamera)
-    const roll = tiltDeg * 0.3 * Math.PI / 180 * lean * (1 - w);
+    dir.set(target.x + fx * 3, target.y, target.z + fz * 3).lerp(elLook, w);
+    // Ring-Ziel: Kamera kreist schräg (40°, 8 m) um das Ziel
+    if (cin && cin.orbit) {
+      const a = cin.azi + cin.t * 0.5, f = cin.focus;
+      tmp.set(f.x + Math.sin(a) * 6.1, f.y + 5.1, f.z + Math.cos(a) * 6.1); dir.copy(f); k = 0.08;
+    }
+    if (!camInit) { camPos.copy(tmp); lookPt.copy(dir); camInit = true; } else camPos.lerp(tmp, k);
+    if (cin) lookPt.lerp(dir, 0.08); else lookPt.copy(dir);
+    // Weitsicht über das ganze Level dazumischen (langsam kreisend nach dem Gewinn)
+    const ow = overWeight();
+    let ovD = 0;
+    camera.position.copy(camPos); camLook.copy(lookPt);
+    if (ow > 0) {
+      ovD = fitDist(cin.yaw + (cin.kind === 'win' ? cin.t * 0.087 : 0));
+      camera.position.lerp(ovPos.copy(lvC).addScaledVector(cF, -ovD), ow); camLook.lerp(lvC, ow);
+      scene.fog.near = FOG0[0] + (Math.max(FOG0[0], ovD + lvR) - FOG0[0]) * ow;
+      scene.fog.far = FOG0[1] + (Math.max(FOG0[1], ovD + 2 * lvR) - FOG0[1]) * ow;
+      camera.far = Math.max(FAR0, ovD + 2.5 * lvR);
+    } else if (cin) restoreCam();
+    wideShadow(ow > 0.5);
+    camera.lookAt(camLook);
+    // Bahn sichtbar mitkippen: rechts kippen = rechte Seite tiefer (nicht bei der Bauteil-Kamera, nicht in der Kamerafahrt)
+    const roll = cin ? 0 : tiltDeg * 0.3 * Math.PI / 180 * lean * (1 - w);
     camera.rotateZ(inX * roll); camera.rotateX(inZ * roll * 0.4);
-    // Bauteil-Kamera: was näher bei der Kamera liegt als `clear` vor dem Blickpunkt, wird nicht gezeichnet (Wege, Säulen davor)
-    const near = 0.1 + Math.max(0, camera.position.distanceTo(elLook) - elClear - 0.1) * w;
-    if (camera.near !== near) { camera.near = near; camera.updateProjectionMatrix(); }
-    fade(w > 0, target);
-    sun.position.set(target.x + 6, target.y + 14, target.z + 6); sun.target.position.copy(target);
+    // Bauteil-Kamera: was näher bei der Kamera liegt als `clear` vor dem Blickpunkt, wird nicht gezeichnet (Wege, Säulen davor);
+    // in der Weitsicht weiter vorne beginnen (genug Tiefenauflösung auf die grosse Entfernung)
+    const near = Math.max(0.1 + Math.max(0, camPos.distanceTo(elLook) - elClear - 0.1) * w * (1 - ow), 0.1 + ovD * 0.004 * ow);
+    if (camera.near !== near || ow > 0) { camera.near = near; camera.updateProjectionMatrix(); }
+    fade(w > 0 && ow < 0.5, target);
+    if (shadowWide) { const s = lvR / 8; sun.position.set(lvC.x + 6 * s, lvC.y + 14 * s, lvC.z + 6 * s); sun.target.position.copy(lvC); }
+    else { sun.position.set(target.x + 6, target.y + 14, target.z + 6); sun.target.position.copy(target); }
     renderer.render(scene, camera);
   }
 
@@ -477,6 +590,7 @@ export function createView(THREE, renderer, game) {
     for (const m of thru.values()) m.dispose();
   }
 
-  const view = { scene, camera, ballMesh, burst, plopp, render, resize, setSkin, setTrail: trailFx.set, trailFx, splash, ball, setGhost, get ghost() { return ghost && ghost.mesh; }, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
+  const view = { scene, camera, ballMesh, burst, plopp, render, resize, setSkin, setTrail: trailFx.set, trailFx, splash, ball, setGhost, get ghost() { return ghost && ghost.mesh; }, dispose, fixedCam: null, sun, get goal() { return v.goal; },
+    cinema, get cinemaT() { return cin ? cin.t : -1; }, cinemaSkip(t) { if (cin && cin.t < t) cin.t = t; }, INTRO_END: INTRO.hold + INTRO.down };
   return view;
 }
