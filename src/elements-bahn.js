@@ -1,19 +1,12 @@
 // Kugelbahn-Teile: Spiraltrichter und Rinne (schmal = Rutsche, breit = Halfpipe).
 // Physik aus vielen schmalen Klötzen (hide), Grafik als glatte Fläche. Gleiche Schnittstelle wie in elements.js.
-import { DEG, add, sub, scale, fwdOf, rightOf, quatYawPitch } from './math.js';
+import { DEG, add, sub, scale, fwdOf, rightOf, quatYawPitch, mulQ } from './math.js';
 import { segment } from './elements.js';
 
 const R = 0.5;
 const dirOf = a => [Math.cos(a), 0, Math.sin(a)];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const norm = v => { const l = Math.hypot(...v) || 1; return scale(v, 1 / l); };
-// Quaternionen multiplizieren (a danach b in lokalen Achsen)
-const mulQ = (a, b) => [
-  a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
-  a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
-  a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
-  a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]
-];
 
 // Drehkörper aus Ringen: prof = [[radius, höhe], ...] von innen nach aussen, c = Mitte unten.
 // Pro Winkelstück und Ring ein schräger Klotz (Oberkante = Fläche). skip(a) = Winkel a auslassen.

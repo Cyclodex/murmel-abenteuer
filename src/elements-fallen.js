@@ -1,17 +1,10 @@
 // Fallen und Hindernisse für schwere Level: Feld mit Löchern, Falltür, Schieber, Hammer (quetscht),
 // Treppe, Fluss, rollende Felsen. Gleiche Schnittstelle wie in elements.js.
-import { DEG, quatYawPitch, rotate, add, sub, dot, scale, lerp3, toLocal, fwdOf, rightOf, ease } from './math.js';
+import { DEG, quatYawPitch, rotate, add, sub, dot, scale, lerp3, toLocal, fwdOf, rightOf, ease, mulQ } from './math.js';
 import { TYPES, segment, track, kinematicBody, driveTo, ballPos, norm } from './elements.js';
 
 const R = 0.5;
 const WATER_DRAG = 2; // Wasserwiderstand im Fluss (siehe fluss.step)
-// Quaternionen multiplizieren (a danach b in lokalen Achsen)
-const mulQ = (a, b) => [
-  a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
-  a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
-  a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
-  a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]
-];
 // Drehung um die lokale Vorwärtsachse (z): positiv = rechte Seite nach oben
 const quatRoll = a => [0, 0, Math.sin(a / 2), Math.cos(a / 2)];
 

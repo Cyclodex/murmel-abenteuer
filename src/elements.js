@@ -12,11 +12,14 @@
 //                           in jede Richtung sehen (bestimmt den Abstand), clear: nur was höchstens so weit vor look
 //                           liegt, wird gezeichnet (alles näher bei der Kamera fällt weg)}
 // Winkel in Level-Daten sind in Grad. yaw 0 = nach vorne (-z), positiv = nach links drehen.
-import { DEG, quatYawPitch, rotate, add, sub, dot, scale, lerp3, yawOf, toLocal, fwdOf, rightOf, ease } from './math.js';
+import { DEG, quatYawPitch, rotate, add, scale, lerp3, yawOf, toLocal, fwdOf, rightOf, ease, mulQ } from './math.js';
 
 const R = 0.5; // Murmel-Radius
 const TAU = Math.PI * 2;
 export const norm = v => scale(v, 1 / (Math.hypot(...v) || 1));
+// Looping: seitlicher Versatz nach dem Winkel a (0..2PI). Beginnt und endet weich: Ein- und Ausfahrt laufen gerade,
+// sonst knickt die Bahn dort seitlich ab und eine Murmel am Rand prallt auf die Schiene.
+const loopLat = (shift, a) => shift * ease(a / TAU);
 
 export function segment(from, to, fallbackYaw) {
   const dx = to[0] - from[0], dy = to[1] - from[1], dz = to[2] - from[2];
@@ -111,17 +114,29 @@ export const TYPES = {
     solids(d) {
       const h = (d.yaw || 0) * DEG, Rl = d.radius ?? 3, w = d.width ?? 3, shift = d.shift ?? 5, rail = d.rails ?? 0.8, th = 0.4, n = 40;
       const F = fwdOf(h), U = [0, 1, 0], Rr = rightOf(h), C = add(d.at, scale(U, Rl));
-      const out = [], L = TAU * (Rl + th) / n + 0.08;
+      const out = [], L = TAU * (Rl + th) / n + 0.08, da = TAU / n;
+      // Punkt auf der Schraubenlinie im Abstand r von der Mitte, seitlich um off verschoben
+      const at = (a, r, off) => add(add(C, add(scale(F, Math.sin(a) * r), scale(U, -Math.cos(a) * r))), scale(Rr, loopLat(shift, a) + off));
+      // Schienen: jedes Stück genau von einem Punkt der Schraubenlinie zum nächsten, schräg um den Versatz gedreht
+      // (gerade Stücke stünden je um den Versatz vor: eine Treppe, an der die Murmel hängen bleibt)
+      const rr = Rl - rail / 2, chord = 2 * rr * Math.sin(da / 2);
       for (let k = 0; k < n; k++) {
-        const a = (k + 0.5) * TAU / n, q = quatYawPitch(h, a);
-        const P = add(add(C, add(scale(F, Math.sin(a) * Rl), scale(U, -Math.cos(a) * Rl))), scale(Rr, shift * a / TAU));
+        const a = (k + 0.5) * da, q = quatYawPitch(h, a);
+        const side = loopLat(shift, a + da / 2) - loopLat(shift, a - da / 2), sk = Math.atan2(side, chord);
+        const qr = mulQ(q, [0, Math.sin(-sk / 2), 0, Math.cos(-sk / 2)]), Lr = Math.hypot(chord, side) + 0.02;
+        const P = at(a, Rl, 0);
         const N = add(scale(U, Math.cos(a)), scale(F, -Math.sin(a)));
         out.push({ pos: add(P, scale(N, -th / 2)), half: [w / 2, th / 2, L / 2], quat: q, look: d.look || 'ramp', track: { yaw: h, mid: P, right: Rr }, loop: d });
-        for (const k2 of [-1, 1]) out.push({ pos: add(add(P, scale(Rr, k2 * (w / 2 + 0.2))), scale(N, rail / 2)), half: [0.2, rail / 2, L / 2], quat: q, look: 'wall', glass: true, loop: d });
+        for (const k2 of [-1, 1]) {
+          const A = at(a - da / 2, rr, k2 * (w / 2 + 0.2)), B = at(a + da / 2, rr, k2 * (w / 2 + 0.2));
+          out.push({ pos: scale(add(A, B), 0.5), half: [0.2, rail / 2, Lr / 2], quat: qr, look: 'wall', glass: true, loop: d });
+        }
       }
       return out;
     },
     reset(el) { el.prog = null; el.away = 0; },
+    // Im Looping zählt Kippen nicht (die Seitenführung hält die Murmel auf der Spur, Lenken brächte sie nur an die Schiene)
+    pre(el, g) { if (el.prog !== null && el.away === 0) { g.world.gravity.x = 0; g.world.gravity.z = 0; } },
     // Seitenführung: hält die Murmel auf der schraubenförmigen Spur, ohne dass sie an die Schienen prallt
     step(el, g, h) {
       const u = g.touchBody && g.touchBody.userData;
@@ -131,25 +146,29 @@ export const TYPES = {
       const F = fwdOf(yaw), Rr = rightOf(yaw), p = ballPos(g), v = g.ball.velocity;
       const c = add(el.at, [0, Rl, 0]), rel = [p[0] - c[0], p[1] - c[1], p[2] - c[2]];
       const sa = rel[0] * F[0] + rel[2] * F[2], a = Math.atan2(sa, -rel[1]);           // -PI..PI, 0 = unten
-      if (el.prog === null) el.prog = a < -Math.PI / 2 ? a + TAU : a;                    // Einfahrt ~0, Ausfahrt ~2PI
-      else el.prog += Math.atan2(Math.sin(a - el.prog), Math.cos(a - el.prog));
-      const pr = Math.max(0, Math.min(TAU, el.prog));
       const lat = (p[0] - el.at[0]) * Rr[0] + (p[2] - el.at[2]) * Rr[2];
-      const vf = v.x * F[0] + v.z * F[2], vt = Math.hypot(vf, v.y);
-      const want = (el.prog > 0 && el.prog < TAU - 0.6 ? shift / (TAU * (Rl - R)) * vt : 0) + 4 * (shift * pr / TAU - lat);
+      if (el.prog === null) {                                                            // Einfahrt ~0, Ausfahrt ~2PI
+        el.prog = a < -Math.PI / 2 ? a + TAU : a;
+        el.lat0 = lat - loopLat(shift, Math.max(0, el.prog));                            // Versatz bei der Einfahrt
+      } else el.prog += Math.atan2(Math.sin(a - el.prog), Math.cos(a - el.prog));
+      const pr = Math.max(0, Math.min(TAU, el.prog)), rc = Rl - R;                       // rc = Bahn der Murmelmitte
+      const vf = v.x * F[0] + v.z * F[2];
+      // seitlich von der Einfahrtsstelle weich bis zur Ausfahrt (Versatz bei der Einfahrt baut sich über die Runde ab)
+      const vt = Math.hypot(vf, v.y), dLat = shift * Math.PI / (2 * TAU) * Math.sin(Math.PI * pr / TAU) - el.lat0 / TAU; // pro Radiant
+      const want = (el.prog > 0 && el.prog < TAU ? dLat * vt / rc : 0) + 4 * (el.lat0 * (1 - pr / TAU) + loopLat(shift, pr) - lat);
       const vl = v.x * Rr[0] + v.z * Rr[2], dv = want - vl;
       v.x += Rr[0] * dv; v.z += Rr[2] * dv;
     },
     // Kamera von der Seite (auf der Achse des Loopings), damit man die ganze Runde sieht; die Schienen sind
     // dafür halb durchsichtig. Von der Seite der Einfahrt: dort verdeckt die spätere Hälfte der Bahn nichts.
+    // Erst wenn die Murmel im Looping ist (vorher lenkt man noch auf den Turbo, dafür braucht es die Sicht von hinten).
     view(el) {
       const yaw = (el.yaw || 0) * DEG, Rl = el.radius ?? 3, shift = el.shift ?? 5, w = el.width ?? 3;
-      const F = fwdOf(yaw), Rr = rightOf(yaw), mid = add(add(el.at, [0, Rl, 0]), scale(Rr, shift / 2));
+      const Rr = rightOf(yaw), mid = add(add(el.at, [0, Rl, 0]), scale(Rr, shift / 2));
       const dir = norm(add(scale(Rr, shift < 0 ? 1 : -1), [0, 0.25, 0]));
       return {
         cam(p) {
-          const rel = sub(p, mid), f = dot(rel, F), y = p[1] - el.at[1];
-          if (f < -Rl - 4 || f > Rl + 0.5 || Math.abs(dot(rel, Rr)) > Math.abs(shift) / 2 + w / 2 + 1 || y < -1 || y > 2 * Rl + 1.5) return null;
+          if (el.prog === null) return null;
           return { look: lerp3(mid, p, 0.3), dir, fit: Rl + 1.5, clear: Math.abs(shift) / 2 + w / 2 + 1.5 };
         }
       };
