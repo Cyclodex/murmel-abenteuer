@@ -418,7 +418,7 @@ test('Treppe: alle Murmeln kommen unten an, der Flummi springt am höchsten', as
 });
 
 test('Menüs zeigen die Treppe im Hintergrund, Knopf 🪜 zeigt sie im Vollbild, die Murmeln werfen Dominos um', async ({ page }) => {
-  test.setTimeout(120_000); // bis die Murmeln die ersten Dominos treffen: 2.5 s Spielzeit, im Container gut 10 s
+  test.setTimeout(120_000); // bis die Murmeln die ersten Dominos treffen: gut 3 s Spielzeit, im Container gut 13 s
   const errors = watchErrors(page);
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.backdrop);

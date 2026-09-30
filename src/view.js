@@ -174,6 +174,7 @@ export function createView(THREE, renderer, game) {
     else if (look === 'pfuetze') m = new THREE.MeshPhongMaterial({ map: puddleTex(THREE), shininess: 120, specular: 0xCCE8FF });
     else if (look === 'band') m = lambert(0x3A3F47);
     else if (look === 'glas') m = new THREE.MeshPhongMaterial({ color: 0xDFF4FF, transparent: true, opacity: 0.16, shininess: 150, depthWrite: false });
+    else if (look === 'plexi') m = new THREE.MeshPhongMaterial({ color: 0xA9DCF7, transparent: true, opacity: 0.35, shininess: 150, depthWrite: false }); // sichtbarer als Glas
     else if (look === 'nagelwand') m = lambert(0xffffff, { map: woodTex(THREE, '#D9A066', '#7A4A1E') });
     else if (look === 'falltuer') m = lambert(0xffffff, { map: stripeTex(THREE) });
     else if (look === 'schieber') m = new THREE.MeshPhongMaterial({ color: 0x8E24AA, shininess: 50 });
