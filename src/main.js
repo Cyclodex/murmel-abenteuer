@@ -13,6 +13,7 @@ import { createCheer } from './cheer.js';
 import { createProgress } from './progress.js';
 import { angleDiff } from './math.js';
 import { createRecorder, formatTime } from './ghost.js';
+import { score, ranking } from './score.js';
 
 const $ = id => document.getElementById(id);
 const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
@@ -155,17 +156,24 @@ function showMap() {
 
 // ---------- Spieler ----------
 const MEDALS = ['🥇', '🥈', '🥉'];
-// Rangliste als Text: "🥇 Anna ⭐12" (Namen nie als HTML einsetzen)
-const rankText = (r, i) => `${MEDALS[i] || `${i + 1}.`} ${r.name} ⭐${r.stars}`;
+// Rangliste als Text: "🥇 Anna 🏆3274 ⭐12" bzw. im Level "🥇 Anna 🏆1637 🐇" (Namen nie als HTML einsetzen)
+const rankText = (r, i) => `${MEDALS[i] || `${i + 1}.`} ${r.name} 🏆${r.score}` + (r.power ? ` ${(POWERS.find(p => p.id === r.power) || POWERS[1]).emoji}` : '');
+// Alle Spieler auf dem Gerät nach Punkten (auch die ohne Fahrt, mit 0)
+function playerRanking() {
+  const pts = new Map(ranking(progress.rows()).map(r => [r.name.toLowerCase(), r.score]));
+  return progress.players()
+    .map(p => ({ id: p.id, name: p.name, score: pts.get(p.name.toLowerCase()) || 0, stars: progress.totalStars(p) }))
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+}
 
 function showPlayers() {
   backdrop = true;
   ['mapOv', 'startOv'].forEach(id => show(id, false));
   const list = $('playerList'); list.textContent = '';
-  progress.ranking().forEach((r, i) => {
+  playerRanking().forEach((r, i) => {
     const b = document.createElement('button');
     b.className = 'player' + (progress.player()?.id === r.id ? ' sel' : '');
-    b.dataset.player = r.id; b.textContent = rankText(r, i);
+    b.dataset.player = r.id; b.textContent = `${rankText(r, i)} ⭐${r.stars}`;
     b.onclick = () => { audio.sfx('tap'); progress.selectPlayer(r.id); showMap(); };
     list.appendChild(b);
   });
@@ -275,6 +283,11 @@ function onWin() {
   // Bestzeit: neue Bestzeit speichert die Fahrt als Geistermurmel
   const t = game.time, had = progress.bestTime(lv.id), fastest = progress.setTime(lv.id, t);
   if (fastest) progress.setGhost(lv.id, rec.track(t, currentSkin().id));
+  // Punkte der Fahrt (Zeit gerundet wie gespeichert, damit sie sich aus den gespeicherten Werten nachrechnen lassen)
+  const run = { stars: game.st.stars, total: game.st.starTotal, time: +t.toFixed(2), falls: game.st.falls, power: power().id };
+  run.score = score({ level: lv.id, ...run });
+  const hadRun = progress.run(lv.id), record = progress.setRun(lv.id, run);
+  $('winScore').textContent = `🏆 ${run.score}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : ` · 🏆 ${hadRun.score}`);
   $('winTime').textContent = `⏱ ${formatTime(t)}` + (fastest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
   const after = progress.totalStars();
   const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got) ? lv.id : null;
@@ -286,8 +299,8 @@ function onWin() {
   $('winUnlock').textContent = news.length ? '🔮 ' + news.map(s => s.emoji).join(' ') + ' 🆕' : '';
   show('winUnlock', news.length > 0);
   const cheers = [...news, ...stickers].map(x => x.emoji);
-  // Vergleich mit den anderen Spielern (beste Sterne in diesem Level)
-  const rank = progress.ranking(LEVELS[levelIdx].id).filter(r => r.stars > 0);
+  // Vergleich mit den anderen Spielern (beste Punkte in diesem Level, mit Stärke)
+  const rank = ranking(progress.rows(), lv.id);
   $('winRank').textContent = rank.map(rankText).join('\n');
   show('winRank', rank.length > 1);
   show('nextBtn', levelIdx + 1 < LEVELS.length && isOpen(levelIdx + 1));
