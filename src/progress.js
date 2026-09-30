@@ -2,7 +2,7 @@
 // Einstellungen (Steuerung, Stärke, Ton) gelten für alle, Sterne, Bonussterne, Bestzeiten, Punkte, Murmel, Spur und Sticker pro Spieler.
 // bonus = Level, in denen der Bonusstern schon einmal ins Ziel gebracht wurde.
 // runs = pro Level die Fahrt mit den meisten Punkten { stars, total, time, falls, power, score } (siehe score.js).
-// Die Fahrten der Bestzeiten (Geistermurmel) liegen getrennt unter GHOST_KEY (grösser, dürfen verloren gehen).
+// Die Aufnahmen der Fahrten aus runs (Geistermurmel) liegen getrennt unter GHOST_KEY (grösser, dürfen verloren gehen).
 const KEY = 'murmel-abenteuer-v2';
 const GHOST_KEY = 'murmel-geist-v1';
 const OLD_KEY = 'murmel-abenteuer-v1'; // alter Spielstand ohne Spieler
@@ -29,7 +29,7 @@ function read() {
   const d = load(KEY);
   if (d) {
     const players = Array.isArray(d.players) ? d.players.filter(p => p && p.id && p.name).map(p => ({ ...newPlayer(p.name, p), id: p.id })) : [];
-    return { players, current: d.current || null, control: d.control || null, power: d.power || 'normal', sound: d.sound || 'alle', legacy: d.legacy || null };
+    return { players, current: d.current || null, control: d.control || null, power: d.power || 'normal', sound: d.sound || 'alle', legacy: d.legacy || null, geist: d.geist || null };
   }
   // Alter Spielstand: Einstellungen übernehmen, Sterne bekommt der erste neue Spieler
   const o = load(OLD_KEY) || {};
@@ -79,6 +79,8 @@ export function createProgress() {
     bestTime: id => me().times[id] || 0,
     setTime(id, t) { const p = me(), old = p.times[id]; if (old && old <= t) return false; p.times[id] = +t.toFixed(2); save(); return true; },
     ghost: id => (player() && ghosts[player().id] && ghosts[player().id][id]) || null,
+    // Aufnahme eines Spielers auf diesem Gerät (Name ohne Gross/Klein)
+    ghostOf(name, id) { const p = data.players.find(x => x.name.toLowerCase() === name.toLowerCase()); return (p && ghosts[p.id] && ghosts[p.id][id]) || null; },
     setGhost(id, track) { const p = player(); if (!p) return; (ghosts[p.id] = ghosts[p.id] || {})[id] = track; saveGhosts(); },
     setSkin(id) { me().skin = id; save(); },
     get trail() { return me().trail; },
@@ -90,6 +92,8 @@ export function createProgress() {
     setControl(c) { data.control = c; save(); },
     setPower(p) { data.power = p; save(); },
     setSound(m) { data.sound = m; save(); },
+    // zuletzt gewählte Geister beim Levelstart ('ich', 'best', 'beide', 'kein')
+    setGeist(g) { data.geist = g; save(); },
     clear() { const p = me(); p.done = {}; p.best = {}; p.bonus = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; p.times = {}; p.runs = {}; delete ghosts[p.id]; save(); saveGhosts(); }
   };
 }

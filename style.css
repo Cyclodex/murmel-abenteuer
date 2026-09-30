@@ -76,6 +76,25 @@ background:rgba(255,255,255,.35);border:3px solid rgba(255,255,255,.8);touch-act
 -webkit-user-select:text;user-select:text;box-shadow:inset 0 2px 0 rgba(0,0,0,.12)}
 #btnPlayer{flex-shrink:0;width:auto;height:auto;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rank{background:var(--panel);border-radius:18px;padding:6px 16px;font-size:20px;white-space:pre-line;text-align:left}
+button.rank{width:auto;height:auto;font-size:20px}
+#mapStars{width:auto;height:auto}
+/* Rangliste: eine Zeile pro Spieler, Knöpfe 👁 zuschauen und 👻 gegen die Aufnahme fahren */
+#rankOv .row{align-items:center;gap:8px;width:min(100%,420px)}
+#rankOv .row button{flex-shrink:0}
+#rankOv h1{flex:1;min-width:0;font-size:24px;padding:6px 12px;overflow-wrap:anywhere}
+#rankList{display:flex;flex-direction:column;gap:8px;width:min(100%,420px)}
+.rrow{display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:18px;padding:4px 6px 4px 16px;font-size:20px;min-height:48px;box-sizing:border-box}
+.rrow span{flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow button{flex-shrink:0;width:44px;height:44px;font-size:22px;border-radius:14px;background:#fff}
+.rrow.me{outline:4px solid var(--go)}
+/* Geister beim Levelstart */
+#ghostPick{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;max-width:520px}
+#ghostPick .big{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ghostPick .sel{outline:5px solid var(--go)}
+/* Zuschauen: nur Zeit, Name und Knöpfe von vorne / zurück */
+#watchName{display:none}
+.hud.watch #watchName{display:block}
+.hud.watch #btnControl,.hud.watch #btnCal{display:none!important}
 /* Sticker-Album: eine Zeile pro Welt (auf breiten Bildschirmen zwei Spalten), Erklärung bleibt beim Scrollen oben */
 #albumInfo{position:sticky;top:0;z-index:1;max-width:min(100%,420px);white-space:normal;text-align:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 3px 0 rgba(0,0,0,.12)}
 #albumGrid{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;max-width:760px}

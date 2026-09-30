@@ -1,5 +1,5 @@
-// Wettlauf gegen die eigene Bestzeit: die Fahrt wird aufgenommen und fährt beim nächsten Mal
-// als durchsichtige Geistermurmel mit.
+// Wettlauf gegen die beste Fahrt (die mit den meisten Punkten, eigene oder fremde): die Fahrt wird aufgenommen und fährt
+// beim nächsten Mal als durchsichtige Geistermurmel mit; beim Zuschauen fährt die Murmel sie nach.
 //   createRecorder()        -> add(t, pos) jedes Bild, track(t, skin) = Aufnahme zum Speichern
 //   ghostAt(track, t, out)  -> Position der Geistermurmel zur Zeit t (am Ende bleibt sie im Ziel)
 //   formatTime(s)           -> "12.3" bzw. "1:02.3"
