@@ -351,7 +351,7 @@ $('winGhost').onclick = async () => {
   race = { level: id, name, track }; restart(); toast(`👻 ${name}`);
 };
 
-const VIBRATE = { quetsch: [120, 40, 60], klapp: 30, platsch: 40, spritz: 30, spuel: [40, 60, 40], boom: [80, 30, 40], roehre: 30, plopp: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
+const VIBRATE = { quetsch: [120, 40, 60], klapp: 30, platsch: 40, spritz: 30, spuel: [40, 60, 40], boom: [80, 30, 40], roehre: 30, plopp: 20, wieder: 20, star: 30, jump: 40, fall: 80, turbo: 20, click: 40, win: [60, 40, 60] };
 function onEvent(e) {
   if (e === 'hit') { audio.sfx('hit', game.hitStrength); return; }
   if (e === 'tock') { audio.sfx('tock', game.tockIdx); return; }
@@ -361,6 +361,7 @@ function onEvent(e) {
   if (e === 'platsch') view.burst(view.ballMesh.position, 16, [0x5B3A1E, 0x7D5A36]);
   if (e === 'sauber') view.burst(view.ballMesh.position, 20, [0xFFFFFF, 0xBDEBFF, 0x7FC4F5]);
   if (e === 'bonus') { buzz([30, 30, 30]); view.burst(view.ballMesh.position, 30, [0xC77DFF, 0xFFC928, 0xFFFFFF]); }
+  if (e === 'wieder') view.plopp();
   if (e === 'win') onWin();
   if ((e === 'fall' || e === 'zurueck') && pilot) pilot.fell();
 }
@@ -413,6 +414,7 @@ function loop(now) {
   }
   // Kamera dreht weich mit der Bahn; Eingabe wirkt relativ zur Kamera
   camYaw += angleDiff(camYaw, game.track.yaw) * Math.min(1, dt * 3);
+  if (game.holdT > 0) camYaw = game.track.yaw; // nach dem Runterfallen: Blickrichtung am Checkpoint (die Kamera fliegt hin)
   const c = Math.cos(camYaw), s = Math.sin(camYaw);
   let [sx, sz] = input.read();
   if (pilot && running) { const [ix, iz] = pilot.drive(); sx = ix * c - iz * s; sz = ix * s + iz * c; } // Welt -> Kamera

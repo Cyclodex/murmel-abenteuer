@@ -148,7 +148,8 @@ export function createAudio(opts = {}) {
     star: t => { [88, 93, 100].forEach((n, i) => bell(midi(n), t + i * 0.06, 0.2, 0.4)); hiss(t, 0.25, 0.05, 'highpass', 6000); },
     bonus: t => { [84, 88, 91, 96, 100, 103].forEach((n, i) => bell(midi(n), t + i * 0.05, 0.18, 0.5)); hiss(t, 0.5, 0.06, 'highpass', 7000); },
     jump: t => { tone(160, t, 0.28, 0.7, 'sine', 560); tone(320, t, 0.2, 0.16, 'triangle', 1100); },
-    fall: t => { tone(900, t, 0.5, 0.2, 'triangle', 140); tone(midi(79), t + 0.55, 0.12, 0.25, 'sine', midi(86)); },
+    fall: t => tone(900, t, 0.5, 0.2, 'triangle', 140),
+    wieder: t => { tone(500, t, 0.08, 0.5, 'sine', 1200); tone(midi(79), t + 0.06, 0.12, 0.25, 'sine', midi(86)); }, // nach dem Runterfallen am Checkpoint eingeploppt
     cp: t => { bell(midi(79), t, 0.22, 0.5); bell(midi(86), t + 0.12, 0.22, 0.6); },
     turbo: t => { hiss(t, 0.4, 1.0, 'bandpass', 400, 3500, 1.5); tone(180, t, 0.35, 0.3, 'sawtooth', 700); },
     click: t => { hiss(t, 0.03, 0.7, 'highpass', 2500); tone(1200, t, 0.04, 0.2, 'square', 900); tone(midi(72), t + 0.08, 0.2, 0.18, 'triangle'); },
