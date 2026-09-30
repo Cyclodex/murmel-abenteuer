@@ -14,6 +14,14 @@ export function rotate(q, v) {
   return [v[0] + w * tx + (y * tz - z * ty), v[1] + w * ty + (z * tx - x * tz), v[2] + w * tz + (x * ty - y * tx)];
 }
 
+// Quaternionen multiplizieren (a danach b in lokalen Achsen)
+export const mulQ = (a, b) => [
+  a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+  a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+  a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+  a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]
+];
+
 export const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 export const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 export const scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];

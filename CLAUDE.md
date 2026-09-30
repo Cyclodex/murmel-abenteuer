@@ -7,6 +7,9 @@ allen Stärken und Murmeln. `npm run test:schnell` (die übrigen 50) dauert dort
 Die volle Suite läuft als GitHub Action (`.github/workflows/tests.yml`) nachts, wenn main neue Commits hat, und lässt sich
 von Hand starten (Actions → „Tests (voll)“ → „Run workflow“). In der Session die volle Suite nicht selbst starten,
 ausser der Benutzer will es.
+Jeder PR startet `.github/workflows/pr.yml` („Tests (PR)“): `npm run test:schnell` und `pruefe-level.mjs` für die Level,
+deren Datei oder Route der PR ändert (`tests/geaenderte-level.mjs`; Änderung an `src/levels/index.js`, `tests/autopilot.js`
+oder `tests/pruefe-level.mjs` → alle Level).
 
 **Tests nicht selbst in der Session starten** (weder `npm test` noch `test:schnell`, einzelne Playwright-Tests oder
 `pruefe-level.mjs`), ausser der Benutzer will es: Das macht der PR (GitHub Action „Tests (PR)“, `.github/workflows/pr.yml`).
