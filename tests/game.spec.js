@@ -528,12 +528,16 @@ test('Kurve, Spirale und Looping werden ohne Absturz durchfahren, der Looping br
   expect(k.ev).toEqual([]);
   expect(k.p[0]).toBeGreaterThan(5);
   expect(k.aus).toBeCloseTo(-Math.PI / 2, 2);
-  // Spirale: eine Runde 6 m hinunter, unten geht es geradeaus weiter
+  // Spirale: eine Runde 6 m hinunter, unten geht es geradeaus weiter. Die Murmel rollt auf dem Boden, statt von Naht zu Naht
+  // zu springen (mit Brettern über die ganze Breite war sie 63 % der Zeit in der Luft, gemessen jetzt 8 %)
   const s = await fahre(page, [{ type: 'weg', from: [0, 6, 4], to: [0, 6, 0], width: 3, walls: 0.8, caps: 'start' }, { type: 'spirale', at: [0, 6, 0], turn: 360, rise: -6, radius: 4, width: 3, walls: 0.8 },
-    { type: 'weg', from: [0, 0, 0], to: [0, 0, -10], width: 3, walls: 0.8, caps: 'end' }], [0, 6, 2], 14, [0, 0], schwung(2));
+    { type: 'weg', from: [0, 0, 0], to: [0, 0, -10], width: 3, walls: 0.8, caps: 'end' }], [0, 6, 2], 14, [0, 0],
+    schwung(2) + 'g.luft = 0; g.drauf = 0; g.jeSchritt = () => { const y = g.ball.position.y; if (y > 0.7 && y < 6.2) { g.drauf++; if (!g.groundBody) g.luft++; } };',
+    'return g.luft / g.drauf');
   expect(s.ev).toEqual([]);
   expect(s.p[1]).toBeLessThan(1);
   expect(s.p[2]).toBeLessThan(-2);
+  expect(s.aus).toBeLessThan(0.25);
   // Looping (Radius 3, Ausfahrt 5 m weiter rechts) mit Turbo davor: einmal ganz herum, oben bei 6 m
   const loop = [{ type: 'weg', from: [0, 0, 8], to: [0, 0, 0], width: 3, walls: 0.8, caps: 'start' }, { type: 'turbo', at: [0, 0, 1.5], size: [2.6, 2], speed: 11.5 },
     { type: 'looping', at: [0, 0, 0], radius: 3, width: 3, shift: 5 }, { type: 'weg', from: [5, 0, 0], to: [5, 0, -12], width: 4, walls: 0.8, caps: 'end' }];
