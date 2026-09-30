@@ -357,7 +357,7 @@ export const EXTRA = {
 };
 
 // Alle 28 Steine eines Domino-Spiels (Punkte oben, unten)
-const DOMINO_PAARE = [];
+export const DOMINO_PAARE = [];
 for (let a = 0; a <= 6; a++) for (let b = a; b <= 6; b++) DOMINO_PAARE.push([a, b]);
 // Punkte wie auf dem Würfel, im Einheitsquadrat einer Hälfte
 const PUNKTE = {
@@ -367,7 +367,7 @@ const PUNKTE = {
   6: [[0.27, 0.22], [0.73, 0.22], [0.27, 0.5], [0.73, 0.5], [0.27, 0.78], [0.73, 0.78]]
 };
 // Vorderseite: weiss, Trennlinie in der Mitte, oben o und unten u Punkte
-const dominoTex = (v, o, u) => v.canvasTex(64, 128, (x, w, h) => {
+export const dominoTex = (v, o, u) => v.canvasTex(64, 128, (x, w, h) => {
   x.fillStyle = '#F7F4EC'; x.fillRect(0, 0, w, h);
   x.fillStyle = '#1A1A1A'; x.fillRect(8, h / 2 - 1.5, w - 16, 3);
   [o, u].forEach((n, k) => PUNKTE[n].forEach(([px, py]) => { x.beginPath(); x.arc(px * w, k * h / 2 + py * h / 2, 6, 0, 7); x.fill(); }));

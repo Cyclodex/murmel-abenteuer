@@ -2,17 +2,17 @@
 // Jede Murmel hat ihre eigene Physik-Welt mit derselben Treppe, so stören sie sich nicht.
 import { createGame } from './game.js';
 import { createView, createBallMesh } from './view.js';
-import { canvasTex, COLORS } from './themes.js';
+import { canvasTex } from './themes.js';
+import { DOMINO_PAARE, dominoTex } from './elements-extra.js';
 
-export const STEPS = 12, TREAD = 1.2, RISE = 1, LANE = 1.15, RUN = 12;
-const ROUND = 11;  // Sekunden, dann starten alle wieder oben (die Domino-Kette ist nach gut 8 s umgefallen)
-const PUSH = 0.3;  // leichte Neigung nach vorne (Anteil der Kipp-Eingabe), damit sie in Schwung kommen
-const GLASS = 10;  // Glaswand am Ende des Auslaufs: Flummi, Pingpong und Basketball springen dort bis 7.4 m hoch
-const DECK = -1.2, DEPTH = 5.5; // Domino-Podest vor der Glaswand: Oberkante, Tiefe
+export const STEPS = 8, TREAD = 2, RISE = 1.2, LANE = 1.15, RUN = 12;
+const ROUND = 11;  // Sekunden, dann starten alle wieder oben
+const PUSH = 0.15; // leichte Neigung nach vorne (Anteil der Kipp-Eingabe): stärker, und sie springen über die Stufen
+const GLASS = 8;   // Glaswand am Ende des Auslaufs: Flummi, Pingpong und Basketball springen dort bis 6.1 m hoch
 const width = n => n * LANE + 1.2;
 
-// Treppe nach vorne (+z) hinunter (12 m hoch, 40° steil), unten ein Auslauf mit Lego-Seitenwänden und einer
-// Glaswand, an der die Murmeln zurückprallen. Davor ein tieferes Podest für die Domino-Kette (nur Grafik).
+// Treppe nach vorne (+z) hinunter (9.6 m hoch, 31° steil), unten ein Auslauf und eine Glaswand, an der die Murmeln
+// zurückprallen. Die Seitenwände sind niedrig (die Kamera schaut von der Seite): seitlich rollen die Murmeln nie.
 export function treppenLevel(n) {
   const w = width(n), top = STEPS * RISE, parts = [];
   for (let k = 0; k < STEPS; k++) {
@@ -21,13 +21,12 @@ export function treppenLevel(n) {
   }
   const e = w / 2 + 0.4, zg = RUN + 0.2;
   parts.push(
-    { type: 'weg', from: [0, 0, 0], to: [0, 0, RUN], width: w, walls: 3, thick: 1 },
+    { type: 'weg', from: [0, 0, 0], to: [0, 0, RUN], width: w, walls: 1, thick: 1 },
     { type: 'wand', from: [-e, -1, zg], to: [e, -1, zg], height: GLASS + 1, look: 'glas' },
     // Rahmen der Scheibe
     { type: 'klotz', at: [-w / 2 - 0.2, (GLASS - 1) / 2, zg], size: [0.6, GLASS + 1, 0.6], look: 'lego-rot', deko: true },
     { type: 'klotz', at: [w / 2 + 0.2, (GLASS - 1) / 2, zg], size: [0.6, GLASS + 1, 0.6], look: 'lego-blau', deko: true },
-    { type: 'klotz', at: [0, GLASS + 0.25, zg], size: [w + 1.4, 0.5, 0.6], look: 'lego-gelb', deko: true },
-    { type: 'klotz', at: [0, DECK - 0.5, RUN + 0.4 + DEPTH / 2], size: [w + 0.8, 1, DEPTH], look: 'floor', deko: true }
+    { type: 'klotz', at: [0, GLASS + 0.25, zg], size: [w + 1.4, 0.5, 0.6], look: 'lego-gelb', deko: true }
   );
   return { id: 'treppe', name: 'Treppe', emoji: '🪜', theme: 'spielzimmer', start: [0, top, -STEPS * TREAD + 1], killY: -8, parts };
 }
@@ -57,86 +56,107 @@ export function createTreppe(CANNON, skins) {
   return t;
 }
 
-// Domino-Kette auf dem Podest: der mittlere Stein fällt, sobald die erste Murmel an die Scheibe prallt, dann laufen
-// zwei Äste in Wellen nach links und rechts, die Steine werden dabei immer grösser. Nur Grafik, ohne Physik:
-// jeder Stein kippt um seine vordere Unterkante, bis er auf dem nächsten liegt (der letzte fällt flach hin).
-const DOT = [[], [[1, 1]], [[0, 0], [2, 2]], [[0, 0], [1, 1], [2, 2]], [[0, 0], [2, 0], [0, 2], [2, 2]],
-  [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]], [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]]];
-function createDominos(THREE, scene, w) {
-  const H = 1.4, B = 0.7, T = 0.22, GAP = 0.62, GROW = 1.8; // Masse des ersten Steins, der letzte ist GROW-mal so gross
-  const FALL = 0.35; // Sekunden, bis ein Stein der ersten Grösse liegt (grössere fallen langsamer)
-  const lean = Math.acos(T / GAP), touch = Math.asin((GAP - T) / H); // Ruhewinkel, Winkel beim Anstossen des nächsten
-  const cols = ['rot', 'orange', 'gelb', 'gruen', 'blau', 'lila'].map(c => COLORS[c]);
-  const side = cols.map(c => new THREE.MeshLambertMaterial({ color: c })), faces = {};
-  const face = (c, a, b) => faces[`${c}-${a}-${b}`] ||= new THREE.MeshLambertMaterial({
-    map: canvasTex(THREE, 64, 128, (x, wd, ht) => {
-      x.fillStyle = '#' + cols[c].toString(16).padStart(6, '0'); x.fillRect(0, 0, wd, ht);
-      x.fillStyle = '#fff'; x.fillRect(8, ht / 2 - 2, wd - 16, 4);
-      [a, b].forEach((n, k) => DOT[n].forEach(([i, j]) => { x.beginPath(); x.arc(14 + i * 18, 14 + j * 18 + k * ht / 2, 6, 0, 7); x.fill(); }));
-    }, false)
-  });
-  // rechter Ast (x, z ab der Scheibe), der linke ist gespiegelt; gezeichnet für 14 Murmeln (17.3 m breit)
-  const z0 = RUN + 0.4;
-  const pts = [[0.4, 1.1], [1.2, 2.5], [2.4, 3.5], [3.7, 2.8], [4.7, 1.5], [5.9, 1.3], [7, 2.4], [7.5, 3.6]];
-  const curve = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x * w / 17.3, DECK, z0 + z)));
-  const len = curve.getLength(), list = [];
-  let n = 0;
-  for (let s = 0; ; n++) { s += GAP * (1 + (GROW - 1) * s / len); if (s > len) break; }
-  const geo = new THREE.BoxGeometry(B, H, T);
-  const add = (x, z, dir, k, size, t0, last) => {
-    const grp = new THREE.Group(), m = new THREE.Mesh(geo, [...Array(4).fill(side[k % 6]), face(k % 6, k % 7, (k * 3 + 2) % 7), face(k % 6, (k + 4) % 7, k % 7)]);
-    m.position.set(0, H / 2, -T / 2); m.castShadow = true;
-    grp.add(m); grp.scale.setScalar(size); grp.rotation.order = 'YXZ';
-    grp.position.set(x, DECK, z); grp.rotation.y = Math.atan2(dir.x, dir.z);
-    scene.add(grp);
-    list.push({ grp, t0, end: last ? Math.PI / 2 : lean, dur: FALL * Math.sqrt(size) * (last ? 1.2 : 1) });
-  };
-  add(0, z0 + 0.35, new THREE.Vector3(0, 0, 1), 0, 1, 0, false);
-  for (const sx of [1, -1]) {
-    let s = 0, t0 = FALL * Math.sqrt(touch / lean); // der mittlere Stein stösst beide Äste an
-    for (let k = 1; k <= n; k++) {
-      const size = 1 + (GROW - 1) * s / len, u = s / len, p = curve.getPointAt(u), d = curve.getTangentAt(u);
-      add(sx * p.x, p.z, new THREE.Vector3(sx * d.x, 0, d.z), k, size, t0, k === n);
-      t0 += FALL * Math.sqrt(size) * Math.sqrt(touch / lean);
-      s += GAP * size;
-    }
+// Dominos: eigene Physik-Welt mit der Treppe (feste Klötze der ersten Welt), den Steinen und je einer Kugel pro Murmel,
+// die der echten Murmel folgt (kinematisch). Die Murmeln werfen die Steine um, merken selbst aber nichts davon:
+// so bleiben ihre Welten getrennt und die Treppe für alle gleich.
+// In jeder Bahn steht ein Stein vorne auf den Stufen 3 und 6 und eine Reihe von 4 Steinen im Auslauf.
+const DOM = [0.8, 1.6, 0.28]; // Breite, Höhe, Dicke
+function createDominos(THREE, CANNON, scene, t) {
+  const C = CANNON, world = new C.World();
+  world.gravity.set(0, -9.82, 0);
+  world.broadphase = new C.SAPBroadphase(world);
+  world.allowSleep = true;
+  world.solver.iterations = 10;
+  const mFest = new C.Material(), mStein = new C.Material(), mKugel = new C.Material();
+  world.addContactMaterial(new C.ContactMaterial(mFest, mStein, { friction: 0.8, restitution: 0 }));
+  world.addContactMaterial(new C.ContactMaterial(mStein, mStein, { friction: 0.6, restitution: 0 }));
+  world.addContactMaterial(new C.ContactMaterial(mKugel, mStein, { friction: 0.3, restitution: 0.1 }));
+  for (const s of t.games[0].solids) {
+    if (s.deko) continue;
+    const b = new C.Body({ mass: 0, material: mFest, shape: new C.Box(new C.Vec3(...s.half)) });
+    b.position.set(...s.pos); b.quaternion.set(...s.quat);
+    b.collisionFilterGroup = 1; b.collisionFilterMask = 4;
+    world.addBody(b);
   }
-  let start = null;
-  return {
-    count: list.length, duration: Math.max(...list.map(d => d.t0 + d.dur)),
-    get started() { return start !== null; },
-    start(time) { start = time; },
-    reset() { start = null; for (const d of list) d.grp.rotation.x = 0; },
-    update(time) {
-      if (start === null) return;
-      for (const d of list) { const a = Math.max(0, Math.min(1, (time - start - d.t0) / d.dur)); d.grp.rotation.x = d.end * a * a; }
+  const boden = new C.Body({ mass: 0, material: mFest, shape: new C.Plane() }); // Teppich (wie in view.js): hinausgeflogene Steine landen dort
+  boden.quaternion.setFromAxisAngle(new C.Vec3(1, 0, 0), -Math.PI / 2); boden.position.set(0, (t.level.killY ?? -8) - 1, 0);
+  boden.collisionFilterGroup = 1; boden.collisionFilterMask = 4;
+  world.addBody(boden);
+  const kugeln = t.games.map(g => {
+    const b = new C.Body({ mass: 0, type: C.Body.KINEMATIC, material: mKugel, shape: new C.Sphere(g.ball.shapes[0].radius) });
+    b.collisionFilterGroup = 2; b.collisionFilterMask = 4; b.allowSleep = false; // eingeschlafen würde sie nicht mehr mitgehen
+    world.addBody(b);
+    return b;
+  });
+  const [bw, bh, bt] = DOM, homes = []; // [x, y (Boden), z, Bahn]
+  t.games.forEach((g, i) => {
+    const x = t.laneX(i);
+    for (const k of [2, 5]) homes.push([x, (STEPS - k) * RISE, -STEPS * TREAD + (k + 1) * TREAD - 0.5, i]);
+    for (let j = 0; j < 4; j++) homes.push([x, 0, 2.5 + j * 1.1, i]);
+  });
+  const geo = new THREE.BoxGeometry(bw, bh, bt), white = new THREE.MeshPhongMaterial({ color: 0xF7F4EC, shininess: 60 });
+  const v = { canvasTex: (w, h, draw) => canvasTex(THREE, w, h, draw) }, faces = {};
+  const steine = homes.map((p, i) => {
+    const body = new C.Body({ mass: 0.1, material: mStein, shape: new C.Box(new C.Vec3(bw / 2, bh / 2, bt / 2)) });
+    body.collisionFilterGroup = 4; body.collisionFilterMask = 1 | 2 | 4;
+    body.sleepSpeedLimit = 0.2; body.sleepTimeLimit = 0.5;
+    body.home = [p[0], p[1] + bh / 2, p[2]];
+    world.addBody(body);
+    const [o, u] = DOMINO_PAARE[(i * 11 + 5) % DOMINO_PAARE.length];
+    const face = faces[o + '-' + u] ||= new THREE.MeshPhongMaterial({ map: dominoTex(v, o, u), shininess: 60 });
+    const mesh = new THREE.Mesh(geo, [white, white, white, white, face, face]);
+    mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh);
+    return { body, mesh, kugel: kugeln[p[3]] };
+  });
+  const d = {
+    count: steine.length,
+    // umgefallen: mehr als 60° gekippt
+    get fallen() { return steine.filter(s => { const q = s.body.quaternion; return 1 - 2 * (q.x * q.x + q.z * q.z) < 0.5; }).length; },
+    reset() {
+      for (const { body } of steine) {
+        body.position.set(...body.home); body.quaternion.set(0, 0, 0, 1);
+        body.velocity.set(0, 0, 0); body.angularVelocity.set(0, 0, 0); body.sleep();
+      }
+    },
+    step(dt) {
+      t.games.forEach((g, i) => { kugeln[i].position.copy(g.ball.position); kugeln[i].velocity.copy(g.ball.velocity); });
+      // Schlafende Steine weckt cannon.js nur bei Berührung mit einem beweglichen Körper, nicht mit einem kinematischen
+      for (const { body, kugel } of steine) if (body.sleepState === C.Body.SLEEPING && body.position.distanceTo(kugel.position) < 1.8) body.wakeUp();
+      world.step(1 / 60, dt, 4);
+      for (const { body, mesh } of steine) { mesh.position.copy(body.position); mesh.quaternion.copy(body.quaternion); }
     }
   };
+  d.reset();
+  return d;
 }
 
-// Mit Grafik: Szene der ersten Welt + je eine Kugel pro Murmel, feste Kamera von vorne, 30° von oben, die alles zeigt
+// Mit Grafik: Szene der ersten Welt + je eine Kugel pro Murmel, feste Kamera schräg von rechts vorne
+// (40° zur Seite, 30° von oben), so weit weg, dass die ganze Welt ins Bild passt
 export function createTreppenView(THREE, CANNON, renderer, skins) {
   const t = createTreppe(CANNON, skins);
   const view = createView(THREE, renderer, t.games[0]);
   view.setSkin(skins[0]);
   const meshes = [view.ballMesh];
   skins.slice(1).forEach(s => { const b = createBallMesh(THREE); b.setSkin(s); view.scene.add(b.mesh); meshes.push(b.mesh); });
-  Object.assign(view.sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, far: 100 });
+  Object.assign(view.sun.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, far: 100 });
   view.sun.shadow.camera.updateProjectionMatrix();
-  const w = width(skins.length), dominos = createDominos(THREE, view.scene, w);
-  // ganze Welt: von der obersten Stufe bis zum Podest, vom Podest bis über die Scheibe
-  const lo = [-w / 2 - 0.8, DECK - 1, -STEPS * TREAD - 0.4], hi = [w / 2 + 0.8, GLASS + 0.5, RUN + 0.4 + DEPTH];
+  const dominos = createDominos(THREE, CANNON, view.scene, t);
+  const w = width(skins.length);
+  const lo = [-w / 2 - 0.8, -1, -STEPS * TREAD - 0.4], hi = [w / 2 + 0.8, GLASS + 0.5, RUN + 0.6];
   const look = new THREE.Vector3((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2);
-  const PITCH = 30 * Math.PI / 180, back = [0, Math.sin(PITCH), Math.cos(PITCH)], up = [0, Math.cos(PITCH), -Math.sin(PITCH)];
+  const YAW = 40 * Math.PI / 180, PITCH = 30 * Math.PI / 180;
+  const back = new THREE.Vector3(Math.sin(YAW) * Math.cos(PITCH), Math.sin(PITCH), Math.cos(YAW) * Math.cos(PITCH));
+  const right = new THREE.Vector3(Math.cos(YAW), 0, -Math.sin(YAW)), up = new THREE.Vector3().crossVectors(back, right);
+  const c = new THREE.Vector3();
   view.fixedCam = cam => {
-    // so weit weg, dass alle Ecken ins Bild passen (Hochformat braucht mehr Abstand)
+    // Abstand: jede Ecke der Welt muss ins Bild passen (Hochformat braucht mehr Abstand)
     const tv = Math.tan(cam.fov * Math.PI / 360), th = tv * cam.aspect;
     let d = 0;
     for (const x of [lo[0], hi[0]]) for (const y of [lo[1], hi[1]]) for (const z of [lo[2], hi[2]]) {
-      const c = [x - look.x, y - look.y, z - look.z], dot = v => c[0] * v[0] + c[1] * v[1] + c[2] * v[2];
-      d = Math.max(d, Math.max(Math.abs(c[0]) / th, Math.abs(dot(up)) / tv) * 1.05 + dot(back));
+      c.set(x, y, z).sub(look);
+      d = Math.max(d, Math.max(Math.abs(c.dot(right)) / th, Math.abs(c.dot(up)) / tv) * 1.05 + c.dot(back));
     }
-    cam.position.set(look.x, look.y + d * back[1], look.z + d * back[2]);
+    cam.position.copy(look).addScaledVector(back, d);
     cam.lookAt(look);
     return look;
   };
@@ -147,8 +167,7 @@ export function createTreppenView(THREE, CANNON, renderer, skins) {
       t.step(dt);
       if (t.time < last) dominos.reset(); // neue Runde
       last = t.time;
-      if (!dominos.started && t.games.some(g => g.ball.position.z > RUN - 0.6)) dominos.start(t.time); // erste Murmel an der Scheibe
-      dominos.update(t.time);
+      dominos.step(dt);
       t.games.forEach((g, i) => {
         const b = g.ball, m = meshes[i];
         m.position.set(b.position.x, b.position.y, b.position.z);
