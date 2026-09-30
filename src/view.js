@@ -292,28 +292,47 @@ export function createView(THREE, renderer, game) {
   splash.schlamm.set({ shape: 'kugel', colors: [0x5B3A1E, 0x7D5A36, 0x4A2F18], size: 0.2, life: 0.5, every: 0.3, spread: 2.2, rise: 2.5, gravity: 12 });
   splash.pfuetze.set({ shape: 'kugel', colors: [0xBDEBFF, 0x7FC4F5, 0xFFFFFF], size: 0.18, life: 0.45, every: 0.2, spread: 2.5, rise: 3, gravity: 12, opacity: 0.8 });
 
-  // ---------- Geistermurmel: fährt die Bestzeit mit (src/ghost.js) ----------
-  let ghost = null;
-  const gp = [0, 0, 0], gLast = new THREE.Vector3(), gDelta = new THREE.Vector3(), gAxis = new THREE.Vector3(), gQ = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
+  // ---------- Geistermurmeln: fahren beste Fahrten mit (src/ghost.js), mit Namensschild darüber ----------
+  let ghosts = [];
+  const gp = [0, 0, 0], gDelta = new THREE.Vector3(), gAxis = new THREE.Vector3(), gQ = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
   const disposeObj = o => o.traverse(x => { if (x.geometry) x.geometry.dispose(); if (x.material) { if (x.material.map) x.material.map.dispose(); x.material.dispose(); } });
-  function setGhost(track, skin) {
-    if (ghost) { scene.remove(ghost.mesh); disposeObj(ghost.mesh); ghost = null; }
-    if (!track || !track.p || !track.p.length) return;
-    const b = createBallMesh(THREE);
-    if (skin) b.setSkin(skin);
-    b.mesh.castShadow = false;
-    b.mesh.traverse(x => { if (x.material) Object.assign(x.material, { transparent: true, opacity: 0.4, depthWrite: false }); });
-    scene.add(b.mesh);
-    ghost = { mesh: b.mesh, track, fresh: true };
+  // Name als Schild (immer lesbar, auch hinter Wänden); Text kommt von anderen Geräten, wird nur auf die Leinwand gemalt
+  function nameTag(text) {
+    const c = document.createElement('canvas'), x = c.getContext('2d'), f = '800 44px "Baloo 2", system-ui, sans-serif';
+    x.font = f; const w = Math.ceil(x.measureText(text).width) + 36;
+    c.width = w; c.height = 64;
+    x.font = f; x.fillStyle = 'rgba(255,255,255,.85)'; x.beginPath(); x.arc(32, 32, 32, Math.PI / 2, Math.PI * 1.5); x.arc(w - 32, 32, 32, -Math.PI / 2, Math.PI / 2); x.fill();
+    x.fillStyle = '#3A2A14'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, w / 2, 34);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }));
+    sp.scale.set(0.4 * w / 64, 0.4, 1); sp.renderOrder = 10;
+    return sp;
   }
-  function moveGhost() {
-    if (!ghost) return;
-    const p = ghostAt(ghost.track, game.time, gp), m = ghost.mesh;
-    m.position.set(p[0], p[1], p[2]);
-    // rollen: um die Achse quer zur Bewegung drehen (Sprünge wie Neustart nicht)
-    gDelta.subVectors(m.position, gLast); const d = gDelta.length();
-    if (!ghost.fresh && d > 1e-4 && d < 3) { gAxis.crossVectors(UP, gDelta).normalize(); m.quaternion.premultiply(gQ.setFromAxisAngle(gAxis, d / R)); }
-    gLast.copy(m.position); ghost.fresh = false;
+  // list = [{ track, skin, name }]; name = Schild über der Murmel (leer = keins)
+  function setGhosts(list = []) {
+    for (const g of ghosts) { scene.remove(g.mesh); disposeObj(g.mesh); if (g.tag) { scene.remove(g.tag); disposeObj(g.tag); } }
+    ghosts = [];
+    for (const { track, skin, name } of list) {
+      if (!track || !track.p || !track.p.length) continue;
+      const b = createBallMesh(THREE);
+      if (skin) b.setSkin(skin);
+      b.mesh.castShadow = false;
+      b.mesh.traverse(x => { if (x.material) Object.assign(x.material, { transparent: true, opacity: 0.4, depthWrite: false }); });
+      scene.add(b.mesh);
+      const tag = name ? nameTag(name) : null;
+      if (tag) scene.add(tag);
+      ghosts.push({ mesh: b.mesh, tag, track, last: new THREE.Vector3(), fresh: true });
+    }
+  }
+  function moveGhosts() {
+    for (const g of ghosts) {
+      const p = ghostAt(g.track, game.time, gp), m = g.mesh;
+      m.position.set(p[0], p[1], p[2]);
+      if (g.tag) g.tag.position.set(p[0], p[1] + R + 0.45, p[2]);
+      // rollen: um die Achse quer zur Bewegung drehen (Sprünge wie Neustart nicht)
+      gDelta.subVectors(m.position, g.last); const d = gDelta.length();
+      if (!g.fresh && d > 1e-4 && d < 3) { gAxis.crossVectors(UP, gDelta).normalize(); m.quaternion.premultiply(gQ.setFromAxisAngle(gAxis, d / R)); }
+      g.last.copy(m.position); g.fresh = false;
+    }
   }
 
   // ---------- Konfetti ----------
@@ -406,7 +425,7 @@ export function createView(THREE, renderer, game) {
       if (k >= 1) { ring.visible = false; ringT = -1; }
     }
     for (const t of ticks) t(dt, game);
-    moveGhost();
+    moveGhosts();
     if (groundFx && groundFx.tick) groundFx.tick(dt, camera);
     trailFx.update(dt, ballMesh.position);
     for (const [name, fx] of Object.entries(splash)) fx.update(dt, ballMesh.position, !!game.groundBody && game.surface === SURFACES[name]);
@@ -477,6 +496,6 @@ export function createView(THREE, renderer, game) {
     for (const m of thru.values()) m.dispose();
   }
 
-  const view = { scene, camera, ballMesh, burst, plopp, render, resize, setSkin, setTrail: trailFx.set, trailFx, splash, ball, setGhost, get ghost() { return ghost && ghost.mesh; }, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
+  const view = { scene, camera, ballMesh, burst, plopp, render, resize, setSkin, setTrail: trailFx.set, trailFx, splash, ball, setGhosts, get ghost() { return ghosts.length ? ghosts[0].mesh : null; }, get ghosts() { return ghosts.map(g => g.mesh); }, dispose, fixedCam: null, sun, get goal() { return v.goal; } };
   return view;
 }

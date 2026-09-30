@@ -15,6 +15,7 @@
   <div class="hudL">
     <div class="pill" id="stars">⭐ 0/5</div>
     <div class="pill small" id="timer">⏱ 0.0</div>
+    <div class="pill small" id="watchName"></div>
   </div>
   <div id="pilotInfo" class="hidden"></div>
   <div class="btns">
@@ -38,7 +39,6 @@
 <div class="overlay hidden" id="playerOv">
   <h1>👤 Wer spielt?</h1>
   <div id="playerList"></div>
-  <div class="rank hidden" id="worldRank" aria-label="Weltrangliste"></div>
   <form id="playerForm" class="row">
     <input id="playerName" maxlength="16" placeholder="Name" autocomplete="off" enterkeyhint="done" aria-label="Neuer Spieler: Name">
     <button type="submit" aria-label="Spieler anlegen">➕</button>
@@ -47,7 +47,7 @@
 <div class="overlay hidden" id="mapOv">
   <button class="pill" id="btnPlayer" aria-label="Spieler wechseln">👤</button>
   <div class="row">
-    <div class="pill" id="mapStars">⭐ 0</div>
+    <button class="pill" id="mapStars" aria-label="Rangliste">⭐ 0</button>
     <button id="btnAlbum" aria-label="Sticker-Album">🏅</button>
     <button id="btnSkins" aria-label="Murmel aussuchen">🔮</button>
     <button id="mapControl" aria-label="Steuerung wechseln: Kippen oder Joystick">🕹️</button>
@@ -76,13 +76,28 @@
   <div class="pill" id="winTime"></div>
   <div class="pill" id="winScore"></div>
   <div class="pill hidden" id="winUnlock"></div>
-  <div class="rank hidden" id="winRank"></div>
+  <button class="rank hidden" id="winRank" aria-label="Rangliste von diesem Level"></button>
   <button class="pill hidden" id="winGhost" aria-label="Gegen die Aufnahme des Besten fahren"></button>
   <div class="row">
     <button class="big" id="againBtn" aria-label="Nochmal">🔄</button>
     <button class="big" id="nextBtn" aria-label="Nächstes Level">▶️</button>
     <button class="big" id="mapBtn" aria-label="Zur Karte">🏠</button>
   </div>
+</div>
+<div class="overlay hidden" id="ghostOv">
+  <h1 id="ghostTitle"></h1>
+  <div id="ghostPick"></div>
+  <button class="big" id="ghostBack" aria-label="Zur Karte">🏠</button>
+</div>
+<div class="overlay hidden" id="rankOv">
+  <div class="row">
+    <button id="rankPrev" aria-label="Vorherige Rangliste">◀️</button>
+    <h1 id="rankTitle">🌍</h1>
+    <button id="rankNext" aria-label="Nächste Rangliste">▶️</button>
+  </div>
+  <div id="rankList"></div>
+  <div class="pill hidden" id="rankEmpty">🤷</div>
+  <button class="big" id="rankBack" aria-label="Fertig">✔️</button>
 </div>
 <div class="hidden" id="cheerOv" aria-live="polite"><div class="rain"></div><div class="items"></div></div>
 

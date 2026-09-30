@@ -38,7 +38,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter, werfen unterwegs Dominos um und prallen unten an eine Glaswand (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |
 | `src/trails.js` | Spuren hinter der Murmel (freischaltbar über Sterne ⭐ oder Sticker 🏅), Partikel-Pool als InstancedMesh |
 | `src/stickers.js` | Sticker-Album: pro Welt 🏆 🌟 💎 💀 (aus `src/levels/index.js` erzeugt), dazu Extras; Antippen im Album erklärt den Sticker |
-| `src/ghost.js` | Bestzeit: Fahrt aufnehmen (alle 0.1 s), Geistermurmel fährt beim nächsten Mal mit, Zeitformat |
+| `src/ghost.js` | Fahrt aufnehmen (alle 0.1 s), Position einer Aufnahme zu einer Zeit (Geistermurmel, Zuschauen), Zeitformat |
 | `src/cheer.js` | Jubel beim Freischalten (Emojis, Konfetti, Klang `jubel`) |
 | `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne, Bestzeiten, beste Fahrt mit Punkten, Murmel, Spur, Bonussterne und Sticker pro Spieler; Einstellungen für alle; Geister-Fahrten getrennt (`murmel-geist-v1`) |
 | `src/score.js` | Punkte einer Fahrt (pro Level höchstens 2050: Sterne-Anteil 1000, Zeit gegen die Richtzeit bis 750, ohne Absturz 300, je Absturz 100 weniger) und Rangliste nach Punkten (Stärke wird nur angezeigt) |
@@ -51,8 +51,14 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 ## Online-Rangliste
 
 Eine weltweite Rangliste ohne Konten: pro Name und Level die Fahrt mit den meisten Punkten und ihre Aufnahme.
-Gewinn-Bildschirm: die besten 5 im Level und der eigene Platz, 👻 fährt gegen die Aufnahme des Besten.
-Spieler-Auswahl: 🌍 die besten 10 über alle Level. Ohne Netz läuft alles lokal weiter.
+Die Aufnahme der Fahrt mit den meisten Punkten ist auch der eigene Geist (gleich wie online, nicht die schnellste Fahrt).
+Ohne Netz läuft alles lokal weiter, dann mit den Spielern auf dem Gerät.
+
+- **Rangliste** (Knopf ⭐ auf der Karte oder Antippen der Rangliste im Gewinn-Bildschirm): 🌍 alle Level zusammen, mit ◀️ ▶️ jedes offene Level.
+  Die besten 10 und der eigene Platz; wer eine Aufnahme hat: 👁 zuschauen (die Murmel fährt die Aufnahme nach), 👻 gegen sie fahren.
+- **Levelstart:** Hat ein anderer eine Aufnahme, wählen: 👻 eigener Geist, 👻 der beste andere, beide oder 🚫 keiner (die Wahl wird gemerkt).
+  Fremde Geister tragen ein Namensschild, bei zwei Geistern auch der eigene.
+- **Gewinn-Bildschirm:** die besten 5 im Level und der eigene Platz, 👻 fährt gegen die Aufnahme des besten anderen.
 
 - **Datenschutz:** Namen und Fahrten sind für alle sichtbar und liegen bei Supabase (Region EU, Frankfurt). Nur Vornamen oder Spitznamen verwenden.
 - **Kein Schutz gegen Schummeln:** Jeder kann beliebige Namen und Punkte senden. Gleicher Name = gleicher Eintrag, auch auf einem anderen Gerät.

@@ -3,7 +3,7 @@
 //   pro Welt: alle Level geschafft 🏆, alle Sterne 🌟, alle Bonussterne 💎 (Sterne und Bonussterne auch in den schweren Versionen),
 //             alle schweren Versionen geschafft 💀
 //   Extras:   erste Murmel 🔮, erste Spur 💫, alle Welt-Sticker 👑, ganz dreckig ins Ziel 🐷, wieder blitzblank gewaschen 🧼,
-//             schneller als die eigene Geistermurmel 👻
+//             schneller im Ziel als alle Geistermurmeln, die mitfahren 👻
 // text = wofür es den Sticker gibt (im Album beim Antippen).
 // has(p, ctx) prüft, ob der Sticker verdient ist (p = Spielstand, ctx = { skinsOpen, trailsOpen, dreckig, sauber, geist }).
 const stars = lv => lv.parts.filter(p => p.type === 'stern');
@@ -28,7 +28,7 @@ export function buildAlbum(WORLDS) {
       { id: 'x:krone', emoji: '👑', text: 'Alle Sticker aller Welten sammeln', has: p => worldIds.every(id => p.hasSticker(id)) },
       { id: 'x:dreck', emoji: '🐷', text: 'Im Schlamm ganz dreckig werden und ins Ziel rollen', has: (p, c) => !!c.dreckig },
       { id: 'x:sauber', emoji: '🧼', text: 'Dreckig werden, wieder blitzblank werden und ins Ziel rollen', has: (p, c) => !!c.sauber },
-      { id: 'x:geist', emoji: '👻', text: 'Die eigene Bestzeit schlagen: schneller als deine Geistermurmel', has: (p, c) => !!c.geist }
+      { id: 'x:geist', emoji: '👻', text: 'Schneller im Ziel sein als die Geistermurmeln, die mitfahren', has: (p, c) => !!c.geist }
     ]
   });
   return { rows, all: rows.flatMap(r => r.stickers) };

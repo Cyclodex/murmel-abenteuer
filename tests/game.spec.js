@@ -22,6 +22,13 @@ async function newPlayer(page, name) {
   await expect(page.locator('#mapOv')).toBeVisible();
 }
 
+// Level auf der Karte antippen; hat ein anderer Spieler eine Aufnahme, fragt das Spiel nach den Geistern: ohne Geist fahren
+async function openLevel(page, id) {
+  await page.click(`.lvl[data-level="${id}"]`);
+  if (await page.locator('#ghostOv').isVisible()) await page.click('#ghostPick [data-geist="kein"]');
+  await expect(page.locator('#hud')).toBeVisible();
+}
+
 // Start -> Joystick -> Spieler -> Karte -> Level wählen
 async function play(page, levelId = 'ausflug') {
   await page.goto('/');
@@ -133,7 +140,7 @@ test('Level schaffen speichert Fortschritt und schaltet frei', async ({ page }) 
 test('Mehrere Spieler: eigener Spielstand, Rangliste nach Punkten', async ({ page }) => {
   const errors = watchErrors(page);
   const win = async (id, stars, spot, falls = 0) => {
-    await page.click(`.lvl[data-level="${id}"]`);
+    await openLevel(page, id);
     await page.evaluate(([n, p, f]) => { const g = window.murmel.game; for (let k = 0; k < f; k++) g.fall([]); g.st.stars = n; g.spawn(p); }, [stars, spot, falls]);
     await expect(page.locator('#winOv')).toBeVisible();
   };
@@ -477,7 +484,7 @@ test('Dreckige Murmel: Flecken auf der Kugel, Spritzer, Sticker 🐷 und 🧼', 
   await page.click('#cheerOv');
   // sauber ins Ziel: kein Dreck-Sticker für einen neuen Spieler
   await page.click('#mapBtn'); await page.click('#btnPlayer'); await newPlayer(page, 'Sauber');
-  await page.click('.lvl[data-level="ausflug"]');
+  await openLevel(page, 'ausflug');
   await winLevel(page, 1);
   expect((await saved(page)).stickers['x:dreck']).toBeUndefined();
   expect(errors).toEqual([]);
@@ -1346,18 +1353,28 @@ async function fakeSupabase(page, rows = [], ghosts = {}) {
 }
 const online = (name, level, stars, total, seconds, falls, ghost = false) => ({ name, level, stars, total, seconds, falls, power: 'normal', score: 0, ghost });
 
-test('Online-Rangliste: Rekord mit Aufnahme senden, Welt- und Level-Rangliste, gegen Online-Geist fahren', async ({ page }) => {
+test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geist fahren, zuschauen', async ({ page }) => {
   const errors = watchErrors(page);
   // ausflug: Max 1000 + 750 + 200 = 1950, Zoe 800 + 750 + 300 = 1850 (mit Aufnahme); sz1: Max 1000 + 750 + 300 = 2050
   const track = { t: 3, skin: 'fussball', p: [0, 100, 0, 0, 100, -500, 0, 100, -1000] }; // Zentimeter
   const server = await fakeSupabase(page,
     [online('Max', 'ausflug', 5, 5, 1, 1), online('Zoe', 'ausflug', 4, 5, 1, 0, true), online('Max', 'sz1', 6, 6, 1, 0)],
     { 'Zoe/ausflug': track });
-  await play(page, 'ausflug');
-  expect(server.calls.get_ranking.length).toBeGreaterThan(0); // beim Öffnen der Karte geholt
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  await page.click('#startJoy');
+  await newPlayer(page, 'Test');
+  // Rangliste beim Öffnen der Karte geholt. Zoe hat eine Aufnahme, eine eigene gibt es noch nicht: Zoe oder ohne Geist
+  await expect.poll(() => page.evaluate(() => window.murmel.online.rows().length)).toBe(3);
+  await page.click('.lvl[data-level="ausflug"]');
+  await expect(page.locator('#ghostPick button')).toHaveText(['👻 🥈 Zoe', '🚫']);
+  await page.click('#ghostPick [data-geist="kein"]');
+  await expect(page.locator('#hud')).toBeVisible();
+  expect(await page.evaluate(() => window.murmel.view.ghost)).toBeNull();
+  await page.waitForFunction(() => window.murmel.game.time > 0.3); // Aufnahme mit ein paar Punkten
   await page.evaluate(() => { const g = window.murmel.game; g.st.stars = 5; g.spawn([0, 5, -69]); });
   await expect(page.locator('#winOv')).toBeVisible();
-  // Rekord gesendet: Rohwerte, Punkte und die Aufnahme der Fahrt
+  // Rekord gesendet: Rohwerte, Punkte und die Aufnahme der Fahrt (dieselbe ist jetzt der eigene Geist)
   await expect.poll(() => server.calls.submit_run.length).toBe(1);
   const sent = server.calls.submit_run[0];
   expect(sent).toMatchObject({ p_name: 'Test', p_level: 'ausflug', p_stars: 5, p_total: 5, p_falls: 0, p_power: 'normal', p_score: 2050 });
@@ -1365,6 +1382,7 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Welt- und Level-Rangliste, g
   expect(sent.p_ghost.skin).toBe('standard');
   expect(sent.p_ghost.p.length % 3).toBe(0);
   expect(sent.p_ghost.p.length).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.murmel.progress.ghost('ausflug').p)).toEqual(sent.p_ghost.p);
   // Level-Rangliste mit den Online-Fahrten (Punkte aus den Rohwerten neu gerechnet), Geist des besten anderen mit Aufnahme
   await expect(page.locator('#winRank')).toHaveText('🥇 Test 🏆2050 🐇\n🥈 Max 🏆1950 🐇\n🥉 Zoe 🏆1850 🐇');
   await expect(page.locator('#winGhost')).toHaveText('👻 🥉 Zoe');
@@ -1375,10 +1393,85 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Welt- und Level-Rangliste, g
   expect(await page.evaluate(() => window.murmel.running)).toBe(true);
   await page.waitForFunction(() => window.murmel.game.time > 0.5);
   expect(await page.evaluate(() => window.murmel.view.ghost.position.z)).toBeLessThan(-9); // Zoes Aufnahme, nicht die eigene
-  // Weltrangliste in der Spieler-Auswahl: Summe über alle Level
+  expect(await page.evaluate(() => window.murmel.view.ghosts.length)).toBe(1);
+  // Rangliste über ⭐ auf der Karte: 🌍 Summe über alle Level, eigene Zeile markiert
   await page.click('#btnHome');
-  await page.click('#btnPlayer');
-  await expect(page.locator('#worldRank')).toHaveText('🌍\n🥇 Max 🏆4000\n🥈 Test 🏆2050\n🥉 Zoe 🏆1850');
+  await page.click('#mapStars');
+  await expect(page.locator('#rankTitle')).toHaveText('🌍');
+  await expect(page.locator('#rankList .rrow')).toHaveText(['🥇 Max 🏆4000', '🥈 Test 🏆2050', '🥉 Zoe 🏆1850']);
+  await expect(page.locator('#rankList .rrow.me')).toHaveText('🥈 Test 🏆2050');
+  // ▶️ erstes Level: wer eine Aufnahme hat, bekommt 👁 (zuschauen), andere dazu 👻 (gegen sie fahren)
+  await page.click('#rankNext');
+  await expect(page.locator('#rankTitle')).toHaveText('🌳 Erster Ausflug');
+  await expect(page.locator('#rankList .rrow span')).toHaveText(['🥇 Test 🏆2050 🐇', '🥈 Max 🏆1950 🐇', '🥉 Zoe 🏆1850 🐇']);
+  await expect(page.locator('#rankList .rrow').nth(0).locator('button')).toHaveText(['👁']);
+  await expect(page.locator('#rankList .rrow').nth(1).locator('button')).toHaveCount(0);
+  await expect(page.locator('#rankList .rrow').nth(2).locator('button')).toHaveText(['👁', '👻']);
+  // ◀️ zurück zu 🌍, ▶️ wieder zum Level
+  await page.click('#rankPrev');
+  await expect(page.locator('#rankTitle')).toHaveText('🌍');
+  await page.click('#rankNext');
+  // Zoe zuschauen: die Murmel fährt ihre Aufnahme nach (mit ihrer Murmel), ohne Geist, ohne Steuerung
+  await page.click('#rankList [aria-label="Zoe zuschauen"]');
+  await expect(page.locator('#watchName')).toHaveText('👁 Zoe');
+  await expect(page.locator('#btnControl')).toBeHidden();
+  expect(await page.evaluate(() => ({ running: window.murmel.running, ghosts: window.murmel.view.ghosts.length }))).toEqual({ running: false, ghosts: 0 });
+  await page.waitForFunction(() => window.murmel.game.time > 0.4);
+  expect((await ballPos(page)).z).toBeLessThan(-9);
+  // Aufnahme zu Ende: zurück zur Rangliste des Levels, ✔️ zur Karte
+  await expect(page.locator('#rankOv')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('#rankTitle')).toHaveText('🌳 Erster Ausflug');
+  expect(await page.evaluate(() => window.murmel.watching)).toBeNull();
+  await page.click('#rankBack');
+  await expect(page.locator('#mapOv')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('Geister beim Levelstart: eigener, bester, beide oder keiner, mit Namensschild', async ({ page }) => {
+  const errors = watchErrors(page);
+  const zoe = { t: 3, skin: 'fussball', p: [0, 100, 0, 0, 100, -500, 0, 100, -1000] };
+  await fakeSupabase(page, [online('Zoe', 'ausflug', 4, 5, 1, 0, true)], { 'Zoe/ausflug': zoe });
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  await page.click('#startJoy');
+  await newPlayer(page, 'Test');
+  // eigene Fahrt mit Aufnahme (weniger Punkte als Zoe mit 1850)
+  await page.evaluate(() => {
+    const m = window.murmel;
+    m.progress.setRun('ausflug', { stars: 1, total: 5, time: 20, falls: 0, power: 'normal', score: 999 });
+    m.progress.setGhost('ausflug', { t: 2, skin: 'standard', p: [0, 100, 0, 0, 100, -100, 0, 100, -200] });
+  });
+  await expect.poll(() => page.evaluate(() => window.murmel.online.rows().length)).toBe(1);
+  const ghosts = () => page.evaluate(() => ({ n: window.murmel.view.ghosts.length, tags: window.murmel.view.scene.children.filter(o => o.isSprite).length }));
+  // beide: zwei Geister, beide mit Namen
+  await page.click('.lvl[data-level="ausflug"]');
+  await expect(page.locator('#ghostTitle')).toHaveText('🌳 Erster Ausflug');
+  await expect(page.locator('#ghostPick button')).toHaveText(['👻 Test', '👻 🥇 Zoe', '👻 👻', '🚫']);
+  await expect(page.locator('#ghostPick .sel')).toHaveText('👻 Test');
+  await page.click('#ghostPick [data-geist="beide"]');
+  await expect(page.locator('#hud')).toBeVisible();
+  expect(await ghosts()).toEqual({ n: 2, tags: 2 });
+  await page.click('#btnReset'); // Nochmal: dieselben Geister
+  expect(await ghosts()).toEqual({ n: 2, tags: 2 });
+  // Wahl wird gemerkt; nur der eigene: ohne Namen
+  await page.click('#btnHome');
+  await page.click('.lvl[data-level="ausflug"]');
+  await expect(page.locator('#ghostPick .sel')).toHaveText('👻 👻');
+  await page.click('#ghostPick [data-geist="ich"]');
+  expect(await ghosts()).toEqual({ n: 1, tags: 0 });
+  // nur Zoe: mit Namen
+  await page.click('#btnHome');
+  await page.click('.lvl[data-level="ausflug"]');
+  await page.click('#ghostPick [data-geist="best"]');
+  await expect(page.locator('#hud')).toBeVisible(); // Aufnahme wird online geholt
+  expect(await ghosts()).toEqual({ n: 1, tags: 1 });
+  await page.waitForFunction(() => window.murmel.game.time > 0.5);
+  expect(await page.evaluate(() => window.murmel.view.ghost.position.z)).toBeLessThan(-9);
+  // keiner
+  await page.click('#btnHome');
+  await page.click('.lvl[data-level="ausflug"]');
+  await page.click('#ghostPick [data-geist="kein"]');
+  expect(await ghosts()).toEqual({ n: 0, tags: 0 });
   expect(errors).toEqual([]);
 });
 
