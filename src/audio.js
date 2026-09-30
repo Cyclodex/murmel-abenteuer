@@ -9,9 +9,9 @@
 const midi = n => 440 * Math.pow(2, (n - 69) / 12);
 
 export const SOUND_MODES = [
-  { id: 'alle', emoji: '🔊' },
-  { id: 'ohneMusik', emoji: '🎵❌' },
-  { id: 'aus', emoji: '🔇' }
+  { id: 'alle', emoji: '🔊', name: 'Ton an' },
+  { id: 'ohneMusik', emoji: '🔉', name: 'Ohne Musik' },
+  { id: 'aus', emoji: '🔇', name: 'Ton aus' }
 ];
 
 // ---------- Lieder: Achtelnoten (MIDI-Nummern, null = Pause), Bass in Vierteln ----------
