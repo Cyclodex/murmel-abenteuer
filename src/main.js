@@ -337,7 +337,7 @@ function setupPilot() {
 function updatePilot() {
   if (!pilot) return;
   marks.forEach((m, k) => m && m.material.color.setHex(k < pilot.i ? 0x999999 : k > pilot.i ? 0xFFFFFF : pilot.waiting ? 0xC77DFF : 0xFF8A00));
-  const v = game.ball.velocity, WAIT = { platAtFrom: 'wartet auf Plattform', platAtTo: 'fährt mit Plattform', bridgeUp: 'wartet auf Brücke', hoehe: 'steigt im Aufwind', balkenWeg: 'wartet auf den Balken', amBoden: 'wartet bis am Boden' };
+  const v = game.ball.velocity, WAIT = { platAtFrom: 'wartet auf Plattform', platAtTo: 'fährt mit Plattform', bridgeUp: 'wartet auf Brücke', hoehe: 'steigt im Aufwind', balkenWeg: 'wartet auf den Balken', amBoden: 'wartet bis am Boden', abfluss: 'wartet bis im Abfluss' };
   $('pilotInfo').textContent = `🤖 Ziel ${Math.min(pilot.i + 1, marks.length)}/${marks.length} · ${Math.hypot(v.x, v.z).toFixed(1)} m/s` + (pilot.waiting ? ` · ${WAIT[pilot.waiting] || pilot.waiting}` : '');
 }
 

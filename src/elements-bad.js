@@ -3,6 +3,7 @@
 import { DEG, quatYawPitch, rotate, add, sub, scale, lerp3, toLocal, fwdOf, rightOf, ease } from './math.js';
 import { TYPES, kinematicBody, boardParts, driveTo, ballPos } from './elements.js';
 import { WELT } from './elements-welt.js';
+import { rohrSolids, ABFLUSS } from './elements-bahn.js';
 import { buildProp } from './props.js';
 
 const R = 0.5;
@@ -245,11 +246,15 @@ export const BAD = {
 
   // Toilette als Ziel: Schüssel (Physik wie schuessel) mit Wasser, Brille, Deckel und Spülkasten hinten.
   // at = Mitte des Schüsselbodens, yaw = Blickrichtung beim Hineinfahren (Deckel und Spülkasten stehen dahinter),
-  // r, R, h, rim wie bei schuessel. Ins Ziel legen: {type:'ziel', at} in der Mitte. Beim Gewinnen wird gespült.
-  // {type:'klo', at, yaw?, r?, R?, h?, rim?}
+  // r, R, h, rim wie bei schuessel. In der Mitte ein Loch (wie der Abfluss), darunter ein geschlossenes Rohr (tief m).
+  // Ins Ziel legen: {type:'ziel', at: at - [0, 2, 0]} unten im Rohr: gewonnen, wenn die Murmel hinuntergespült ist.
+  // Beim Gewinnen wird gespült.
+  // {type:'klo', at, yaw?, r?, R?, h?, rim?, tief?}
   klo: {
     solids(d) {
-      const out = WELT.schuessel.solids({ r: 1.5, R: 3.2, h: 2, rim: 0.9, ...d, aussen: true });
+      const out = WELT.schuessel.solids({ r: 1.5, R: 3.2, h: 2, rim: 0.9, ...d, aussen: true, abfluss: true });
+      const top = add(d.at, [0, -ABFLUSS.tief, 0]);
+      out.push(...rohrSolids([top, add(d.at, [0, -(d.tief ?? 3.5), 0])], { ri: ABFLUSS.r, zu: true }));
       // Deckel und Spülkasten hinten: fängt die Murmel auf, wenn sie zu weit fliegt
       const yaw = (d.yaw || 0) * DEG, q = quatYawPitch(yaw, 0), Rr = (d.R ?? 3.2) + (d.rim ?? 0.9), h = d.h ?? 2;
       out.push({ pos: add(add(d.at, scale(fwdOf(yaw), Rr + 0.3)), [0, h + 3, 0]), half: [Rr, 3, 0.3], quat: q, look: 'wall', hide: true });
@@ -263,7 +268,7 @@ export const BAD = {
       const enamel = new T.MeshPhongMaterial({ ...EMAIL, side: T.DoubleSide });
       const V2 = (x, y) => new T.Vector2(x, y);
       // Schüssel innen und aussen (Fuss unten schmaler)
-      grp.add(new T.Mesh(new T.LatheGeometry([V2(0.01, 0), V2(r, 0), V2(Rr, h), V2(Rr + rim, h), V2(Rr + rim - 0.3, h - 1.2), V2(r + 0.8, -1.5), V2(r + 1.2, -4)], 40), enamel));
+      grp.add(new T.Mesh(new T.LatheGeometry([V2(ABFLUSS.r, -ABFLUSS.tief), V2(r, 0), V2(Rr, h), V2(Rr + rim, h), V2(Rr + rim - 0.3, h - 1.2), V2(r + 0.8, -1.5), V2(r + 1.2, -4)], 40), enamel));
       // Wasser unten mit Strudel (dreht beim Spülen schnell)
       const swirl = v.canvasTex(128, 128, (x, W, H) => {
         x.fillStyle = '#7FD3F7'; x.fillRect(0, 0, W, H); x.strokeStyle = 'rgba(255,255,255,0.7)'; x.lineWidth = 3;
@@ -271,6 +276,11 @@ export const BAD = {
       }, false);
       const water = new T.Mesh(new T.CircleGeometry(r + 0.35, 32), new T.MeshPhongMaterial({ map: swirl, transparent: true, opacity: 0.85, shininess: 120, depthWrite: false }));
       water.rotation.x = -Math.PI / 2; water.position.y = 0.15; grp.add(water);
+      const tiefe = new T.Mesh(new T.CircleGeometry(ABFLUSS.r, 24), new T.MeshBasicMaterial({ color: 0x0D4F6E, transparent: true, opacity: 0.55, depthWrite: false }));
+      tiefe.rotation.x = -Math.PI / 2; tiefe.position.y = 0.16; grp.add(tiefe); // dunkel: dort geht es hinunter
+      // Loch und Rohr darunter (im Fuss verborgen, von oben durch das Wasser zu sehen)
+      const tief = el.tief ?? 3.5, pipe = new T.Mesh(new T.CylinderGeometry(ABFLUSS.r + 0.03, ABFLUSS.r + 0.03, tief - ABFLUSS.tief, 20, 1, true), new T.MeshPhongMaterial({ color: 0xB0BEC5, side: T.DoubleSide, shininess: 60 }));
+      pipe.position.y = -(tief + ABFLUSS.tief) / 2; grp.add(pipe);
       // Brille (hellblau) auf dem Rand
       const seat = new T.Mesh(new T.TorusGeometry(Rr + rim / 2, rim / 2, 10, 40), new T.MeshPhongMaterial({ color: 0x81D4FA, shininess: 90 }));
       seat.rotation.x = Math.PI / 2; seat.position.y = h + 0.25; seat.scale.z = 0.5; grp.add(seat);
