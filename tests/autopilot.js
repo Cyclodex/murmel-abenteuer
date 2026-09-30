@@ -10,6 +10,7 @@ import badezimmer from './routes/badezimmer.js';
 import weltraum from './routes/weltraum.js';
 import unterwasser from './routes/unterwasser.js';
 import vulkan from './routes/vulkan.js';
+import pruefstand from './routes/pruefstand/index.js';
 
 const WAITS = {
   // n-te Plattform steht am Start bzw. am Ziel
@@ -245,4 +246,4 @@ export const ROUTES = {
 };
 
 // Routen der schweren Level und der Badezimmer-Welt liegen je Welt in tests/routes/
-Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, weltraum, unterwasser, vulkan);
+Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, weltraum, unterwasser, vulkan, pruefstand);

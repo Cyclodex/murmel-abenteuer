@@ -246,6 +246,41 @@ for (const welt of WELTEN) for (const art of ['normal', 'schwer']) {
   });
 }
 
+// Prüfstand: jedes Bauteil einzeln (src/levels/pruefstand/, eine Gruppe pro Datei) mit jeder Stärke und jeder Murmel.
+// Kurze Level, darum auch in npm run test:schnell und bei jedem PR.
+const PRUEF_GRUPPEN = ['bahn', 'beweglich', 'kraefte', 'welt'];
+for (const gruppe of PRUEF_GRUPPEN) {
+  test(`Prüfstand ${gruppe}: jedes Bauteil mit jeder Stärke und jeder Murmel`, async ({ page }) => {
+    test.setTimeout(300_000);
+    const errors = watchErrors(page);
+    await page.goto('/');
+    const res = await page.evaluate(async gruppe => {
+      const { createGame } = await import('/src/game.js');
+      const { GRUPPEN } = await import('/src/levels/pruefstand/index.js');
+      const { checkLevel, ROUTES } = await import('/tests/autopilot.js');
+      const { POWERS } = await import('/src/input.js');
+      const { SKINS } = await import('/src/skins.js');
+      const out = [];
+      for (const L of GRUPPEN[gruppe]) {
+        if (!ROUTES[L.id]) { out.push({ id: `${L.id}: keine Route`, won: false, falls: -1, stars: 0, total: 0 }); continue; }
+        const combos = [...POWERS.map(P => [P, SKINS[0]]), ...SKINS.slice(1).map(S => [POWERS[1], S])];
+        for (const [P, S] of combos) {
+          const r = checkLevel(() => { const g = createGame(CANNON, L, S.ball); g.tilt = P.tilt * Math.PI / 180; return g; }, ROUTES[L.id]);
+          out.push({ id: `${L.id} ${P.emoji} ${S.id}`, ...r });
+        }
+      }
+      return out;
+    }, gruppe);
+    expect(res.length).toBeGreaterThan(0);
+    for (const r of res) {
+      expect(r.won, r.id).toBe(true);
+      expect(r.falls, r.id).toBe(0);
+      expect(r.stars, r.id).toBe(r.total);
+    }
+    expect(errors).toEqual([]);
+  });
+}
+
 test('Murmeln prallen je nach Art verschieden stark von der Wand ab', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {
