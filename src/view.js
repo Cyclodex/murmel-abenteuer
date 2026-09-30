@@ -1,6 +1,7 @@
 // Grafik mit three.js: baut die Szene aus den Spieldaten und zeichnet jedes Bild.
 import { TYPES } from './bauteile.js';
 import { R, SURFACES, RESPAWN_T } from './game.js';
+import { boxesOverlap } from './math.js';
 import { THEMES, COLORS, canvasTex, rnd, woodTex } from './themes.js';
 import { createTrailFx } from './trails.js';
 import { ghostAt } from './ghost.js';
@@ -285,6 +286,9 @@ export function createView(THREE, renderer, game) {
     pillars.forEach((s, i) => {
       const top = s.pos[1] - s.half[1], hgt = top - floorY;
       if (hgt < 0.5) return;
+      // keine Säule durch eine tiefere Bahn (z. B. Wendeltreppe unter dem Weg): dort wäre sie ein Pfosten ohne Physik
+      const c = [s.pos[0], floorY + hgt / 2 - 0.005, s.pos[2]], h = [0.6, hgt / 2 - 0.005, 0.6];
+      if (game.solids.some(o => o !== s && !o.deko && boxesOverlap(c, h, [0, 0, 0, 1], o.pos, o.half, o.quat))) return;
       const p = new THREE.Mesh(boxGeo(THREE, 1.2, hgt, 1.2), mat(theme.pillars[i % theme.pillars.length]));
       p.position.set(s.pos[0], floorY + hgt / 2, s.pos[2]); scene.add(p); pillarMeshes.push(p);
     });
