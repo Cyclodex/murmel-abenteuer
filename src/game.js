@@ -25,7 +25,8 @@ export const SURFACES = {
   keramik: { friction: 0.3, bounce: 1, grip: 1, drag: 0.9, wash: 0.5 }, // nasses Lavabo: hart (Bälle springen), ein Wasserfilm bremst etwas
   kunststoff: { friction: 0.3, bounce: 1, grip: 1, drag: 0 }, // Kugelbahn: Rinne
   rohr: { friction: 0.3, bounce: 1, grip: 0, drag: 0 }, // geschlossenes Rohr (Abfluss): drinnen lenkt man nicht
-  trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 } // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
+  trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 }, // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
+  spirale: { friction: 0.4, bounce: 1, grip: 1, drag: 0.3, wash: 0.015 } // Boden von Spirale und geneigter Kurve: bremst etwas, sonst zu schnell für die Kurve
 };
 const DIRT_STILL = 0.08; // so viel Dreck pro Sekunde auch im Stehen im Schlamm
 const WASH_WATER = 0.6;  // Unterwasser: Abwaschen pro Sekunde
