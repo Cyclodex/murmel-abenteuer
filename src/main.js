@@ -146,7 +146,7 @@ function showMap() {
   };
   const stars = lv => `<span class="s">⭐${progress.best(lv.id)}</span>`;
   for (const w of WORLDS) {
-    const row = document.createElement('div'); row.className = 'world';
+    const row = document.createElement('div'); row.className = 'world'; row.dataset.world = w.id;
     row.innerHTML = `<div class="wicon" title="${w.name}">${w.emoji}</div><div class="levels"></div>`;
     w.levels.forEach((lv, k) => {
       const hard = (w.hard || []).find(h => h.schwer === lv.id);
