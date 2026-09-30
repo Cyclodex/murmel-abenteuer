@@ -595,40 +595,83 @@ test('Fluss: leichte Murmeln schwimmen oben, schwere rollen am Grund, alle komme
   for (const id in r) expect(r[id].durch, id).not.toBeNull();                                 // alle treibt es hinaus
 });
 
-test('Lavabo: Bälle springen auf der Keramik, kreisen und verschwinden erst unten und langsam im Abfluss', async ({ page }) => {
+test('Lavabo: Bälle springen auf der Keramik, kreisen und fallen erst unten durchs Loch in den Abfluss', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {
     const { createGame } = await import('/src/game.js');
     const { SKINS } = await import('/src/skins.js');
     const parts = [
       { type: 'schuessel', at: [0, 0, 0], r: 1.5, R: 4.5, h: 2, rim: 1, art: 'lavabo', abfluss: true },
-      { type: 'roehre', from: [0, 0, 0], down: true, to: [0, -6, -14], toYaw: 0, bogen: 3, fang: 0.7 },
-      { type: 'weg', from: [0, -6, -12], to: [0, -6, -30], width: 4, walls: 0.8, caps: 'end' }
+      { type: 'roehre', from: [0, 0, 0], down: true, to: [0, -6, -14], toYaw: 0 },
+      { type: 'weg', from: [0, -6, -14], to: [0, -6, -30], width: 4, walls: 0.8, caps: 'end' }
     ];
     const out = {};
     // wie von der Schanze: schräg von oben mitten ins Becken, und seitlich mit Schwung hinein
     for (const [fall, p0, v0] of [['schanze', [0, 3.5, 6], [0, 2, -6]], ['seitlich', [3, 3, 0], [0, 0, -4]]]) for (const id of ['standard', 'pingpong', 'golf']) {
       const g = createGame(CANNON, { id: 't', start: [0, 0, 20], killY: -30, parts }, SKINS.find(s => s.id === id).ball); g.reset();
       g.ball.position.set(...p0); g.ball.velocity.set(...v0);
-      let t = 0, spruenge = 0, lastVy = 0, gurgel = null, winkel = 0, la = null;
+      let t = 0, spruenge = 0, lastVy = 0, gurgel = null, winkel = 0, la = null, gelandet = null;
       while (t < 12 && gurgel === null) {
         const ev = g.step(0, 0, 1 / 60); t += 1 / 60;
         const p = g.ball.position, v = g.ball.velocity;
+        if (gelandet === null && g.touchBody) gelandet = t;
         if (lastVy < -1 && v.y > 0.5) spruenge++;
         lastVy = v.y;
         const a = Math.atan2(p.z, p.x); if (la !== null && Math.hypot(p.x, p.z) > 0.8) winkel += Math.atan2(Math.sin(a - la), Math.cos(a - la)); la = a;
         if (ev.includes('gurgel')) gurgel = t;
       }
-      out[fall + ' ' + id] = { spruenge, gurgel, runden: Math.abs(winkel) / 2 / Math.PI };
+      out[fall + ' ' + id] = { spruenge, gurgel, gelandet, runden: Math.abs(winkel) / 2 / Math.PI };
     }
     return out;
   });
-  for (const k in r) expect(r[k].gurgel, k).not.toBeNull();                 // alle verschwinden im Abfluss ...
+  for (const k in r) expect(r[k].gurgel, k).not.toBeNull();                 // alle fallen durchs Loch ...
   for (const k in r) expect(r[k].gurgel, k).toBeLessThan(8);                // ... nach ein paar Sekunden
-  expect(r['schanze standard'].gurgel).toBeGreaterThan(2);                  // nicht schon im Flug geschluckt
+  // nichts wird in der Luft geschluckt: vor dem Hineinfallen berührt die Murmel das Becken (Standard trifft von der Schanze
+  // direkt das Loch und fällt über die Lochwand hinein, die anderen springen und kreisen zuerst)
+  for (const k in r) expect(r[k].gelandet, k).toBeLessThan(r[k].gurgel);
   expect(r['schanze pingpong'].spruenge).toBeGreaterThan(2);                // Pingpong springt auf der Keramik herum
   expect(r['schanze pingpong'].spruenge).toBeGreaterThan(r['schanze golf'].spruenge);
   for (const id of ['standard', 'golf']) expect(r['seitlich ' + id].runden, id).toBeGreaterThan(0.5); // kreist hinunter
+});
+
+test('Abfluss: echtes Loch und Rohr, die Murmel rollt ohne Klemmen hindurch und kommt unten mit Schwung heraus', async ({ page }) => {
+  await page.goto('/');
+  const r = await page.evaluate(async () => {
+    const { createGame } = await import('/src/game.js');
+    const { SKINS } = await import('/src/skins.js');
+    const parts = [
+      { type: 'schuessel', at: [0, 0, 0], r: 1.5, R: 4.5, h: 2, rim: 1, art: 'lavabo', abfluss: true },
+      { type: 'roehre', from: [0, 0, 0], down: true, to: [0, -6, -14], toYaw: 0 },
+      { type: 'weg', from: [0, -6, -14], to: [0, -6, -40], width: 4, walls: 0.8, caps: 'end' }
+    ];
+    const out = {};
+    // schräg von der Schanze, seitlich (kreist ins Loch), knapp neben dem Loch fallen lassen, langsam an den Lochrand rollen
+    const faelle = [['schanze', [0, 3.5, 6], [0, 2, -6]], ['seitlich', [3, 3, 0], [0, 0, -4]], ['mitte', [0.3, 1, 0], [0, 0, 0]], ['rand', [1.5, 0.6, 0], [-0.3, 0, 0]]];
+    for (const [fall, p0, v0] of faelle) for (const id of ['pingpong', 'standard', 'golf', 'bowling']) {
+      const g = createGame(CANNON, { id: 't', start: [0, 0, 20], killY: -30, parts }, SKINS.find(s => s.id === id).ball); g.reset();
+      g.ball.position.set(...p0); g.ball.velocity.set(...v0);
+      let t = 0, gurgel = null, plopp = null, vAus = null, still = 0, klemmt = false, minV = 99;
+      while (t < 20 && plopp === null) {
+        const ev = g.step(0, 0, 1 / 60); t += 1 / 60;
+        const v = g.ball.velocity, sp = Math.hypot(v.x, v.y, v.z);
+        if (ev.includes('gurgel')) gurgel = t;
+        if (gurgel !== null && t > gurgel + 0.5) minV = Math.min(minV, sp);
+        if (ev.includes('plopp')) { plopp = t; vAus = Math.hypot(v.x, v.z); }
+        still = sp < 0.05 ? still + 1 / 60 : 0;
+        if (still > 1) klemmt = true; // eine Sekunde still: liegt am Lochrand oder klemmt im Rohr
+      }
+      out[fall + ' ' + id] = { gurgel, rohr: plopp && plopp - gurgel, vAus, klemmt, minV, z: g.ball.position.z };
+    }
+    return out;
+  });
+  for (const k in r) {
+    expect(r[k].klemmt, k).toBe(false);         // bleibt nirgends liegen, weder am Lochrand noch im Rohr
+    expect(r[k].rohr, k).not.toBeNull();        // kommt unten heraus
+    expect(r[k].rohr, k).toBeLessThan(4.5);     // gemessen 2.8 bis 3.5 s (Rohr 16.6 m lang, 5 m hinunter)
+    expect(r[k].vAus, k).toBeGreaterThan(4);    // gemessen 5.0 bis 6.5 m/s
+    expect(r[k].vAus, k).toBeLessThan(8);
+    expect(r[k].minV, k).toBeGreaterThan(1.5);  // holpert nicht bis fast zum Stillstand (gemessen mindestens 2.8 m/s)
+  }
 });
 
 test('Kugelbahn: Trichter lässt kreisen und fällt unten hinaus, Halfpipe schaukelt, Rutsche hält in der Kurve', async ({ page }) => {
@@ -678,11 +721,12 @@ test('Echte Dinge: durch die Pfanne, Herdplatte hüpft, Abfluss im Lavabo, Spren
   // Herdplatte: Murmel hüpft
   const hp = await fahre(page, [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -8], width: 5 }, { type: 'herdplatte', at: [0, 0, -2] }], [0, 0, -2], 2);
   expect(hp.ev.filter(e => e === 'zisch').length).toBeGreaterThan(1);
-  // Lavabo mit Abfluss: Murmel rollt in die Mitte, gurgelt hinunter und kommt unten heraus
+  // Lavabo mit Abfluss: Murmel rollt in die Mitte, fällt durchs Loch, rollt durchs Rohr und kommt unten heraus
   const lv = await fahre(page, [{ type: 'schuessel', at: [0, 0, 0], r: 1.5, R: 3.5, h: 1.5, rim: 1.5, art: 'lavabo', abfluss: true, aussen: false },
-    { type: 'roehre', from: [0, 0, 0], down: true, to: [0, -6, -12], toYaw: 0, bogen: 3, fang: 0.7 }, { type: 'weg', from: [0, -6, -10], to: [0, -6, -20], width: 4, walls: 0.8, caps: 'end' }], [2, 0.5, 0], 6);
-  expect(lv.ev).toEqual(expect.arrayContaining(['gurgel', 'plopp']));
+    { type: 'roehre', from: [0, 0, 0], down: true, to: [0, -6, -12], toYaw: 0 }, { type: 'weg', from: [0, -6, -12], to: [0, -6, -30], width: 4, walls: 0.8, caps: 'end' }], [2, 0.5, 0], 6);
+  expect(lv.ev.filter(e => e === 'gurgel' || e === 'plopp')).toEqual(['gurgel', 'plopp']);
   expect(lv.p[1]).toBeLessThan(-5);
+  expect(lv.p[2]).toBeLessThan(-13); // aus dem Rohr heraus weitergerollt
   // Rasensprenger schiebt die Murmel weg, Schlauch wäscht
   const sp = await fahre(page, [{ type: 'weg', from: [0, 0, 10], to: [0, 0, -10], width: 20 }, { type: 'sprenger', at: [0, 0, 0], length: 8, speed: 90 }], [2.5, 0, 0], 4);
   expect(Math.hypot(sp.p[0], sp.p[2])).toBeGreaterThan(4);
@@ -719,9 +763,12 @@ test('Badezimmer: Schiffchen-Trampolin trifft mit jeder Murmel, ins Badewasser f
     [0, 0, 2], 3, [0, -0.5], 'g.dirt = 1; g.dirty = true;');
   expect(strahl.ev).toEqual(expect.arrayContaining(['spritz', 'sauber']));
   expect(strahl.dirt).toBe(0);
-  // Toilette: in die Schüssel fallen = Ziel, dann wird gespült
-  const klo = await fahre(page, [{ type: 'klo', at: [0, 0, 0] }, { type: 'ziel', at: [0, 0, 0] }], [1, 3, 0], 2);
+  // Toilette: in die Schüssel fallen, durchs Loch hinunter ins Rohr = Ziel, dann wird gespült
+  const klo = await fahre(page, [{ type: 'klo', at: [0, 0, 0] }, { type: 'ziel', at: [0, -2, 0] }], [1, 3, 0], 3);
   expect(klo.ev).toEqual(['win', 'spuel']);
+  expect(klo.p[1]).toBeLessThan(-2.5); // liegt unten im Rohr
+  const kloRand = await fahre(page, [{ type: 'klo', at: [0, 0, 0] }, { type: 'ziel', at: [0, -2, 0] }], [2.5, 3, 0], 0.8);
+  expect(kloRand.ev).toEqual([]); // in der Schüssel ist man noch nicht im Ziel
   // Fynns Badezimmer: im Matsch dreckig, im Wasserstrahl am Lavabo wieder sauber, dann Abfluss, Schiffchen, Toilette
   const lv = await page.evaluate(async () => {
     const { createGame } = await import('/src/game.js');

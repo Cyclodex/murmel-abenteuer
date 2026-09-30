@@ -50,9 +50,9 @@ export default {
     { type: 'wand', from: [38, 0, -55.3], to: [44, 0, -55.3], height: 3, look: 'kachel-weiss' },
     { type: 'wind', at: [41, 0, -58], size: [2.6, 3, 4], yaw: 0, strength: 6, look: 'hahn' },
     { type: 'schuessel', at: [50, -2.5, -58], r: 1.5, R: 4, h: 2.5, rim: 2.5, art: 'lavabo', aussen: false, abfluss: true, hahn: -90 },
-    { type: 'roehre', from: [50, -2.5, -58], down: true, to: [50, -10, -70], toYaw: 0, bogen: 3, fang: 0.8, farbe: 0xB0BEC5 },
+    { type: 'roehre', from: [50, -2.5, -58], down: true, to: [50, -10, -70], toYaw: 0, farbe: 0xB0BEC5 },
     // unter der Spüle: Kassenband mit Tassen, Fleischklopfer vor dem Ziel
-    { type: 'weg', from: [50, -10, -66], to: [50, -10, -76], width: 5, walls: 0.8, caps: 'start' },
+    { type: 'weg', from: [50, -10, -70], to: [50, -10, -76], width: 5, walls: 0.8 },
     { type: 'checkpoint', at: [50, -10, -73], size: [5, 3, 3] },
     { type: 'band', from: [50, -10, -76], to: [50, -10, -98], width: 5, walls: 0.8, speed: 4, grip: 3 },
     { type: 'deko', form: 'tasse', at: [48.6, -10, -81], scale: 0.45, fest: true },

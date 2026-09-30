@@ -24,7 +24,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/elements-extra.js` | Weitere Bauteile (Röhre, Band, Wind, Balken, Magnet, Kanone, Domino, Spirale) |
 | `src/elements-fallen.js` | Fallen für schwere Level (Feld mit Löchern, Falltür, Schieber, Hammer, Treppe, Fluss, Felsen) |
 | `src/elements-welt.js` | Echte Dinge der Welten (Schüssel = Pfanne/Topf/Lavabo, Deko-Gegenstände, Herdplatte, Rasensprenger) |
-| `src/elements-bahn.js` | Kugelbahn: Rinne (schmal = Rutsche, auch als Kurve/Spirale; breit = Halfpipe), Spiraltrichter; `ringSolids` baut runde Flächen (auch Schüsseln) aus Klötzen |
+| `src/elements-bahn.js` | Kugelbahn: Rinne (schmal = Rutsche, auch als Kurve/Spirale; breit = Halfpipe), Spiraltrichter; `ringSolids` baut runde Flächen (auch Schüsseln) aus Klötzen, `rohrSolids` ein geschlossenes Rohr (Abfluss, Klo) |
 | `src/elements-bad.js` | Badezimmer: Badewanne mit Wasser (hineinfallen = zurück zum Checkpoint), Schiffchen mit Trampolin, Wasserstrahl aus dem Hahn (wäscht), Toilette als Ziel |
 | `src/props.js` | Riesige Alltagsgegenstände aus einfachen Formen (Apfel, Tasse, Toaster, Ente, Zwerg, Sandburg …) |
 | `src/bauteile.js` | Sammelt alle Bauteil-Typen |
@@ -68,7 +68,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `bruecke` | `from`, `to`, `width`, `walls`, `id` (wie Schalter), `drop` |
 | `ziel` | `at`, `r` |
 | `spirale` | wie `kurve`, mit `turn` (z. B. 720) und `rise` (z. B. -8) |
-| `roehre` | `from`, `yaw` (hinein), `to`, `toYaw` (heraus), `bogen`, `speed`, `out`, `farbe` – vor der Öffnung einen schmalen Weg bauen |
+| `roehre` | `from`, `yaw` (hinein), `to`, `toYaw` (heraus), `bogen`, `speed`, `out`, `farbe` – vor der Öffnung einen schmalen Weg bauen (die Murmel fliegt geführt durch die Röhre) |
 | `band` | wie `weg` + `speed` (m/s), `grip` (wie stark) |
 | `wind` | `at` (Boden, Mitte), `size: [b, h, t]`, `yaw` (Blasrichtung) oder `up: true`, `strength` |
 | `balken` | `at` (Drehpunkt), `length`, `speed` (°/s, negativ = andersrum), `farbe` |
@@ -83,10 +83,10 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `fluss` | `from`, `to` (Wasseroberfläche), `width`, `depth`, `speed`, `banks` – trägt die Murmel mit (bremst sie bergab nicht auf `speed` ab), Auftrieb nach Dichte (leichte schwimmen, schwere rollen am Grund), wäscht |
 | `nagelbrett` | `at` (Mitte der oberen Vorderkante, Höhe des Wegs, der hineinführt), `yaw`, `breite`, `hoehe`, `abstand`, `tiefe` – Nagelwand: die Murmel fällt senkrecht und prallt von Nagel zu Nagel; vorne Glas, unten offen (quer darunter einen Weg legen) |
 | `felsen` | `from`, `dir: [x, z]`, `speed`, `every` (s), `r`, `offset`, `farbe` – rollende Felsen (oder Kartoffeln, Äpfel …), bergab einsetzen |
-| `schuessel` | `at` (Bodenmitte), `r`, `R`, `h`, `rim`, `art` (`'pfanne'`/`'topf'`/`'lavabo'`/`'schuessel'`/`'sandkuchen'`), `boden: 'rund'` (gewölbt bis zur Mitte; beim Lavabo Standard, dazu Oberfläche Keramik: Bälle springen und kreisen hinunter), `offen: [yaw]` (Lücke für eine Rampe), `aussen`, `griff`, `hahn`, `abfluss` |
+| `schuessel` | `at` (Bodenmitte), `r`, `R`, `h`, `rim`, `art` (`'pfanne'`/`'topf'`/`'lavabo'`/`'schuessel'`/`'sandkuchen'`), `boden: 'rund'` (gewölbt bis zur Mitte; beim Lavabo Standard, dazu Oberfläche Keramik: Bälle springen und kreisen hinunter), `offen: [yaw]` (Lücke für eine Rampe), `aussen`, `griff`, `hahn`, `abfluss: true` (echtes Loch in der Mitte, Radius 0.7 wie das Rohr, mit steilem, abgesenktem Rand: die Murmel fällt hinein; darunter eine `roehre` mit `down: true`) |
 | `rinne` | gerade: `from`, `to` (Mitte unten); oder Kurve/Spirale: `at`, `yaw`, `turn`, `radius`, `rise`; dazu `r` (Radius des Querschnitts: ~1.6 Rutsche, ~4 Halfpipe), `bogen` (Grad je Seite), `surface`, `farbe` – runde Bahn, in Kurven fährt die Murmel die Wand hoch |
 | `trichter` | `at` (Mitte des Lochs), `R`, `h`, `loch`, `rim`, `wand` (Bande), `offen`, `surface` (Standard `trichter`, bremst etwas), `farbe` – Spiraltrichter: schräg über die Bande hinein, die Murmel kreist immer schneller hinunter und fällt durchs Loch (darunter auffangen) |
-| `roehre` mit `down: true` | Abfluss: bei `from` geht es senkrecht hinunter, `fang` = Fangradius (z. B. Mitte vom Lavabo); schluckt nur, wenn die Murmel unten und langsamer als 3 m/s ist |
+| `roehre` mit `down: true` | Abfluss: echtes, geschlossenes Rohr unter dem Loch bei `from` (Mitte der `schuessel` mit `abfluss`): fast senkrecht hinunter, im Bogen (`bogen` = Radius, Standard 4) in Richtung `toYaw` und mit `gefaelle` (Grad, Standard 3) bis `to` (Boden am Ausgang). Die Murmel rollt von selbst hindurch (17 m Rohr, 5 m hinunter: 2.8 bis 3.5 s, 5 bis 6.5 m/s am Ausgang), man lenkt darin nicht. Ereignisse `gurgel` (fällt hinein) und `plopp` (kommt heraus); Autopilot: `wait: 'abfluss'` |
 | `wind` mit `look` | `'schlauch'` (Gartenschlauch) oder `'hahn'` (Wasserhahn): Wasserstrahl statt Ventilator |
 | `sprenger` | `at`, `length` (Reichweite), `speed` (°/s), `strength`, `breite` – Rasensprenger schiebt die Murmel weg |
 | `herdplatte` | `at` (auf einem Weg), `r`, `jump` – heiss, die Murmel hüpft |
@@ -94,7 +94,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `wanne` | `at` (Mitte der Wasseroberfläche), `size: [b, lang]`, `yaw`, `rim`, `depth`, `enten: [[x, z]]` – Badewanne, ins Wasser fallen = zurück zum Checkpoint |
 | `schiff` | `at` (Wasseroberfläche), `size: [b, lang]`, `yaw`, `deck`, `bob`, `to`/`time`/`pause`/`offset` (fährt wie die Plattform), `farbe`, `segel`, `surface` (Standard Frottee; `'normal'` = Holz, z. B. für eine Fähre), `trampolin: { vorne, size, ziel, time, bremse }` – springt immer genau auf `ziel` (Flug je Murmel ausgerechnet), Frottee-Deck fängt auf |
 | `strahl` | `at` (Auslauf oben), `unten` (y), `r`, `wash`, `push`, `hahn`, `yaw`, `lang` – Wasserstrahl, wäscht die Murmel |
-| `klo` | `at` (Schüsselboden), `yaw`, `r`, `R`, `h`, `rim` – Toilette mit Deckel und Spülkasten, `ziel` in die Mitte legen, spült beim Gewinnen |
+| `klo` | `at` (Schüsselboden), `yaw`, `r`, `R`, `h`, `rim`, `tief` (Rohr, Standard 3.5) – Toilette mit Deckel und Spülkasten, in der Mitte ein Loch mit geschlossenem Rohr darunter. `ziel` 2 m unter `at` ins Rohr legen: gewonnen, wenn die Murmel hinuntergespült ist; spült beim Gewinnen |
 
 Neues Hindernis erfinden: in `src/elements.js` einen Typ ergänzen (`solids`, `init`, `reset`, `pre`, `step`, `view`), danach kann es in jedem Level verwendet werden.
 Neues Level testen: in `tests/autopilot.js` (schwere Level: `tests/routes/<welt>.js`) eine Route (Wegpunkte) ergänzen, dann `node tests/pruefe-level.mjs <id>` (schnell, ohne Browser; `--fahrt` zeigt eine Fahrt mit Wegpunkten und Abstürzen) und `npm test`. Wegpunkte können warten (`wait: 'platAtTo'`, `'amBoden'`, `['hoehe', 7]`, `['balkenWeg', [x, z]]` (auch Sprenger), `['phase', ['hammer', 0, 0.72, 0.85]]` (Takt von Hammer/Felsen/Plattform/Schieber), `['tuerZu', 0]`, `['tiefer', y]`) oder der Bahn folgen (`{ follow: true, bisY }`); mehrere Routen pro Level sind möglich (z. B. Umweg zum Bonusstern).

@@ -2,9 +2,9 @@
 // Gleiche Schnittstelle wie in elements.js; wird dort in TYPES eingetragen.
 import { DEG, quatYawPitch, rotate, add, sub, scale, lerp3, toLocal, fwdOf } from './math.js';
 import { TYPES, segment, kinematicBody, ballPos } from './elements.js';
+import { rohrSolids, abflussPts, ABFLUSS } from './elements-bahn.js';
 
 const R = 0.5;
-const DRAIN_V = 3; // Abfluss schluckt nur langsamere Murmeln (m/s)
 const UP = [0, 1, 0];
 const norm = v => { const l = Math.hypot(...v) || 1; return scale(v, 1 / l); };
 const bezier = (P, t) => {
@@ -20,28 +20,45 @@ export const EXTRA = {
   // Röhre: Murmel rollt hinein, fliegt im Bogen durch die Röhre und kommt am Ziel heraus.
   // from/to = Bodenpunkt vor der Öffnung, yaw = Richtung hinein, toYaw = Richtung heraus,
   // bogen = Höhe des Bogens, speed = Tempo in der Röhre, out = Tempo beim Herauskommen.
-  // down = Abfluss: die Röhre geht bei from senkrecht nach unten (z. B. Lavabo, Badewanne), fang = Fangradius
-  // {type:'roehre', from, yaw?, to, toYaw?, bogen?, speed?, out?, down?, fang?}
+  // down = Abfluss: ein echtes, geschlossenes Rohr (Physik aus Latten) geht unter dem Loch bei from (Mitte des Beckens,
+  // z. B. schuessel mit abfluss) fast senkrecht hinunter, im Bogen (bogen = Radius, Standard 4) in Richtung toYaw und gerade
+  // mit leichtem Gefälle (gefaelle in Grad, Standard 3) bis to (Boden am Ausgang). Die Murmel fällt hinein und rollt von
+  // selbst hindurch, Tempo am Ausgang = was sie beim Hinunterrollen gewinnt. Ereignisse: gurgel (hineingefallen), plopp (heraus).
+  // {type:'roehre', from, yaw?, to, toYaw?, bogen?, speed?, out?, down?, gefaelle?}
   roehre: {
+    // Abfluss: Mittellinie (oben am Lochrand, unten ri über dem Boden am Ausgang)
+    abfluss(d) {
+      const e = fwdOf((d.toYaw ?? d.yaw ?? 0) * DEG);
+      return abflussPts(add(d.from, [0, -ABFLUSS.tief, 0]), add(d.to, [0, ABFLUSS.r, 0]), e, { rb: d.bogen ?? 4, grad: d.gefaelle ?? 3 });
+    },
+    solids: d => d.down ? rohrSolids(EXTRA.roehre.abfluss(d), { ri: ABFLUSS.r, unten: scale(fwdOf((d.toYaw ?? d.yaw ?? 0) * DEG), -1) }) : [],
     init(el) {
       const f = fwdOf((el.yaw || 0) * DEG), e = fwdOf((el.toYaw ?? el.yaw ?? 0) * DEG), b = el.bogen ?? 4;
+      el.exitDir = e;
+      if (el.down) { el.P = EXTRA.roehre.abfluss(el); return; }
       const p0 = add(el.from, [0, 0.9, 0]), p3 = add(el.to, [0, 0.9, 0]);
-      el.P = el.down
-        ? [p0, add(p0, [0, -b, 0]), sub(p3, scale(e, Math.max(3, b))), p3]
-        : [p0, add(add(p0, scale(f, 3)), [0, b, 0]), add(sub(p3, scale(e, 3)), [0, b, 0]), p3];
+      el.P = [p0, add(add(p0, scale(f, 3)), [0, b, 0]), add(sub(p3, scale(e, 3)), [0, b, 0]), p3];
       let L = 0, last = p0;
       for (let i = 1; i <= 30; i++) { const q = bezier(el.P, i / 30); L += Math.hypot(...sub(q, last)); last = q; }
-      el.len = L; el.exitDir = e;
+      el.len = L;
     },
-    reset(el) { el.t = -1; el.cool = 0; },
+    reset(el) { el.t = -1; el.cool = 0; el.drin = false; },
     pre(el, g) { if (el.t >= 0) setBall(g, bezier(el.P, el.t)); },
     step(el, g, h, ev) {
+      if (el.down) { // Abfluss: nur Ereignisse, die Physik macht das Rohr
+        const p = g.ball.position, m = el.P[0], e = el.exitDir, end = el.P[el.P.length - 1];
+        if (!el.drin && Math.hypot(p.x - m[0], p.z - m[2]) < ABFLUSS.r && p.y < m[1] - R && p.y > m[1] - 2) { el.drin = true; ev.push('gurgel'); }
+        else if (el.drin) {
+          const vor = (p.x - end[0]) * e[0] + (p.z - end[2]) * e[2];
+          if (vor > 0) { el.drin = false; ev.push('plopp'); }
+          else if (p.y > m[1] + 1) el.drin = false; // z. B. neu gestartet
+        }
+        return;
+      }
       el.cool -= h;
       if (el.t < 0) {
         const p = g.ball.position, m = el.P[0];
-        // Abfluss: nur wenn die Murmel unten ankommt und langsam genug ist (sonst springt oder rollt sie darüber hinweg)
-        const catchY = el.down ? p.y < m[1] && Math.hypot(g.ball.velocity.x, g.ball.velocity.y, g.ball.velocity.z) < DRAIN_V : Math.abs(p.y - m[1]) < 1;
-        if (el.cool <= 0 && Math.hypot(p.x - m[0], p.z - m[2]) < (el.fang ?? 0.9) && catchY) { el.t = 0; g.lock = true; ev.push(el.down ? 'gurgel' : 'roehre'); }
+        if (el.cool <= 0 && Math.hypot(p.x - m[0], p.z - m[2]) < 0.9 && Math.abs(p.y - m[1]) < 1) { el.t = 0; g.lock = true; ev.push('roehre'); }
         return;
       }
       el.t += h * (el.speed ?? 9) / el.len;
@@ -57,14 +74,14 @@ export const EXTRA = {
     },
     view(el, v) {
       const T = v.THREE, V = p => new T.Vector3(...p);
-      // Abfluss: Röhre erst unter dem Boden zeigen (die Öffnung malt das Becken)
-      const pts = el.down ? [add(el.from, [0, -0.9, 0]), ...el.P.slice(1)] : el.P;
-      const curve = new T.CubicBezierCurve3(...pts.map(V));
-      const tube = new T.Mesh(new T.TubeGeometry(curve, 48, 0.8, 16, false),
-        new T.MeshPhongMaterial({ color: el.farbe ?? 0x3BB273, transparent: true, opacity: 0.45, side: T.DoubleSide, shininess: 80, depthWrite: false }));
+      const curve = el.down ? new T.CatmullRomCurve3(el.P.map(V), false, 'centripetal') : new T.CubicBezierCurve3(...el.P.map(V));
+      // Abfluss: Rohr so weit wie innen die Physik (die Murmel ist durch das halb durchsichtige Rohr zu sehen);
+      // kein v.blocker, sonst bliebe die Kamera an der Rohrwand hängen
+      const tube = new T.Mesh(new T.TubeGeometry(curve, el.down ? 96 : 48, el.down ? ABFLUSS.r + 0.03 : 0.8, 16, false),
+        new T.MeshPhongMaterial({ color: el.farbe ?? 0x3BB273, transparent: true, opacity: el.down ? 0.35 : 0.45, side: T.DoubleSide, shininess: 80, depthWrite: false }));
       v.scene.add(tube);
       for (const t of el.down ? [1] : [0, 1]) { // Ringe an den Öffnungen
-        const ring = new T.Mesh(new T.TorusGeometry(0.85, 0.12, 10, 28), new T.MeshLambertMaterial({ color: el.farbe ?? 0x3BB273 }));
+        const ring = new T.Mesh(new T.TorusGeometry(el.down ? ABFLUSS.r + 0.1 : 0.85, 0.12, 10, 28), new T.MeshLambertMaterial({ color: el.farbe ?? 0x3BB273 }));
         const p = curve.getPoint(t), tan = curve.getTangent(t);
         ring.position.copy(p); ring.lookAt(p.clone().add(tan)); v.scene.add(ring);
       }

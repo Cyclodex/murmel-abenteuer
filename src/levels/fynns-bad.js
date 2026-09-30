@@ -58,7 +58,7 @@ export default {
     // Fliesenwand mit Spiegel direkt hinter dem Becken (zu weite Sprünge prallen zurück ins Lavabo)
     { type: 'wand', from: [-1, 0.5, -83.7], to: [11, 0.5, -83.7], height: 6 },
     { type: 'klotz', at: [5, 3.8, -83.45], size: [7, 4, 0.1], look: 'spiegel', deko: true },
-    { type: 'roehre', from: [5, -1.5, -79], down: true, to: [5, -6.5, -95], toYaw: 0, bogen: 3, speed: 14, out: 6, fang: 0.7, farbe: 0xB0BEC5 },
+    { type: 'roehre', from: [5, -1.5, -79], down: true, to: [5, -6.5, -96.5], toYaw: 0, farbe: 0xB0BEC5 },
 
     // Badewanne: über die Schiffchen hüpfen und rollen, nicht ins Wasser fallen!
     { type: 'wanne', at: [5, -8, -106], size: [9, 24], rim: 1.2, depth: 2, enten: [[-3, -8], [3.2, 2], [-3.2, 9]] },
@@ -69,7 +69,7 @@ export default {
 
     // Toilette: Ziel
     { type: 'klo', at: [5, -8, -126], yaw: 0 },
-    { type: 'ziel', at: [5, -8, -126] },
+    { type: 'ziel', at: [5, -10, -126] },
 
     { type: 'stern', at: [0, 0.9, -3] },
     { type: 'stern', at: [2.5, 5.3, -10] },

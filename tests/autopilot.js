@@ -19,6 +19,8 @@ const WAITS = {
   bridgeUp: (g, id) => g.els.filter(x => x.type === 'bruecke' && (id === undefined || x.id === id)).every(e => e.k >= 1),
   hoehe: (g, y) => g.ball.position.y > y,
   tiefer: (g, y) => g.ball.position.y < y,
+  // die Murmel ist durchs Loch in den n-ten Abfluss (roehre mit down) gefallen und rollt im Rohr
+  abfluss: (g, n = 0) => g.els.filter(x => x.type === 'roehre' && x.down)[n].drin,
   amBoden: g => !!g.groundBody && Math.abs(g.ball.velocity.y) < 0.3,
   // Takt eines bewegten Teils: wait: ['phase', [type, n, a, b]] = n-tes Teil vom Typ type ist in der Phase a..b (0..1) seines Takts
   // (Plattform/Schieber: 0 = Pause bei from, Hammer: 0 = oben, zuschlagen ab up/per, Felsen: 0 = neuer Felsen)
