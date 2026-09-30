@@ -122,6 +122,13 @@ export default {
     { type: 'stern', at: [16, 11, -182], r: 1.8 },
     { type: 'stern', at: [16, 8.2, -230] },
     { type: 'stern', at: [16, 10.2, -249] },
-    { type: 'stern', at: [-2.5, 57.4, -22], bonus: true }
+    { type: 'stern', at: [-2.5, 57.4, -22], bonus: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', from: [2.8, 30, -119.8], to: [2.4, 30, -121.7], count: 2, quer: 3 },
+    { type: 'domino', at: [18.3, 7.3, -204.3], yaw: -25 },
+    { type: 'domino', at: [17.8, 19, -164.3], yaw: 6 },
+    { type: 'domino', at: [-3.7, 30, -116.3], yaw: 20 },
+    { type: 'domino', at: [-3.7, 30, -124.3], yaw: -9 }
   ]
 };

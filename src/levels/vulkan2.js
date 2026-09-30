@@ -34,6 +34,9 @@ export default {
     { type: 'stern', at: [0, 2.9, -63] },
     // hoch an der Aussenwand der Kurve: nur wer mit Schwung hineinfährt, holt ihn
     { type: 'stern', at: [-2.01, 1.44, -73.7], r: 0.7 },
-    { type: 'stern', at: [7, 3.9, -29], bonus: true }
+    { type: 'stern', at: [7, 3.9, -29], bonus: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [-8.5, 0, -75.7], yaw: 81 }
   ]
 };

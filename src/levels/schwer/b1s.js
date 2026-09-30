@@ -103,6 +103,12 @@ export default {
     { type: 'stern', at: [5, -6.6, -148] },
     { type: 'stern', at: [5, -4.1, -171] },
     { type: 'stern', at: [5, -4.5, -177] },
-    { type: 'stern', at: [2.5, 0.9, -56], bonus: true }
+    { type: 'stern', at: [2.5, 0.9, -56], bonus: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [2.6, 0, -62.3], yaw: -66 },
+    { type: 'domino', at: [1.6, 0, -4.3], yaw: -6 },
+    { type: 'domino', at: [8.1, 0, -46.3], yaw: 8 },
+    { type: 'domino', at: [3.6, 0, -70.3], yaw: -4 }
   ]
 };

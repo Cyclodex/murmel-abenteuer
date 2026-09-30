@@ -37,6 +37,9 @@ export default {
     { type: 'stern', at: [10, 0.9, -41] },
     { type: 'stern', at: [21, 5.15, -41] },
     { type: 'stern', at: [28, 4.9, -41] },
-    { type: 'stern', at: [-5, 0.9, -30.25], bonus: true }
+    { type: 'stern', at: [-5, 0.9, -30.25], bonus: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', at: [3.8, 0, -42.2], yaw: -63 }
   ]
 };

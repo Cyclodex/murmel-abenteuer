@@ -81,6 +81,13 @@ export default {
     { type: 'stern', at: [0, 9.2, -140] },
     { type: 'stern', at: [-2, 5.9, -161] },
     { type: 'stern', at: [-9, 2.9, -179] },
-    { type: 'stern', at: [-4.5, 26.9, -32], bonus: true }
+    { type: 'stern', at: [-4.5, 26.9, -32], bonus: true },
+
+    // einzelne Dominosteine
+    { type: 'domino', from: [-2.5, 30, -14.2], to: [-4.6, 30, -17.4], count: 3 },
+    { type: 'domino', at: [-6.5, 2, -177.2], yaw: 88 },
+    { type: 'domino', at: [-1.5, 8.3, -112.2], yaw: 4 },
+    { type: 'domino', at: [4, 22, -48.7], yaw: 83 },
+    { type: 'domino', at: [-5.5, 22, -46.7], yaw: -73 }
   ]
 };
