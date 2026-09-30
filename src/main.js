@@ -321,10 +321,10 @@ function onWin() {
   // Punkte der Fahrt (Zeit gerundet wie gespeichert, damit sie sich aus den gespeicherten Werten nachrechnen lassen)
   const run = { stars: game.st.stars, total: game.st.starTotal, time: +t.toFixed(2), falls: game.st.falls, power: power().id };
   run.score = score({ level: lv.id, ...run });
-  const hadRun = progress.run(lv.id), record = progress.setRun(lv.id, run);
+  const hadRun = progress.run(lv.id), record = !lv.pruefstand && progress.setRun(lv.id, run); // Prüfstand: kein Rekord, nicht online
   // Neuer Rekord: mit Aufnahme in die Online-Rangliste, danach Rangliste neu zeigen
   if (record) online.submit(progress.player().name, lv.id, run, rec.track(t, currentSkin().id)).then(ok => { if (ok && lv === LEVELS[levelIdx]) showWinRank(); });
-  $('winScore').textContent = `🏆 ${run.score}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : ` · 🏆 ${hadRun.score}`);
+  $('winScore').textContent = `🏆 ${run.score}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : hadRun ? ` · 🏆 ${hadRun.score}` : '');
   $('winTime').textContent = `⏱ ${formatTime(t)}` + (fastest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
   const after = progress.totalStars();
   const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got) ? lv.id : null;

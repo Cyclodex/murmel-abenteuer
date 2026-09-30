@@ -20,6 +20,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 |---|---|
 | `src/levels/*.js` | Level als Daten (ein Objekt pro Level), Welten und Reihenfolge in `src/levels/index.js` (`need` = Welt erst ab so vielen Sternen offen, z. B. Profi-Welt Vulkan) |
 | `src/levels/schwer/*.js` | Schwere Versionen (💀) je Welt: Level mit `schwer: '<id des normalen Levels>'`, offen sobald das normale geschafft ist |
+| `src/levels/pruefstand/*.js` | Prüfstand: ein kurzes Level pro Bauteil (Anlauf, Bauteil, Ziel), muss mit jeder Murmel schaffbar sein. Nicht auf der Karte, im Spiel mit `?pruefstand` als eigene Welt; Routen in `tests/routes/pruefstand/` |
 | `src/elements.js` | Grund-Bauteile: Klötze, Logik und Grafik je Typ |
 | `src/elements-extra.js` | Weitere Bauteile (Röhre, Band, Wind, Balken, Magnet, Kanone, Domino, Spirale) |
 | `src/elements-fallen.js` | Fallen für schwere Level (Feld mit Löchern, Falltür, Schieber, Hammer, Treppe, Fluss, Felsen) |
@@ -34,7 +35,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen; Knopf 📱/🕹️ wechselt jederzeit), Pfeiltasten, Stärken 🐢/🐇/🚀 (`POWERS`) |
 | `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
 | `src/skins.js` | Murmel-Designs, ab wie vielen Sternen sie frei sind, Sprungkraft an Wand/Boden, Schwerkraft, Rollen und Dichte (`ball: {wand, boden, schwere, rollen, dichte}`, dichte in g/cm³: unter 1 schwimmt die Murmel im Fluss), optional Struktur (`bump`) |
-| `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |
+| `src/treppe.js` | Treppe: alle Murmeln fallen gleichzeitig hinunter, unten prallen sie an eine Glaswand und stossen eine Domino-Kette an (Hintergrund der Menüs, Knopf 🪜 auf der Karte) |
 | `src/trails.js` | Spuren hinter der Murmel (freischaltbar über Sterne ⭐ oder Sticker 🏅), Partikel-Pool als InstancedMesh |
 | `src/stickers.js` | Sticker-Album: Sticker je Level/Welt werden aus `src/levels/index.js` erzeugt, dazu Extras |
 | `src/ghost.js` | Bestzeit: Fahrt aufnehmen (alle 0.1 s), Geistermurmel fährt beim nächsten Mal mit, Zeitformat |
@@ -89,7 +90,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `balken` | `at` (Drehpunkt), `length`, `speed` (°/s, negativ = andersrum), `farbe` |
 | `magnet` | `at` (Boden darunter), `radius`, `strength` (negativ = stösst ab) |
 | `kanone` | `at` (Boden), `target` (Landepunkt), `time` (Flugzeit) |
-| `domino` | `from`, `to`, `count`, `size: [b, h, t]` |
+| `domino` | `from`, `to`, `count` (Reihen), `quer` (bis zu so viele Steine nebeneinander, versetzt, vorne als Dreieck), `abstand`, `size: [b, h, t]`; einzelner Stein: `at`, `yaw` |
 | `feld` | `at` (Mitte der vorderen Kante), `yaw`, `cell` (Kachel, Standard 2), `map` (Zeilen, unterste = Einfahrt): `#` Boden, `.` Loch, `w` Mauer, `e`/`s`/`p`/`a`/`o`/`h` Eis/Schlamm/Pfütze/Sand/Seife/Handtuch; `walls` |
 | `falltuer` | `at`, `size: [b, t]`, `yaw`, `delay` (s bis sie aufklappt, Standard 0.6), `offen` (s bis sie zugeht) |
 | `schieber` | `from`, `to` (Mitte unten), `size: [b, h, t]`, `time`, `pause`, `offset` – schiebt die Murmel weg |
@@ -112,6 +113,8 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `klo` | `at` (Schüsselboden), `yaw`, `r`, `R`, `h`, `rim`, `tief` (Rohr, Standard 3.5) – Toilette mit Deckel und Spülkasten, in der Mitte ein Loch mit geschlossenem Rohr darunter. `ziel` 2 m unter `at` ins Rohr legen: gewonnen, wenn die Murmel hinuntergespült ist; spült, sobald die Murmel im Abfluss ist; Kamera 45° von oben, solange die Murmel über der Schüssel ist |
 
 Neues Hindernis erfinden: in `src/elements.js` einen Typ ergänzen (`solids`, `init`, `reset`, `pre`, `step`, `view`), danach kann es in jedem Level verwendet werden.
+Neues Bauteil: im Prüfstand (`src/levels/pruefstand/<gruppe>.js`) ein Mini-Level dafür anlegen, Route in `tests/routes/pruefstand/<gruppe>.js`; der Test „Prüfstand …“ fährt es bei jedem PR mit jeder Stärke und jeder Murmel.
+
 Neues Level testen: in `tests/autopilot.js` (schwere Level: `tests/routes/<welt>.js`) eine Route (Wegpunkte) ergänzen, dann `node tests/pruefe-level.mjs <id>` (schnell, ohne Browser; `--fahrt` zeigt eine Fahrt mit Wegpunkten und Abstürzen) und `npm test`. Wegpunkte können warten (`wait: 'platAtTo'`, `'amBoden'`, `['hoehe', 7]`, `['balkenWeg', [x, z]]` (auch Sprenger), `['phase', ['hammer', 0, 0.72, 0.85]]` (Takt von Hammer/Felsen/Plattform/Schieber), `['tuerZu', 0]`, `['tiefer', y]`) oder der Bahn folgen (`{ follow: true, bisY }`); mehrere Routen pro Level sind möglich (z. B. Umweg zum Bonusstern).
 Neues oder geändertes Level: Richtzeit für die Punkte mit `node tests/richtzeiten.mjs <id>` messen.
 Autopilot zuschauen: Spiel mit `?autopilot` öffnen (z. B. `http://localhost:8123/?autopilot`), Level wählen. Ringe = Wegpunkte (orange = aktuelles Ziel, lila = wartet, grau = erledigt).
