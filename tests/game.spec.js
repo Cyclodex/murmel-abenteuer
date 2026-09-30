@@ -417,8 +417,8 @@ test('Treppe: alle Murmeln kommen unten an, der Flummi springt am höchsten', as
   expect(by.basketball.up).toBeGreaterThan(by.standard.up);
 });
 
-test('Menüs zeigen die Treppe im Hintergrund, Knopf 🪜 zeigt sie im Vollbild, die Dominos fallen um', async ({ page }) => {
-  test.setTimeout(120_000); // bis die erste Murmel an der Glaswand ist: 5 s Spielzeit, im Container gut 12 s
+test('Menüs zeigen die Treppe im Hintergrund, Knopf 🪜 zeigt sie im Vollbild, die Murmeln werfen Dominos um', async ({ page }) => {
+  test.setTimeout(120_000); // bis die Murmeln die ersten Dominos treffen: 2.5 s Spielzeit, im Container gut 10 s
   const errors = watchErrors(page);
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.backdrop);
@@ -427,8 +427,8 @@ test('Menüs zeigen die Treppe im Hintergrund, Knopf 🪜 zeigt sie im Vollbild,
   await page.click('#btnTreppe');
   await expect(page.locator('#mapOv')).toBeHidden();
   await page.waitForFunction(() => window.murmel.treppe.treppe.time > 0.5);
-  expect(await page.evaluate(() => window.murmel.treppe.dominos.started)).toBe(false);
-  await page.waitForFunction(() => window.murmel.treppe.dominos.started, null, { timeout: 90_000 }); // erste Murmel an der Scheibe
+  expect(await page.evaluate(() => window.murmel.treppe.dominos.fallen)).toBe(0);
+  await page.waitForFunction(() => window.murmel.treppe.dominos.fallen > 0, null, { timeout: 90_000 });
   await page.click('#treppeBack');
   await page.click('.lvl[data-level="ausflug"]');
   expect(await page.evaluate(() => window.murmel.backdrop)).toBe(false);
@@ -591,12 +591,16 @@ test('Kurve, Spirale und Looping werden ohne Absturz durchfahren, der Looping br
   expect(k.ev).toEqual([]);
   expect(k.p[0]).toBeGreaterThan(5);
   expect(k.aus).toBeCloseTo(-Math.PI / 2, 2);
-  // Spirale: eine Runde 6 m hinunter, unten geht es geradeaus weiter
+  // Spirale: eine Runde 6 m hinunter, unten geht es geradeaus weiter. Die Murmel rollt auf dem Boden, statt von Naht zu Naht
+  // zu springen (mit Brettern über die ganze Breite war sie 63 % der Zeit in der Luft, gemessen jetzt 8 %)
   const s = await fahre(page, [{ type: 'weg', from: [0, 6, 4], to: [0, 6, 0], width: 3, walls: 0.8, caps: 'start' }, { type: 'spirale', at: [0, 6, 0], turn: 360, rise: -6, radius: 4, width: 3, walls: 0.8 },
-    { type: 'weg', from: [0, 0, 0], to: [0, 0, -10], width: 3, walls: 0.8, caps: 'end' }], [0, 6, 2], 14, [0, 0], schwung(2));
+    { type: 'weg', from: [0, 0, 0], to: [0, 0, -10], width: 3, walls: 0.8, caps: 'end' }], [0, 6, 2], 14, [0, 0],
+    schwung(2) + 'g.luft = 0; g.drauf = 0; g.jeSchritt = () => { const y = g.ball.position.y; if (y > 0.7 && y < 6.2) { g.drauf++; if (!g.groundBody) g.luft++; } };',
+    'return g.luft / g.drauf');
   expect(s.ev).toEqual([]);
   expect(s.p[1]).toBeLessThan(1);
   expect(s.p[2]).toBeLessThan(-2);
+  expect(s.aus).toBeLessThan(0.25);
   // Looping (Radius 3, Ausfahrt 5 m weiter rechts) mit Turbo davor: einmal ganz herum, oben bei 6 m
   const loop = [{ type: 'weg', from: [0, 0, 8], to: [0, 0, 0], width: 3, walls: 0.8, caps: 'start' }, { type: 'turbo', at: [0, 0, 1.5], size: [2.6, 2], speed: 11.5 },
     { type: 'looping', at: [0, 0, 0], radius: 3, width: 3, shift: 5 }, { type: 'weg', from: [5, 0, 0], to: [5, 0, -12], width: 4, walls: 0.8, caps: 'end' }];
@@ -1115,7 +1119,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
@@ -1127,7 +1131,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }
@@ -1208,18 +1212,21 @@ test('Karte im Querformat: oberste Knöpfe und letzte Welt erreichbar', async ({
   await expect(page.locator('#hud')).toBeVisible();
 });
 
-test('Schwere Versionen: 💀-Reihe, offen nach dem normalen Level, Sticker 💀', async ({ page }) => {
+test('Schwere Versionen: diagonal geteilte Kachel, offen nach dem normalen Level, Sticker 💀', async ({ page }) => {
   const errors = watchErrors(page);
   await play(page, 'ausflug');
   await page.click('#btnHome');
-  await expect(page.locator('.world.hard .lvl[data-level="ausflugs"]')).toBeDisabled();
-  await expect(page.locator('.lvl[data-level="ausflugs"]')).toContainText('💀1');
-  await page.click('.lvl[data-level="ausflug"]');
+  const hard = page.locator('.pair .lvl.hard[data-level="ausflugs"]');
+  await expect(hard).toBeDisabled();
+  await expect(hard).toContainText('🔒');
+  await expect(page.locator('.pair .lvl[data-level="ausflug"]')).toContainText('⭐0');
+  await page.click('.lvl[data-level="ausflug"]'); // Mitte der Kachel = normales Level
   await winLevel(page, 5);
   await page.click('#cheerOv').catch(() => {});
   await page.click('#mapBtn');
-  await expect(page.locator('.lvl[data-level="ausflugs"]')).toBeEnabled();
-  await page.click('.lvl[data-level="ausflugs"]');
+  await expect(page.locator('.lvl[data-level="ausflug"]')).toContainText('⭐5');
+  await expect(hard).toBeEnabled();
+  await hard.click({ position: { x: 75, y: 75 } }); // schwere Hälfte unten rechts
   await expect(page.locator('#hud')).toBeVisible();
   await winLevel(page, 7);
   expect((await saved(page)).stickers['profi:uebung']).toBe(true);

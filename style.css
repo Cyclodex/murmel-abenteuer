@@ -37,15 +37,31 @@ background:rgba(255,255,255,.35);border:3px solid rgba(255,255,255,.8);touch-act
 .world{display:flex;align-items:center;gap:10px;background:var(--panel);border-radius:24px;padding:10px 14px}
 .world .wicon{font-size:40px}
 .world .levels{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-/* schwere Versionen: dunkle Reihe direkt unter der Welt */
-.world.hard{margin-top:-8px;background:rgba(58,42,20,.82)}
-.world.hard .wicon{font-size:30px}
-.world.hard .lvl{background:#4A3A2A;color:#FFF3DE}
-.world.hard .lvl.done{background:#5B4A2E}
-.lvl{width:84px;height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:4px;background:#fff;border-radius:20px;font-size:34px;line-height:1.1}
-.lvl .s{font-size:11px;letter-spacing:-1px}
+/* schmaler Bildschirm: Welt-Symbol über den Leveln, damit drei Kacheln nebeneinander passen */
+@media (max-width:520px){.world{flex-direction:column;gap:4px;padding:8px 12px 12px}.world .wicon{font-size:30px}}
+/* Farbe pro Welt (--c): Kacheln hell, schwere Hälfte kräftig */
+.world{--c:#20A39E}
+.world[data-world="spielzimmer"]{--c:#F2762E}
+.world[data-world="garten"]{--c:#5FAE2E}
+.world[data-world="kueche"]{--c:#E39B00}
+.world[data-world="badezimmer"]{--c:#E0529C}
+.world[data-world="weltraum"]{--c:#6A4BE0}
+.world[data-world="unterwasser"]{--c:#1F7AE0}
+.world[data-world="vulkan"]{--c:#D2361E}
+.lvl{width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:4px;background:color-mix(in srgb,var(--c) 22%,#fff);color:#3A2A14;border-radius:20px;font-size:34px;line-height:1.1}
+.lvl .s{font-size:14px;font-weight:800}
 .lvl:disabled{opacity:.45;cursor:default}
-.lvl.done{background:#E6F7EA}
+.lvl.done{background:color-mix(in srgb,var(--c) 36%,#fff)}
+/* Level mit schwerer Version: diagonal geteilt, oben links normal (hell), unten rechts schwer (kräftig).
+   Der Schnitt liegt knapp unter der Diagonale, damit die Mitte der Kachel zum normalen Level gehört. */
+.pair{position:relative;width:96px;height:96px;flex-shrink:0;filter:drop-shadow(0 3px 0 rgba(0,0,0,.18))}
+.pair .lvl{position:absolute;inset:0;width:auto;height:auto;box-shadow:none;font-size:26px;padding:6px 9px}
+.pair .lvl:not(.hard){clip-path:polygon(0 0,100% 0,100% 2px,2px 100%,0 100%);align-items:flex-start;justify-content:flex-start}
+.pair .lvl.hard{clip-path:polygon(100% 8px,100% 100%,8px 100%);align-items:flex-end;justify-content:flex-end;font-size:24px;color:#fff;background:linear-gradient(to bottom right,var(--c) 50%,color-mix(in srgb,var(--c) 70%,#000))}
+.pair .lvl.hard .s{text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.pair .lvl.hard:disabled{opacity:1;background:color-mix(in srgb,var(--c) 25%,#B8B8B8);font-size:20px}
+.pair .lvl:focus-visible{outline:0;background:#CFE0FF}
+.pair .lvl.hard:focus-visible{background:#2F4F8F}
 .grid{display:grid;grid-template-columns:repeat(3,86px);gap:12px}
 .skin{width:86px;height:86px;font-size:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;background:#fff}
 .skin small{font-size:15px}

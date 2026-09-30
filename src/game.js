@@ -8,6 +8,7 @@ export const MAX_TILT = 25 * Math.PI / 180;
 export const H = 1 / 60; // fester Physikschritt
 const HIT_MIN = 1.5;      // ab dieser Geschwindigkeitsänderung (m/s) klackt es
 const BOUNCE_MIN = 0.8;   // ab dieser Aufprallgeschwindigkeit (m/s) prallt die Murmel ab
+export const RESPAWN_T = 1; // so lange (s) wartet die Murmel nach dem Runterfallen am Checkpoint, die Kamera fliegt hin
 
 // Oberflächen: friction für die Physik, bounce = wie stark sie den Abprall zurückgibt (Faktor),
 // grip = wie stark die Steuerung wirkt, drag = Abbremsen pro Sekunde (negativ = gleitet länger), roll = Faktor Rollwiderstand,
@@ -25,7 +26,8 @@ export const SURFACES = {
   keramik: { friction: 0.3, bounce: 1, grip: 1, drag: 0.9, wash: 0.5 }, // nasses Lavabo: hart (Bälle springen), ein Wasserfilm bremst etwas
   kunststoff: { friction: 0.3, bounce: 1, grip: 1, drag: 0 }, // Kugelbahn: Rinne
   rohr: { friction: 0.3, bounce: 1, grip: 0, drag: 0 }, // geschlossenes Rohr (Abfluss): drinnen lenkt man nicht
-  trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 } // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
+  trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 }, // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
+  spirale: { friction: 0.4, bounce: 1, grip: 1, drag: 0.3, wash: 0.015 } // Boden von Spirale und geneigter Kurve: bremst etwas, sonst zu schnell für die Kurve
 };
 const DIRT_STILL = 0.08; // so viel Dreck pro Sekunde auch im Stehen im Schlamm
 const WASH_WATER = 0.6;  // Unterwasser: Abwaschen pro Sekunde
@@ -122,6 +124,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
       const body = new CANNON.Body({ mass: 0, material: matFor(s.surface), shape: new CANNON.Box(new CANNON.Vec3(...s.half)) });
       body.position.set(...s.pos);
       body.quaternion.set(...s.quat);
+      body.aabbNeedsUpdate = true; // cannon.js rechnet die Box schon im Konstruktor (am Nullpunkt): sonst treffen Strahlen die Klötze nicht
       body.collisionFilterGroup = GRP.fest; body.collisionFilterMask = GRP.murmel | GRP.lose;
       body.userData = s;
       world.addBody(body);
@@ -143,7 +146,32 @@ export function createGame(CANNON, level, ballProps = BALL) {
 
   g.spawn = p => {
     ball.position.set(...p); ball.velocity.set(0, 0, 0); ball.angularVelocity.set(0, 0, 0);
-    g.groundBody = g.touchBody = null; g.rundN = null; g.lock = false; g.squashT = 0; last = null;
+    g.groundBody = g.touchBody = null; g.rundN = null; g.lock = false; g.squashT = 0; g.holdT = 0; last = null;
+  };
+  // Neu einsetzen nach Runterfallen oder Quetschen: Die Murmel wartet RESPAWN_T am Checkpoint (die Kamera fliegt hin),
+  // Blickrichtung = die des Checkpoints bzw. des Starts. Die Uhr läuft weiter. Event 'wieder', wenn es weitergeht.
+  const respawn = () => {
+    const cp = g.st.cp < 0 ? null : g.checkpoints[g.st.cp];
+    g.spawn(spawnPoint());
+    g.holdT = RESPAWN_T; g.holdPos = [ball.position.x, ball.position.y, ball.position.z];
+    g.track.yaw = ((cp ? cp.yaw : level.startYaw) || 0) * Math.PI / 180;
+  };
+  // Fliegt die Murmel ins Leere? Flugbahn mit der jetzigen Schwerkraft bis killY in Stücken abtasten
+  // (von der Mitte bis zum untersten Punkt der Murmel am Ende des Stücks). Nur für die Kamera, ändert nichts an der Physik.
+  const rayRes = new CANNON.RaycastResult(), rayA = new CANNON.Vec3(), rayB = new CANNON.Vec3(), rayOpt = { collisionFilterMask: GRP.fest, skipBackfaces: true };
+  g.insLeere = () => {
+    if (g.els.some(e => e.inside)) return false; // im Wind, am Magneten, im Wasserstrahl: die Flugbahn ist nicht frei
+    const p = ball.position, v = ball.velocity, gr = world.gravity, dt = 0.1, felder = g.els.filter(e => TYPES[e.type].feld);
+    let x = p.x, y = p.y, z = p.z, vx = v.x, vy = v.y, vz = v.z;
+    for (let i = 0; i < 100 && y > killY; i++) {
+      if (felder.some(e => TYPES[e.type].feld(e, [x, y, z]))) return false; // fällt z. B. in den Aufwind
+      rayA.set(x, y, z);
+      x += vx * dt + gr.x * dt * dt / 2; y += vy * dt + gr.y * dt * dt / 2; z += vz * dt + gr.z * dt * dt / 2;
+      vx += gr.x * dt; vy += gr.y * dt; vz += gr.z * dt;
+      rayB.set(x, y - R, z); rayRes.reset();
+      if (world.raycastAny(rayA, rayB, rayOpt, rayRes)) return false;
+    }
+    return true;
   };
   // Zerquetscht (z. B. Hammer): Murmel bleibt kurz platt liegen, dann geht es am Checkpoint weiter.
   // Events: 'quetsch' sofort, 'zurueck' beim Neustart.
@@ -154,7 +182,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
     g.st.falls++; g.squashT = SQUASH_T; g.squashPos = [p.x, p.y, p.z]; g.squashNew = true; g.lock = true;
   };
   // Runtergefallen (unter killY oder z. B. ins Badewasser): am Checkpoint neu einsetzen
-  g.fall = ev => { g.st.falls++; g.spawn(spawnPoint()); ev.push('fall'); };
+  g.fall = ev => { g.st.falls++; respawn(); ev.push('fall'); };
   g.reset = () => {
     Object.assign(g.st, { stars: 0, cp: -1, won: false, falls: 0 });
     Object.assign(g, { dirt: 0, dirtPeak: 0, dirty: false, washed: false, washK: 0, squashT: 0, squashNew: false });
@@ -313,7 +341,14 @@ export function createGame(CANNON, level, ballProps = BALL) {
     if (g.squashT > 0) { // platt liegen bleiben
       ball.position.set(...g.squashPos); ball.velocity.set(0, 0, 0); ball.angularVelocity.set(0, 0, 0);
       g.hitCool = 0.3; g.time += H;
-      if ((g.squashT -= H) <= 0) { g.spawn(spawnPoint()); ev.push('zurueck'); }
+      if ((g.squashT -= H) <= 0) { respawn(); ev.push('zurueck'); }
+      for (const el of g.els) TYPES[el.type].step?.(el, g, H, ev);
+      return;
+    }
+    if (g.holdT > 0) { // am Checkpoint warten, bis die Kamera dort ist
+      ball.position.set(...g.holdPos); ball.velocity.set(0, 0, 0); ball.angularVelocity.set(0, 0, 0);
+      g.hitCool = 0.3; g.time += H;
+      if ((g.holdT -= H) <= 0) { g.holdT = 0; ev.push('wieder'); }
       for (const el of g.els) TYPES[el.type].step?.(el, g, H, ev);
       return;
     }

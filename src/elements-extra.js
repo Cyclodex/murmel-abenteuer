@@ -129,9 +129,13 @@ export const EXTRA = {
       el.dir = el.up ? UP : fwdOf(el.yw);
     },
     reset(el) { el.inside = false; },
+    // bläst es am Punkt p? (auch für die Kamera: fällt die Murmel in den Wind, fliegt sie nicht frei)
+    feld(el, p) {
+      const l = toLocal(p, el.at, el.yw), [b, hh, t] = el.size;
+      return Math.abs(l[0]) < b / 2 && l[1] > 0 && l[1] < hh && Math.abs(l[2]) < t / 2;
+    },
     step(el, g, h, ev) {
-      const l = toLocal(ballPos(g), el.at, el.yw), [b, hh, t] = el.size;
-      const inside = Math.abs(l[0]) < b / 2 && l[1] > 0 && l[1] < hh && Math.abs(l[2]) < t / 2;
+      const inside = EXTRA.wind.feld(el, ballPos(g));
       if (inside) {
         const a = (el.strength ?? (el.up ? 16 : 8)) * h, v = g.ball.velocity;
         v.x += el.dir[0] * a; v.y += el.dir[1] * a; v.z += el.dir[2] * a;
@@ -357,7 +361,7 @@ export const EXTRA = {
 };
 
 // Alle 28 Steine eines Domino-Spiels (Punkte oben, unten)
-const DOMINO_PAARE = [];
+export const DOMINO_PAARE = [];
 for (let a = 0; a <= 6; a++) for (let b = a; b <= 6; b++) DOMINO_PAARE.push([a, b]);
 // Punkte wie auf dem Würfel, im Einheitsquadrat einer Hälfte
 const PUNKTE = {
@@ -367,7 +371,7 @@ const PUNKTE = {
   6: [[0.27, 0.22], [0.73, 0.22], [0.27, 0.5], [0.73, 0.5], [0.27, 0.78], [0.73, 0.78]]
 };
 // Vorderseite: weiss, Trennlinie in der Mitte, oben o und unten u Punkte
-const dominoTex = (v, o, u) => v.canvasTex(64, 128, (x, w, h) => {
+export const dominoTex = (v, o, u) => v.canvasTex(64, 128, (x, w, h) => {
   x.fillStyle = '#F7F4EC'; x.fillRect(0, 0, w, h);
   x.fillStyle = '#1A1A1A'; x.fillRect(8, h / 2 - 1.5, w - 16, 3);
   [o, u].forEach((n, k) => PUNKTE[n].forEach(([px, py]) => { x.beginPath(); x.arc(px * w, k * h / 2 + py * h / 2, 6, 0, 7); x.fill(); }));
