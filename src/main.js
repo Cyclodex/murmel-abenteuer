@@ -201,7 +201,9 @@ function showMap() {
 // ---------- Spieler ----------
 const MEDALS = ['🥇', '🥈', '🥉'];
 // Rangliste als Text: "🥇 Anna 🏆3274 ⭐12" bzw. im Level "🥇 Anna 🏆1637 🐇" (Namen nie als HTML einsetzen)
-const rankText = (r, i) => `${MEDALS[i] || `${i + 1}.`} ${r.name} 🏆${r.score}` + (r.power ? ` ${(POWERS.find(p => p.id === r.power) || POWERS[1]).emoji}` : '');
+const fmtScore = n => n.toLocaleString('de-CH'); // Tausendertrenner: 25’123
+const powerEmoji = r => r.power ? (POWERS.find(p => p.id === r.power) || POWERS[1]).emoji : '';
+const rankText = (r, i) => `${MEDALS[i] || `${i + 1}.`} ${r.name} 🏆${fmtScore(r.score)}` + (r.power ? ` ${powerEmoji(r)}` : '');
 // Alle Spieler auf dem Gerät nach Punkten (auch die ohne Fahrt, mit 0)
 function playerRanking() {
   const pts = new Map(ranking(progress.rows()).map(r => [r.name.toLowerCase(), r.score]));
@@ -349,7 +351,7 @@ function onWin() {
     if (race) for (const g of race.list) if (g.own) g.track = track;
     online.submit(progress.player().name, lv.id, run, track).then(ok => { if (ok && lv === LEVELS[levelIdx]) showWinRank(); });
   }
-  $('winScore').textContent = `🏆 ${run.score}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : hadRun ? ` · 🏆 ${hadRun.score}` : '');
+  $('winScore').textContent = `🏆 ${fmtScore(run.score)}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : hadRun ? ` · 🏆 ${fmtScore(hadRun.score)}` : '');
   $('winTime').textContent = `⏱ ${formatTime(t)}` + (fastest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
   const after = progress.totalStars();
   const stickers = syncStickers({ dreckig: game.dirtPeak >= 1, sauber: game.washed, geist: ghosts.length > 0 && ghosts.every(g => t < g.t) });
@@ -458,9 +460,13 @@ function renderRanks() {
   const rank = ranking(allRows(), id), k = rank.findIndex(r => same(r.name, me));
   const box = $('rankList'); box.textContent = '';
   for (const r of [...rank.slice(0, 10), ...(k >= 10 ? [rank[k]] : [])]) {
-    const row = document.createElement('div'), text = document.createElement('span');
+    const row = document.createElement('div'), text = document.createElement('span'), pts = document.createElement('span');
     row.className = 'rrow' + (same(r.name, me) ? ' me' : '');
-    text.textContent = rankText(r, rank.indexOf(r)); row.appendChild(text);
+    const i = rank.indexOf(r);
+    text.className = 'rname'; text.textContent = [`${MEDALS[i] || `${i + 1}.`} ${r.name}`, powerEmoji(r)].filter(Boolean).join(' ');
+    pts.className = 'rscore'; pts.textContent = `🏆 ${fmtScore(r.score)}`; // eigene Spalte rechts, damit die Punkte vergleichbar sind
+    row.append(text, pts);
+    const acts = document.createElement('div'); acts.className = 'acts'; if (id) row.appendChild(acts); // feste Breite: Punkte stehen in jeder Zeile gleich
     const btn = (emoji, label, go) => {
       const b = document.createElement('button'); b.textContent = emoji; b.setAttribute('aria-label', label);
       b.onclick = async () => {
@@ -469,7 +475,7 @@ function renderRanks() {
         if (!track) { toast('📡 ❌'); return; }
         if (!$('rankOv').classList.contains('hidden')) go(track);
       };
-      row.appendChild(b);
+      acts.appendChild(b);
     };
     if (id && hasGhost(r.name, id)) {
       btn('👁', `${r.name} zuschauen`, track => watchRun(LEVELS.indexOf(lv), r.name, track));

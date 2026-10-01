@@ -215,7 +215,7 @@ test('Mehrere Spieler: eigener Spielstand, Rangliste nach Punkten', async ({ pag
   await expect(page.locator('#btnPlayer')).toHaveText('👤 Anna');
   // 3 von 5 Sternen, sofort im Ziel (Zeitbonus voll), 1 Absturz: 600 + 750 + 200
   await win('ausflug', 3, [0, 5, -69], 1);
-  await expect(page.locator('#winScore')).toHaveText('🏆 1550 · 💥1');
+  await expect(page.locator('#winScore')).toHaveText('🏆 1’550 · 💥1');
   await expect(page.locator('#winRank')).toBeHidden();  // nur ein Spieler
   await page.click('#mapBtn');
   // zweiter Spieler startet bei null
@@ -225,14 +225,14 @@ test('Mehrere Spieler: eigener Spielstand, Rangliste nach Punkten', async ({ pag
   await expect(page.locator('#mapStars')).toHaveText('⭐ 0');
   await expect(page.locator('.lvl[data-level="ausflug"]')).not.toHaveClass(/done/);
   await win('ausflug', 5, [0, 5, -69]);
-  await expect(page.locator('#winScore')).toHaveText('🏆 2050');
-  await expect(page.locator('#winRank')).toHaveText('🥇 <b>Ben</b> 🏆2050 🐇\n🥈 Anna 🏆1550 🐇');
+  await expect(page.locator('#winScore')).toHaveText('🏆 2’050');
+  await expect(page.locator('#winRank')).toHaveText('🥇 <b>Ben</b> 🏆2’050 🐇\n🥈 Anna 🏆1’550 🐇');
   // nach Neuladen: Ben ist noch dran, Rangliste in der Auswahl
   await page.reload();
   await page.click('#startJoy');
   await expect(page.locator('#btnPlayer')).toHaveText('👤 <b>Ben</b>');
   await page.click('#btnPlayer');
-  await expect(page.locator('.player')).toHaveText(['🥇 <b>Ben</b> 🏆2050 ⭐5', '🥈 Anna 🏆1550 ⭐3']);
+  await expect(page.locator('.player')).toHaveText(['🥇 <b>Ben</b> 🏆2’050 ⭐5', '🥈 Anna 🏆1’550 ⭐3']);
   await expect(page.locator('.player.sel')).toHaveText(/Ben/);
   await page.click('.player:has-text("Anna")');
   await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
@@ -1471,7 +1471,7 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geis
   expect(sent.p_ghost.p.length).toBeGreaterThan(0);
   expect(await page.evaluate(() => window.murmel.progress.ghost('ausflug').p)).toEqual(sent.p_ghost.p);
   // Level-Rangliste mit den Online-Fahrten (Punkte aus den Rohwerten neu gerechnet), Geist des besten anderen mit Aufnahme
-  await expect(page.locator('#winRank')).toHaveText('🥇 Test 🏆2050 🐇\n🥈 Max 🏆1950 🐇\n🥉 Zoe 🏆1850 🐇');
+  await expect(page.locator('#winRank')).toHaveText('🥇 Test 🏆2’050 🐇\n🥈 Max 🏆1’950 🐇\n🥉 Zoe 🏆1’850 🐇');
   await expect(page.locator('#winGhost')).toHaveText('👻 🥉 Zoe');
   await page.click('#cheerOv').catch(() => {});
   await page.click('#winGhost');
@@ -1485,12 +1485,14 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geis
   await page.click('#btnHome');
   await page.click('#mapStars');
   await expect(page.locator('#rankTitle')).toHaveText('🌍');
-  await expect(page.locator('#rankList .rrow')).toHaveText(['🥇 Max 🏆4000', '🥈 Test 🏆2050', '🥉 Zoe 🏆1850']);
-  await expect(page.locator('#rankList .rrow.me')).toHaveText('🥈 Test 🏆2050');
+  await expect(page.locator('#rankList .rrow .rname')).toHaveText(['🥇 Max', '🥈 Test', '🥉 Zoe']);
+  await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['🏆 4’000', '🏆 2’050', '🏆 1’850']);
+  await expect(page.locator('#rankList .rrow.me .rname')).toHaveText('🥈 Test');
   // ▶️ erstes Level: wer eine Aufnahme hat, bekommt 👁 (zuschauen), andere dazu 👻 (gegen sie fahren)
   await page.click('#rankNext');
   await expect(page.locator('#rankTitle')).toHaveText('🌳 Erster Ausflug');
-  await expect(page.locator('#rankList .rrow span')).toHaveText(['🥇 Test 🏆2050 🐇', '🥈 Max 🏆1950 🐇', '🥉 Zoe 🏆1850 🐇']);
+  await expect(page.locator('#rankList .rrow .rname')).toHaveText(['🥇 Test 🐇', '🥈 Max 🐇', '🥉 Zoe 🐇']);
+  await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['🏆 2’050', '🏆 1’950', '🏆 1’850']);
   await expect(page.locator('#rankList .rrow').nth(0).locator('button')).toHaveText(['👁']);
   await expect(page.locator('#rankList .rrow').nth(1).locator('button')).toHaveCount(0);
   await expect(page.locator('#rankList .rrow').nth(2).locator('button')).toHaveText(['👁', '👻']);
@@ -1569,7 +1571,7 @@ test('Online-Rangliste ohne Server: Spiel läuft, Rekord wartet und geht beim n�
   await play(page, 'ausflug');
   await page.evaluate(() => { const g = window.murmel.game; g.st.stars = 3; g.spawn([0, 5, -69]); });
   await expect(page.locator('#winOv')).toBeVisible();
-  await expect(page.locator('#winScore')).toHaveText('🏆 1650');
+  await expect(page.locator('#winScore')).toHaveText('🏆 1’650');
   await expect(page.locator('#winGhost')).toBeHidden();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('murmel-online-v1')).queue['test\nausflug'].run.score)).toBe(1650);
   // Server antwortet gar nicht: nach dem Timeout geht es ohne Fehler weiter, der Rekord wartet weiter
