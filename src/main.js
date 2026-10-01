@@ -134,7 +134,7 @@ function showGhost() {
 function startLevel(i, list = null) {
   backdrop = false; watching = null; race = list ? { level: LEVELS[i].id, list } : null;
   loadLevel(i);
-  ['mapOv', 'winOv', 'skinOv', 'albumOv', 'startOv', 'playerOv', 'rankOv', 'ghostOv'].forEach(id => show(id, false));
+  ['mapOv', 'winOv', 'skinOv', 'albumOv', 'startOv', 'playerOv', 'rankOv', 'rankGhostOv', 'ghostOv'].forEach(id => show(id, false));
   $('hud').classList.remove('watch'); show('hud'); show('joy', input.mode === 'joy');
   if (FLUG) { intro = true; running = false; view.cinema('intro'); } // endIntro() startet das Spiel
   else { running = true; if (input.mode === 'tilt') input.calibrate(true); }
@@ -154,7 +154,7 @@ function starRow(have, total) { return '⭐'.repeat(have) + '☆'.repeat(Math.ma
 function showMap() {
   stopCinema();
   running = false; backdrop = true; watching = null;
-  ['hud', 'joy', 'winOv', 'skinOv', 'albumOv', 'startOv', 'playerOv', 'treppeBack', 'rankOv', 'ghostOv'].forEach(id => show(id, false));
+  ['hud', 'joy', 'winOv', 'skinOv', 'albumOv', 'startOv', 'playerOv', 'treppeBack', 'rankOv', 'rankGhostOv', 'ghostOv'].forEach(id => show(id, false));
   syncStickers(); // schon verdiente Sticker nachtragen (alter Spielstand, anderer Spieler), ohne Jubel
   $('mapStars').textContent = `⭐ ${progress.totalStars()}`;
   $('btnPlayer').textContent = `👤 ${progress.player().name}`;
@@ -200,10 +200,10 @@ function showMap() {
 
 // ---------- Spieler ----------
 const MEDALS = ['🥇', '🥈', '🥉'];
-// Rangliste als Text: "🥇 Anna 🏆3274 ⭐12" bzw. im Level "🥇 Anna 🏆1637 🐇" (Namen nie als HTML einsetzen)
 const fmtScore = n => n.toLocaleString('de-CH'); // Tausendertrenner: 25’123
 const powerEmoji = r => r.power ? (POWERS.find(p => p.id === r.power) || POWERS[1]).emoji : '';
-const rankText = (r, i) => `${MEDALS[i] || `${i + 1}.`} ${r.name} 🏆${fmtScore(r.score)}` + (r.power ? ` ${powerEmoji(r)}` : '');
+// Spielerliste als Text: "🥇 Anna 🏆3’274 ⭐12" (Namen nie als HTML einsetzen)
+const rankText = (r, i) => `${MEDALS[i] || `${i + 1}.`} ${r.name} 🏆${fmtScore(r.score)}`;
 // Alle Spieler auf dem Gerät nach Punkten (auch die ohne Fahrt, mit 0)
 function playerRanking() {
   const pts = new Map(ranking(progress.rows()).map(r => [r.name.toLowerCase(), r.score]));
@@ -375,7 +375,7 @@ function onWin() {
 function showWinRank() {
   const id = LEVELS[levelIdx].id, rank = ranking(allRows(), id), me = progress.player().name.toLowerCase();
   const k = rank.findIndex(r => r.name.toLowerCase() === me);
-  $('winRank').textContent = [...rank.slice(0, 5), ...(k >= 5 ? [rank[k]] : [])].map(r => rankText(r, rank.indexOf(r))).join('\n');
+  $('winRank').replaceChildren(rankTable(rank, [...rank.slice(0, 5), ...(k >= 5 ? [rank[k]] : [])], me).tab);
   show('winRank', rank.length > 1);
   const b = bestOther(id);
   $('winGhost').textContent = b ? `👻 ${place(b.i)} ${b.r.name}` : '';
@@ -398,6 +398,21 @@ const okTrack = tr => (tr && Array.isArray(tr.p) && tr.p.length >= 3 ? tr : null
 const localGhost = (name, id) => okTrack(progress.ghostOf(name, id));
 const hasGhost = (name, id) => !!localGhost(name, id) || online.rows().some(x => x.ghost && x.level === id && same(x.name, name));
 const loadGhost = async (name, id) => localGhost(name, id) || await online.ghost(name, id);
+// Rangliste als Tabelle: Kopfzeile 🏆 (und 👻, wenn es Aufnahmen gibt), Platz, Name mit Stärke, Punkte rechtsbündig,
+// eigene Zeile hervorgehoben. rows[j] gehört zu list[j]. Namen nur als Text einsetzen, nie als HTML.
+function rankTable(rank, list, me, ghosts = false) {
+  const tab = document.createElement('div'); tab.className = 'rtab';
+  const line = (cls, cells) => {
+    const row = document.createElement('div'); row.className = cls;
+    for (const [c, t] of cells) { const x = document.createElement('span'); x.className = c; x.textContent = t; row.appendChild(x); }
+    tab.appendChild(row); return row;
+  };
+  const cols = (pl, name, pts, gh) => [['rpl', pl], ['rname', name], ['rscore', pts], ...(ghosts ? [['rghost', gh]] : [])];
+  line('rhead', cols('', '', '🏆', '👻'));
+  const rows = list.map(r => line('rrow' + (same(r.name, me) ? ' me' : ''),
+    cols(place(rank.indexOf(r)), [r.name, powerEmoji(r)].filter(Boolean).join(' '), fmtScore(r.score), '')));
+  return { tab, rows };
+}
 // Bester andere Spieler mit Aufnahme in der Level-Rangliste: { r, i } (i = Platz) oder null
 function bestOther(id) {
   const rank = ranking(allRows(), id), me = progress.player().name;
@@ -440,7 +455,7 @@ function chooseLevel(i) {
 }
 $('ghostBack').onclick = () => { audio.sfx('tap'); showMap(); };
 
-// ---------- Rangliste: 🌍 alle Level zusammen oder ein Level; Aufnahmen anschauen ▶️ oder gegen sie fahren 🏁 (Kopfzeile: 🏆 Punkte, 👻 Aufnahmen) ----------
+// ---------- Rangliste: 🌍 alle Level zusammen oder ein Level; 👻 bei einer Aufnahme: zuschauen 📺 oder gegen sie fahren 🏁 ----------
 let rankPage = 0, rankFromWin = false;
 const rankPages = () => [null, ...LEVELS.filter((lv, i) => !lv.pruefstand && isOpen(i))];
 // levelId = diese Seite zeigen (null = 🌍); fromWin = vom Gewinn-Bildschirm aus (✔️ geht dorthin zurück, sonst zur Karte)
@@ -458,38 +473,37 @@ function renderRanks() {
   $('rankTitle').textContent = lv ? `${lv.emoji} ${lv.name}` : '🌍';
   // die besten 10 und der eigene Platz
   const rank = ranking(allRows(), id), k = rank.findIndex(r => same(r.name, me));
-  const box = $('rankList'); box.textContent = '';
-  if (rank.length) { // Kopfzeile: 🏆 über den Punkten, 👻 über den Knöpfen (nur im Level, dort gibt es Aufnahmen)
-    const head = document.createElement('div'); head.className = 'rhead';
-    head.innerHTML = `<span class="rname"></span><span class="rscore">🏆</span>${id ? '<div class="acts">👻</div>' : ''}`;
-    box.appendChild(head);
-  }
-  for (const r of [...rank.slice(0, 10), ...(k >= 10 ? [rank[k]] : [])]) {
-    const row = document.createElement('div'), text = document.createElement('span'), pts = document.createElement('span');
-    row.className = 'rrow' + (same(r.name, me) ? ' me' : '');
-    const i = rank.indexOf(r);
-    text.className = 'rname'; text.textContent = [`${MEDALS[i] || `${i + 1}.`} ${r.name}`, powerEmoji(r)].filter(Boolean).join(' ');
-    pts.className = 'rscore'; pts.textContent = fmtScore(r.score); // eigene Spalte rechts, damit die Punkte vergleichbar sind
-    row.append(text, pts);
-    const acts = document.createElement('div'); acts.className = 'acts'; if (id) row.appendChild(acts); // feste Breite: Punkte stehen in jeder Zeile gleich
-    const btn = (emoji, label, go) => {
-      const b = document.createElement('button'); b.textContent = emoji; b.setAttribute('aria-label', label);
-      b.onclick = async () => {
-        audio.sfx('tap');
-        const track = await loadGhost(r.name, id);
-        if (!track) { toast('📡 ❌'); return; }
-        if (!$('rankOv').classList.contains('hidden')) go(track);
-      };
-      acts.appendChild(b);
-    };
-    if (id && hasGhost(r.name, id)) {
-      btn('▶️', `${r.name} zuschauen`, track => watchRun(LEVELS.indexOf(lv), r.name, track));
-      if (!same(r.name, me)) btn('🏁', `Gegen ${r.name} fahren`, track => { startLevel(LEVELS.indexOf(lv), [{ name: r.name, track }]); toast(`👻 ${r.name}`); });
-    }
-    box.appendChild(row);
-  }
+  const list = [...rank.slice(0, 10), ...(k >= 10 ? [rank[k]] : [])];
+  const { tab, rows } = rankTable(rank, list, me, !!id);
+  $('rankList').replaceChildren(...(rank.length ? [tab] : []));
+  // 👻 nur bei Aufnahmen: öffnet die Auswahl zuschauen / gegen den Geist fahren
+  if (id) list.forEach((r, j) => {
+    if (!hasGhost(r.name, id)) return;
+    const b = document.createElement('button'); b.textContent = '👻'; b.setAttribute('aria-label', `Aufnahme von ${r.name}`);
+    b.onclick = () => { audio.sfx('tap'); pickGhost(lv, r); };
+    rows[j].querySelector('.rghost').appendChild(b);
+  });
   show('rankEmpty', !rank.length);
 }
+// Auswahl zur Aufnahme eines Spielers: 📺 zuschauen, 🏁 gegen den Geist fahren (nicht gegen sich selbst), ✖️ zurück
+function pickGhost(lv, r) {
+  const own = same(r.name, progress.player().name);
+  $('rankGhostTitle').textContent = `👻 ${r.name} · 🏆 ${fmtScore(r.score)}`;
+  $('rankRace').textContent = `🏁 Gegen ${r.name} fahren`;
+  show('rankRace', !own);
+  const go = fn => async () => {
+    audio.sfx('tap');
+    const track = await loadGhost(r.name, lv.id);
+    if ($('rankGhostOv').classList.contains('hidden')) return; // inzwischen geschlossen
+    show('rankGhostOv', false);
+    if (!track) { toast('📡 ❌'); return; }
+    fn(track);
+  };
+  $('rankWatch').onclick = go(track => watchRun(LEVELS.indexOf(lv), r.name, track));
+  $('rankRace').onclick = go(track => { startLevel(LEVELS.indexOf(lv), [{ name: r.name, track }]); toast(`👻 ${r.name}`); });
+  show('rankGhostOv');
+}
+$('rankGhostBack').onclick = () => { audio.sfx('tap'); show('rankGhostOv', false); };
 const flip = d => { audio.sfx('tap'); const n = rankPages().length; rankPage = (rankPage + d + n) % n; renderRanks(); };
 $('rankPrev').onclick = () => flip(-1);
 $('rankNext').onclick = () => flip(1);
@@ -504,8 +518,8 @@ function watchRun(i, name, track) {
   loadLevel(i);
   watching = { level: LEVELS[i].id, name, track, end: track.p.length / 3 * DT + 1.5 };
   view.setGhosts([]); view.setSkin(skinOf(track));
-  ['mapOv', 'winOv', 'rankOv', 'ghostOv'].forEach(id => show(id, false));
-  $('watchName').textContent = `👁 ${name}`;
+  ['mapOv', 'winOv', 'rankOv', 'rankGhostOv', 'ghostOv'].forEach(id => show(id, false));
+  $('watchName').textContent = `📺 ${name}`;
   $('hud').classList.add('watch'); show('hud'); show('joy', false);
   audio.music(LEVELS[i].theme || 'standard');
 }

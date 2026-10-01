@@ -77,22 +77,33 @@ background:rgba(255,255,255,.35);border:3px solid rgba(255,255,255,.8);touch-act
 #btnPlayer{flex-shrink:0;width:auto;height:auto;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rank{background:var(--panel);border-radius:18px;padding:6px 16px;font-size:20px;white-space:pre-line;text-align:left}
 button.rank{width:auto;height:auto;font-size:20px}
+#winGhost{width:auto;height:auto}
+#winRank{padding:0;background:none;box-shadow:none;width:min(100%,420px);white-space:normal}
 #mapStars{width:auto;height:auto}
 /* Rangliste: eine Zeile pro Spieler, Knöpfe 👁 zuschauen und 👻 gegen die Aufnahme fahren */
 #rankOv .row{align-items:center;gap:8px;width:min(100%,420px)}
 #rankOv .row button{flex-shrink:0}
 #rankOv h1{flex:1;min-width:0;font-size:24px;padding:6px 12px;overflow-wrap:anywhere}
-#rankList{display:flex;flex-direction:column;gap:8px;width:min(100%,420px)}
-.rrow{display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:18px;padding:4px 6px 4px 16px;font-size:20px;min-height:48px;box-sizing:border-box}
-.rrow .rname,.rhead .rname{flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rrow .rscore,.rhead .rscore{flex-shrink:0;width:3.8em;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+#rankList{width:min(100%,420px)}
+/* Rangliste als Tabelle (auch im Gewinn-Fenster): eine Karte, Kopfzeile 🏆 / 👻, Punkte rechtsbündig */
+.rtab{background:var(--panel);border-radius:18px;overflow:hidden;width:100%;text-align:left;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+.rtab>div{display:flex;align-items:center;gap:6px;padding:4px 8px 4px 14px;min-height:50px;font-size:20px;box-sizing:border-box;border-top:1px solid rgba(128,128,128,.25)}
+.rtab .rhead{min-height:38px;font-size:22px;border-top:0}
+.rtab .me{background:rgba(59,178,115,.28)}
+.rtab .me .rname{font-weight:800}
+.rpl{width:1.5em;flex-shrink:0;text-align:center}
+.rname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rscore{width:3.8em;flex-shrink:0;text-align:right;font-variant-numeric:tabular-nums}
 .rrow .rscore{font-weight:700}
-.rrow .rscore:last-child,.rhead .rscore:last-child{margin-right:10px}
-.rrow .acts,.rhead .acts{display:flex;gap:4px;justify-content:flex-end;width:84px;flex-shrink:0}
-.rhead{display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:14px;padding:2px 6px 2px 16px;font-size:20px;box-sizing:border-box}
-.rhead .acts{justify-content:center}
-.rrow button{flex-shrink:0;width:40px;height:40px;font-size:22px;border-radius:12px;background:#fff}
-.rrow.me{outline:4px solid var(--go)}
+.rscore:last-child{margin-right:6px}
+.rghost{width:44px;flex-shrink:0;display:flex;justify-content:center}
+.rghost button{width:42px;height:42px;font-size:22px;border-radius:12px;background:rgba(128,128,128,.2);box-shadow:none}
+/* Auswahl zu einer Aufnahme: unten eingeblendet über der Rangliste */
+#rankGhostOv{background:rgba(0,0,0,.55)}
+#rankGhostOv .sheet{margin:auto 0 8px;background:var(--panel);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:24px;padding:16px;width:min(100%,340px);box-sizing:border-box;display:flex;flex-direction:column;gap:10px}
+#rankGhostTitle{font-size:22px;font-weight:800}
+#rankGhostOv button{width:100%;height:56px;font-size:22px;font-weight:700;background:rgba(128,128,128,.2);box-shadow:none}
+#rankGhostOv button.go{background:var(--go);color:#fff}
 /* Geister beim Levelstart */
 #ghostPick{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;max-width:520px}
 #ghostPick .big{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
