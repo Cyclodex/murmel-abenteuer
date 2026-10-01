@@ -458,11 +458,11 @@ export function createView(THREE, renderer, game) {
     const s = game.level.start || [0, 0, 0], y0 = Math.atan2(-(lvC.x - s[0]), -(lvC.z - s[2]));
     return fitDist(y0 + Math.PI / 2) < fitDist(y0) * 0.8 ? y0 + Math.PI / 2 : y0;
   }
-  // Gefahrene Strecke als Punkte (Aufnahme alle 0.1 s, in cm); Sprünge über 3 m (Absturz, zurück zum Checkpoint) auslassen
+  // Gefahrene Strecke als rote Punkte (Aufnahme alle 0.1 s, in cm); Sprünge über 3 m (Absturz, zurück zum Checkpoint) auslassen
   function trackDots(track, dist) {
     const p = track && track.p, n = p ? p.length / 3 : 0;
     if (n < 2) return null;
-    const every = Math.ceil(n / 1500), im = new THREE.InstancedMesh(new THREE.SphereGeometry(Math.max(0.3, dist * 0.006), 8, 6), new THREE.MeshBasicMaterial({ color: 0xFFE066, fog: false }), n);
+    const every = Math.ceil(n / 1500), im = new THREE.InstancedMesh(new THREE.SphereGeometry(Math.max(0.3, dist * 0.006), 8, 6), new THREE.MeshBasicMaterial({ color: 0xE5202E, fog: false }), n);
     let k = 0;
     for (let i = 1; i < n; i++) {
       tmp.set(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]).divideScalar(100);
