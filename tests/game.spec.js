@@ -1312,8 +1312,10 @@ test('Sticker werden vergeben, gespeichert und im Album gezeigt; Jubel erscheint
   await expect(page.locator('#cheerOv')).toBeVisible();
   await expect(page.locator('#cheerOv .items')).toContainText('⚽');  // neue Murmel
   await expect(page.locator('#cheerOv .items')).toContainText('🏆');  // Welt komplett
-  await expect(page.locator('#cheerOv .items')).toContainText('Neue Murmel'); // mit Text, Sticker wie im Album
-  await expect(page.locator('#cheerOv .items .it').filter({ hasText: '🏆' })).toContainText('🏅 Neuer Sticker');
+  const ball = page.locator('#cheerOv .items .it').filter({ hasText: '⚽' }); // Sticker wie im Album, Art und Name
+  await expect(ball.locator('small')).toHaveText('Neue Murmel');
+  await expect(ball).toContainText('Fussball');
+  await expect(page.locator('#cheerOv .items .it').filter({ hasText: '🏆' })).toContainText('Neuer Sticker');
   const st = (await saved(page)).stickers;
   expect(Object.keys(st).sort()).toEqual(['welt:uebung', 'x:murmel', 'x:spur'].sort()); // 🌟 der Welt braucht auch das schwere Level
   await page.click('#cheerOv');                                        // Antippen schliesst
