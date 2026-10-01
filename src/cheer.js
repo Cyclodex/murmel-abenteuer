@@ -1,6 +1,6 @@
 // Jubel-Animation beim Freischalten: Karte „Neu freigeschaltet“ mit allen neuen Sachen als Sticker (wie im Album)
 // und Text daneben, Konfetti regnet, Jubel-Klang.
-// cheer.show([{ emoji: '⚽', text: 'Neue Murmel' }, { emoji: '🏆', text: 'Alle Level schaffen', kind: '🏅 Neuer Sticker' }, …]);
+// cheer.show([{ emoji: '⚽', text: 'Fussball', kind: 'Neue Murmel' }, { emoji: '🏆', text: 'Alle Level schaffen', kind: 'Neuer Sticker' }, …]);
 // kind = kleine Zeile über dem Text. Antippen oder nach ein paar Sekunden schliesst.
 const COLORS = ['#FF5A8A', '#FFC928', '#3BB273', '#2F6FEB', '#C77DFF', '#FF7A00'];
 const PIECES = 40;

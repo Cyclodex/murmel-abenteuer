@@ -363,8 +363,8 @@ function onWin() {
   $('winStars').textContent = starRow(game.st.stars, game.st.starTotal);
   $('winUnlock').textContent = news.length ? '🔮 ' + news.map(s => s.emoji).join(' ') + ' 🆕' : '';
   show('winUnlock', news.length > 0);
-  const cheers = [...fresh.map(s => ({ emoji: s.emoji, text: 'Neue Murmel' })), ...freshTrails.map(t => ({ emoji: t.emoji, text: 'Neue Spur' })),
-    ...stickers.map(st => ({ emoji: st.emoji, text: st.text, kind: '🏅 Neuer Sticker' }))];
+  const cheers = [...fresh.map(s => ({ emoji: s.emoji, text: s.name, kind: 'Neue Murmel' })), ...freshTrails.map(t => ({ emoji: t.emoji, text: t.name, kind: 'Neue Spur' })),
+    ...stickers.map(st => ({ emoji: st.emoji, text: st.text, kind: 'Neuer Sticker' }))];
   showWinRank();
   show('nextBtn', levelIdx + 1 < LEVELS.length && isOpen(levelIdx + 1));
   // Zielmoment, Hochflug über das Level mit der gefahrenen Strecke, dann das Gewinn-Fenster (Tippen: sofort)
