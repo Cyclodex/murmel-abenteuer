@@ -157,7 +157,8 @@ export const FIGUREN = {
     const kragen = mesh(T, new T.TorusGeometry(0.32, 0.1, 6, 16), gelb, 0, -0.38, 0); kragen.rotation.x = Math.PI / 2; kopf.add(kragen);
     const fahne = F.make(1.3); fahne.position.set(0.45, -0.35, 0); fahne.rotation.z = -0.35; kopf.add(fahne);
     const teufel = group(T, ...ringe, kopf); teufel.position.y = 0.15;
-    const kiste = group(T, mesh(T, new T.BoxGeometry(1.3, 1.2, 1.3), mat(T, 0xE53935), 0, 0.6, 0),
+    // Kiste etwas niedriger als die Bänder: Ober- und Unterseite liegen sonst in einer Ebene mit den Bändern und flackern
+    const kiste = group(T, mesh(T, new T.BoxGeometry(1.3, 1.16, 1.3), mat(T, 0xE53935), 0, 0.6, 0),
       mesh(T, new T.BoxGeometry(1.36, 0.12, 1.36), gelb, 0, 0.06, 0), mesh(T, new T.BoxGeometry(1.36, 0.12, 1.36), gelb, 0, 1.14, 0), deckel, teufel);
     const feder = gap => { ringe.forEach((r, i) => { r.position.y = i * gap; }); kopf.position.y = 6 * gap + 0.45; };
     return {
