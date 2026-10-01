@@ -84,11 +84,14 @@ button.rank{width:auto;height:auto;font-size:20px}
 #rankOv h1{flex:1;min-width:0;font-size:24px;padding:6px 12px;overflow-wrap:anywhere}
 #rankList{display:flex;flex-direction:column;gap:8px;width:min(100%,420px)}
 .rrow{display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:18px;padding:4px 6px 4px 16px;font-size:20px;min-height:48px;box-sizing:border-box}
-.rrow .rname{flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rrow .rscore{flex-shrink:0;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:700}
-.rrow .rscore:last-child{margin-right:10px}
-.rrow .acts{display:flex;gap:8px;justify-content:flex-end;width:96px;flex-shrink:0}
-.rrow button{flex-shrink:0;width:44px;height:44px;font-size:22px;border-radius:14px;background:#fff}
+.rrow .rname,.rhead .rname{flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .rscore,.rhead .rscore{flex-shrink:0;width:3.8em;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rrow .rscore{font-weight:700}
+.rrow .rscore:last-child,.rhead .rscore:last-child{margin-right:10px}
+.rrow .acts,.rhead .acts{display:flex;gap:4px;justify-content:flex-end;width:84px;flex-shrink:0}
+.rhead{display:flex;align-items:center;gap:8px;background:var(--panel);border-radius:14px;padding:2px 6px 2px 16px;font-size:20px;box-sizing:border-box}
+.rhead .acts{justify-content:center}
+.rrow button{flex-shrink:0;width:40px;height:40px;font-size:22px;border-radius:12px;background:#fff}
 .rrow.me{outline:4px solid var(--go)}
 /* Geister beim Levelstart */
 #ghostPick{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;max-width:520px}

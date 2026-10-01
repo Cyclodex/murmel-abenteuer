@@ -440,7 +440,7 @@ function chooseLevel(i) {
 }
 $('ghostBack').onclick = () => { audio.sfx('tap'); showMap(); };
 
-// ---------- Rangliste: 🌍 alle Level zusammen oder ein Level; Aufnahmen anschauen 👁 oder gegen sie fahren 👻 ----------
+// ---------- Rangliste: 🌍 alle Level zusammen oder ein Level; Aufnahmen anschauen ▶️ oder gegen sie fahren 🏁 (Kopfzeile: 🏆 Punkte, 👻 Aufnahmen) ----------
 let rankPage = 0, rankFromWin = false;
 const rankPages = () => [null, ...LEVELS.filter((lv, i) => !lv.pruefstand && isOpen(i))];
 // levelId = diese Seite zeigen (null = 🌍); fromWin = vom Gewinn-Bildschirm aus (✔️ geht dorthin zurück, sonst zur Karte)
@@ -459,12 +459,17 @@ function renderRanks() {
   // die besten 10 und der eigene Platz
   const rank = ranking(allRows(), id), k = rank.findIndex(r => same(r.name, me));
   const box = $('rankList'); box.textContent = '';
+  if (rank.length) { // Kopfzeile: 🏆 über den Punkten, 👻 über den Knöpfen (nur im Level, dort gibt es Aufnahmen)
+    const head = document.createElement('div'); head.className = 'rhead';
+    head.innerHTML = `<span class="rname"></span><span class="rscore">🏆</span>${id ? '<div class="acts">👻</div>' : ''}`;
+    box.appendChild(head);
+  }
   for (const r of [...rank.slice(0, 10), ...(k >= 10 ? [rank[k]] : [])]) {
     const row = document.createElement('div'), text = document.createElement('span'), pts = document.createElement('span');
     row.className = 'rrow' + (same(r.name, me) ? ' me' : '');
     const i = rank.indexOf(r);
     text.className = 'rname'; text.textContent = [`${MEDALS[i] || `${i + 1}.`} ${r.name}`, powerEmoji(r)].filter(Boolean).join(' ');
-    pts.className = 'rscore'; pts.textContent = `🏆 ${fmtScore(r.score)}`; // eigene Spalte rechts, damit die Punkte vergleichbar sind
+    pts.className = 'rscore'; pts.textContent = fmtScore(r.score); // eigene Spalte rechts, damit die Punkte vergleichbar sind
     row.append(text, pts);
     const acts = document.createElement('div'); acts.className = 'acts'; if (id) row.appendChild(acts); // feste Breite: Punkte stehen in jeder Zeile gleich
     const btn = (emoji, label, go) => {
@@ -478,8 +483,8 @@ function renderRanks() {
       acts.appendChild(b);
     };
     if (id && hasGhost(r.name, id)) {
-      btn('👁', `${r.name} zuschauen`, track => watchRun(LEVELS.indexOf(lv), r.name, track));
-      if (!same(r.name, me)) btn('👻', `Gegen ${r.name} fahren`, track => { startLevel(LEVELS.indexOf(lv), [{ name: r.name, track }]); toast(`👻 ${r.name}`); });
+      btn('▶️', `${r.name} zuschauen`, track => watchRun(LEVELS.indexOf(lv), r.name, track));
+      if (!same(r.name, me)) btn('🏁', `Gegen ${r.name} fahren`, track => { startLevel(LEVELS.indexOf(lv), [{ name: r.name, track }]); toast(`👻 ${r.name}`); });
     }
     box.appendChild(row);
   }

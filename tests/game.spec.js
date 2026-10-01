@@ -1486,16 +1486,16 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geis
   await page.click('#mapStars');
   await expect(page.locator('#rankTitle')).toHaveText('🌍');
   await expect(page.locator('#rankList .rrow .rname')).toHaveText(['🥇 Max', '🥈 Test', '🥉 Zoe']);
-  await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['🏆 4’000', '🏆 2’050', '🏆 1’850']);
+  await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['4’000', '2’050', '1’850']);
   await expect(page.locator('#rankList .rrow.me .rname')).toHaveText('🥈 Test');
-  // ▶️ erstes Level: wer eine Aufnahme hat, bekommt 👁 (zuschauen), andere dazu 👻 (gegen sie fahren)
+  // ▶️ erstes Level: wer eine Aufnahme hat, bekommt ▶️ (zuschauen), andere dazu 🏁 (gegen sie fahren)
   await page.click('#rankNext');
   await expect(page.locator('#rankTitle')).toHaveText('🌳 Erster Ausflug');
   await expect(page.locator('#rankList .rrow .rname')).toHaveText(['🥇 Test 🐇', '🥈 Max 🐇', '🥉 Zoe 🐇']);
-  await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['🏆 2’050', '🏆 1’950', '🏆 1’850']);
-  await expect(page.locator('#rankList .rrow').nth(0).locator('button')).toHaveText(['👁']);
+  await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['2’050', '1’950', '1’850']);
+  await expect(page.locator('#rankList .rrow').nth(0).locator('button')).toHaveText(['▶️']);
   await expect(page.locator('#rankList .rrow').nth(1).locator('button')).toHaveCount(0);
-  await expect(page.locator('#rankList .rrow').nth(2).locator('button')).toHaveText(['👁', '👻']);
+  await expect(page.locator('#rankList .rrow').nth(2).locator('button')).toHaveText(['▶️', '🏁']);
   // ◀️ zurück zu 🌍, ▶️ wieder zum Level
   await page.click('#rankPrev');
   await expect(page.locator('#rankTitle')).toHaveText('🌍');
