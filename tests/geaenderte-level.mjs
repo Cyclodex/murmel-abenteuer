@@ -1,7 +1,7 @@
 // Welche Level muss pruefe-level.mjs nach einer Änderung fahren? (für die PR-Tests in .github/workflows/pr.yml)
 //   node tests/geaenderte-level.mjs <datei> ...   -> Level-IDs, eine pro Zeile
 // Level-Datei -> ihre Level, Routen-Datei -> die Level mit Route darin,
-// Level-Liste, Autopilot oder pruefe-level.mjs selbst -> alle Level. Andere Dateien -> nichts.
+// Level-Liste, Autopilot, pruefe-level.mjs oder die Kombinationen (kombis.mjs) -> alle Level. Andere Dateien -> nichts.
 import path from 'path';
 import { pathToFileURL } from 'url';
 
@@ -18,7 +18,7 @@ const sammle = v => {
 for (const datei of process.argv.slice(2)) {
   const f = datei.replace(/\\/g, '/');
   if (!f.endsWith('.js') && !f.endsWith('.mjs')) continue;
-  if (['src/levels/index.js', 'tests/autopilot.js', 'tests/pruefe-level.mjs'].includes(f)) alle.forEach(id => ids.add(id));
+  if (['src/levels/index.js', 'tests/autopilot.js', 'tests/pruefe-level.mjs', 'tests/kombis.mjs'].includes(f)) alle.forEach(id => ids.add(id));
   else if (f.startsWith('src/levels/')) Object.values(await import(pathToFileURL(path.resolve(f)))).forEach(sammle);
   else if (f.startsWith('tests/routes/')) Object.keys((await import(pathToFileURL(path.resolve(f)))).default).forEach(id => ids.add(id));
 }

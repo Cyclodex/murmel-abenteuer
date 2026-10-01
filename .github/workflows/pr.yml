@@ -1,5 +1,5 @@
 # Schnelle Tests für jeden PR: alle Playwright-Tests ausser den 16 Autopilot-Tests (npm run test:schnell)
-# und pruefe-level.mjs für die Level, deren Datei oder Route der PR ändert.
+# und pruefe-level.mjs für die Level, deren Datei oder Route der PR ändert (verteilt auf 8 Jobs, tests/verteile-level.mjs).
 # Die volle Suite mit Autopilot durch alle Level läuft nachts (tests.yml).
 name: Tests (PR)
 
@@ -30,9 +30,15 @@ jobs:
           path: test-results/
           retention-days: 7
 
-  level:
+  # Fahrten (geänderte Level × 16 Kombinationen) auf 8 Jobs verteilt, jeder fährt so viele gleichzeitig, wie er Kerne hat
+  level-teil:
+    name: level ${{ matrix.teil }}/8
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        teil: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,5 +50,16 @@ jobs:
         run: |
           ids=$(node tests/geaenderte-level.mjs $(git diff --name-only --diff-filter=d ${{ github.event.pull_request.base.sha }}...HEAD))
           if [ -z "$ids" ]; then echo "Keine Level oder Routen geändert."; exit 0; fi
-          echo "Prüfe: $ids"
-          echo "$ids" | xargs -P "$(nproc)" -n 1 node tests/pruefe-level.mjs
+          fahrten=$(node tests/verteile-level.mjs ${{ matrix.teil }} 8 $ids)
+          echo "Geänderte Level: $(echo $ids)"
+          echo "Job ${{ matrix.teil }}/8: $(echo "$fahrten" | grep -c .) Fahrten"
+          if [ -z "$fahrten" ]; then exit 0; fi
+          echo "$fahrten" | xargs -P "$(nproc)" -L 1 sh -c 'node tests/pruefe-level.mjs "$0" --kombi "$1"'
+
+  # Ein Check "level" für alle Teile (grün, wenn alle Teile grün sind)
+  level:
+    needs: level-teil
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.level-teil.result }}" = success
