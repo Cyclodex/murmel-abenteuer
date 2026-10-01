@@ -240,7 +240,8 @@ function showSkins() {
     const b = document.createElement('button'), open = skinOpen(s);
     b.className = 'skin' + (currentSkin().id === s.id ? ' sel' : '');
     b.disabled = !open; b.dataset.skin = s.id;
-    b.innerHTML = open ? s.emoji : `🔒<small>${skinNeed(s)}⭐</small>`;
+    b.innerHTML = open ? `${s.emoji}<small>${s.name}</small>` : `🔒<small>${skinNeed(s)}⭐</small>`;
+    b.setAttribute('aria-label', s.name);
     b.onclick = () => { progress.setSkin(s.id); if (view) view.setSkin(s); showSkins(); audio.sfx('tap'); };
     grid.appendChild(b);
   }
@@ -249,7 +250,8 @@ function showSkins() {
     const b = document.createElement('button'), open = trailOpen(t);
     b.className = 'skin' + (currentTrail().id === t.id ? ' sel' : '');
     b.disabled = !open; b.dataset.trail = t.id;
-    b.innerHTML = open ? t.emoji : `🔒<small>${trailNeed(t)}</small>`;
+    b.innerHTML = open ? `${t.emoji}<small>${t.name}</small>` : `🔒<small>${trailNeed(t)}</small>`;
+    b.setAttribute('aria-label', t.name);
     b.onclick = () => { progress.setTrail(t.id); if (view) view.setTrail(t); showSkins(); audio.sfx('tap'); };
     tg.appendChild(b);
   }

@@ -125,13 +125,14 @@ box-shadow:0 3px 0 rgba(0,0,0,.18);border:4px dashed rgba(0,0,0,.15);box-sizing:
 /* Gewinn-Fenster: das Level (Weitsicht) bleibt dahinter sichtbar */
 #winOv{background:rgba(158,216,245,.15);gap:10px}
 #skinOv .grid{grid-template-columns:repeat(4,76px)}
-#skinOv .skin{width:76px;height:76px;font-size:38px}
+#skinOv .skin{width:76px;height:84px;font-size:34px}
+#skinOv .skin small{font-size:11px;font-weight:800;max-width:100%;overflow:hidden;white-space:nowrap}
 @media (orientation:landscape) and (max-height:500px){
   .overlay{gap:10px}
   .overlay h1{font-size:30px}
   #skinOv .grid{grid-template-columns:repeat(9,56px);gap:8px}
-  #skinOv .skin{width:56px;height:56px;font-size:28px}
-  #skinOv .skin small{font-size:12px}
+  #skinOv .skin{width:56px;height:62px;font-size:24px}
+  #skinOv .skin small{font-size:9px}
 }
 #mapOv .row{flex-wrap:wrap;justify-content:center;gap:12px}
 /* Karten-Knöpfe: Symbol mit kurzem Text darunter */
