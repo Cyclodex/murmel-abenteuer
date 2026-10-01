@@ -1,5 +1,7 @@
-// Jubel-Animation beim Freischalten: grosse Emojis springen ins Bild, Konfetti regnet, Jubel-Klang.
-// cheer(['⚽', '🌟']) zeigt alle neuen Sachen zusammen; Antippen oder nach ein paar Sekunden schliesst.
+// Jubel-Animation beim Freischalten: Karte „Neu freigeschaltet“ mit allen neuen Sachen als Sticker (wie im Album)
+// und Text daneben, Konfetti regnet, Jubel-Klang.
+// cheer.show([{ emoji: '⚽', text: 'Neue Murmel' }, { emoji: '🏆', text: 'Alle Level schaffen', kind: '🏅 Neuer Sticker' }, …]);
+// kind = kleine Zeile über dem Text. Antippen oder nach ein paar Sekunden schliesst.
 const COLORS = ['#FF5A8A', '#FFC928', '#3BB273', '#2F6FEB', '#C77DFF', '#FF7A00'];
 const PIECES = 40;
 
@@ -19,18 +21,21 @@ export function createCheer(el, audio) {
   el.addEventListener('click', close);
 
   return {
-    show(emojis) {
-      if (!emojis.length) return;
+    show(list) {
+      if (!list.length) return;
       items.textContent = '';
-      emojis.forEach((e, i) => {
-        const s = document.createElement('span'); s.textContent = e; s.style.animationDelay = i * 0.15 + 's';
-        items.appendChild(s);
+      list.forEach(({ emoji, text, kind }, i) => {
+        const it = document.createElement('div'); it.className = 'it'; it.style.animationDelay = i * 0.15 + 's';
+        const st = document.createElement('span'); st.className = 'sticker got';
+        const e = document.createElement('span'); e.textContent = emoji; st.appendChild(e);
+        const tx = document.createElement('span'); tx.className = 'tx'; tx.textContent = text;
+        if (kind) { const k = document.createElement('small'); k.textContent = kind; tx.prepend(k); }
+        it.append(st, tx); items.appendChild(it);
       });
-      items.style.fontSize = emojis.length > 3 ? '64px' : emojis.length > 1 ? '84px' : '120px';
       el.classList.remove('hidden');
       rain.classList.remove('go'); void rain.offsetWidth; rain.classList.add('go'); // Animation neu starten
       audio.sfx('jubel');
-      clearTimeout(timer); timer = setTimeout(close, 2600 + emojis.length * 150);
+      clearTimeout(timer); timer = setTimeout(close, Math.min(10000, 3000 + list.length * 1000)); // Zeit zum Lesen
     },
     close,
     get open() { return !el.classList.contains('hidden'); }

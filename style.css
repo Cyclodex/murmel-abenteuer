@@ -77,7 +77,9 @@ background:rgba(255,255,255,.35);border:3px solid rgba(255,255,255,.8);touch-act
 #btnPlayer{flex-shrink:0;width:auto;height:auto;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rank{background:var(--panel);border-radius:18px;padding:6px 16px;font-size:20px;white-space:pre-line;text-align:left}
 button.rank{width:auto;height:auto;font-size:20px}
-#winGhost{width:auto;height:auto}
+/* Gewinn-Fenster: Titel, Sterne, Zeit, Punkte, Neues, Rangliste und Geist-Knopf gleich breit */
+#winOv>h1,#winOv>.pill,#winRank{width:min(100%,420px);box-sizing:border-box}
+#winGhost{height:auto}
 #winRank{padding:0;background:none;box-shadow:none;width:min(100%,420px);white-space:normal}
 #mapStars{width:auto;height:auto}
 /* Rangliste: eine Zeile pro Spieler, Knöpfe 👁 zuschauen und 👻 gegen die Aufnahme fahren */
@@ -126,15 +128,21 @@ box-shadow:0 3px 0 rgba(0,0,0,.18);border:4px dashed rgba(0,0,0,.15);box-sizing:
 .sticker:not(.got) span{filter:grayscale(1) brightness(0);opacity:.18}
 .sticker b{position:absolute;right:-4px;bottom:-4px;font-size:18px}
 /* Jubel beim Freischalten */
-#cheerOv{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.35);overflow:hidden}
-#cheerOv .items{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:90vw;line-height:1.1;filter:drop-shadow(0 6px 0 rgba(0,0,0,.15))}
-#cheerOv .items span{display:inline-block;animation:hop .9s cubic-bezier(.2,1.6,.4,1) both}
-@keyframes hop{0%{transform:translateY(100vh) scale(.3) rotate(-30deg)}70%{transform:translateY(-6%) scale(1.15) rotate(8deg)}100%{transform:none}}
+#cheerOv{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);
+backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);overflow:hidden}
+#cheerOv .card{position:relative;background:var(--panel);border-radius:28px;padding:14px 18px 18px;width:min(86vw,360px);max-height:86vh;overflow-y:auto;box-sizing:border-box}
+#cheerOv .title{font-size:22px;font-weight:800;text-align:center;margin-bottom:10px}
+#cheerOv .items{display:flex;flex-direction:column;gap:10px}
+#cheerOv .it{display:flex;align-items:center;gap:14px;text-align:left;font-size:18px;line-height:1.2;animation:pop .6s cubic-bezier(.2,1.6,.4,1) both}
+#cheerOv .it .sticker{flex-shrink:0}
+#cheerOv .it small{display:block;font-size:14px;font-weight:800;opacity:.7}
+#cheerOv .it:nth-child(2n) .sticker{transform:rotate(5deg)}
+@keyframes pop{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:none}}
 #cheerOv .rain{position:absolute;inset:0;pointer-events:none}
 #cheerOv .rain i{position:absolute;top:-20px;width:12px;height:18px;border-radius:3px;opacity:0}
 #cheerOv .rain.go i{animation-name:fall;animation-timing-function:linear;animation-fill-mode:both}
 @keyframes fall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:1}}
-@media (prefers-reduced-motion:reduce){#cheerOv .items span{animation-duration:.01s}#cheerOv .rain{display:none}}
+@media (prefers-reduced-motion:reduce){#cheerOv .it{animation-duration:.01s}#cheerOv .rain{display:none}}
 /* lange Menüs: oben nicht abschneiden, trotzdem mittig wenn Platz */
 .overlay{justify-content:flex-start}
 .overlay>:first-child{margin-top:auto}
