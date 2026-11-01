@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="version" content="dev">
 <meta name="version-zeit" content="">
+<meta name="version-nummer" content="">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Murmel-Abenteuer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,15 +33,18 @@
 <button class="big hidden" id="treppeBack" aria-label="Zurück zur Karte">🏠</button>
 
 <div class="overlay" id="startOv">
-  <h1>🔵 Murmel-Abenteuer</h1>
-  <div id="intro">
-    <p>⭐ Hol dir alle Sterne und roll ins Ziel – je schneller, desto mehr Punkte!</p>
-    <p>⏱ Oder fahr nur auf Zeit: Wer ist am schnellsten?</p>
+  <h1 aria-label="Murmel-Abenteuer"><span>Murmel-</span><span class="sub">Abenteuer</span></h1>
+  <div class="logoBahn" aria-hidden="true"><i></i></div>
+  <div class="startWahl">
+    <div id="intro">
+      <p>⭐ Hol dir alle Sterne und roll ins Ziel – je schneller, desto mehr Punkte!</p>
+      <p>⏱ Oder fahr nur auf Zeit: Wer ist am schnellsten?</p>
+    </div>
+    <div class="ask">Wie willst du steuern?</div>
+    <button class="wahl" id="startTilt"><span class="ico">📱</span><span class="txt"><b>Kippen</b><small>Handy schräg halten</small></span><span class="go">▶</span></button>
+    <button class="wahl" id="startJoy"><span class="ico">🕹️</span><span class="txt"><b>Joystick</b><small>Mit dem Daumen lenken</small></span><span class="go">▶</span></button>
   </div>
-  <div class="row">
-    <button class="big" id="startTilt">📱<small>Kippen</small></button>
-    <button class="big" id="startJoy">🕹️<small>Joystick</small></button>
-  </div>
+  <div class="ver" id="startVersion"></div>
 </div>
 <div class="overlay hidden" id="playerOv">
   <h1>👤 Wer spielt?</h1>
@@ -67,7 +71,7 @@
     <button class="mbtn" id="btnSkins" title="Murmel aussuchen"><span>🔮</span><small>Murmel</small></button>
   </div>
   <div id="worlds"></div>
-  <div id="version"></div>
+  <div class="ver" id="version"></div>
 </div>
 <div class="overlay hidden" id="skinOv">
   <h1>🔮</h1>
@@ -130,6 +134,17 @@
 </div>
 <div class="hidden" id="cheerOv" aria-live="polite"><div class="rain"></div>
   <div class="card"><div class="title">🆕 Neu freigeschaltet</div><div class="items"></div></div>
+</div>
+<div class="hidden" id="updateOv" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
+  <div class="card">
+    <div class="title" id="updateTitle">🆕 Neue Version</div>
+    <p>Das Spiel hat ein Update.<br>Jetzt laden?</p>
+    <div class="info" id="updateInfo"></div>
+    <div class="knoepfe">
+      <button id="updateLater">Später</button>
+      <button class="go" id="updateGo">🔄 Laden</button>
+    </div>
+  </div>
 </div>
 
 <script src="vendor/three.min.js"></script>

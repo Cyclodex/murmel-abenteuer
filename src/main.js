@@ -45,12 +45,20 @@ const rec = createRecorder(); // Fahrt aufnehmen (für die Geistermurmel und die
 const online = createOnline(progress);
 
 // ---------- Neue Version ----------
-// Auf der Karte und wenn das Spiel wieder in den Vordergrund kommt: Gibt es eine neue Version, lädt die Seite neu, aber nur,
-// wenn die Karte noch offen ist (nie mitten im Level, beim Zuschauen oder in einem Menü). Der Spielstand bleibt in localStorage.
+// Auf der Karte und wenn das Spiel wieder in den Vordergrund kommt: Gibt es eine neue Version und ist die Karte noch offen
+// (nie mitten im Level, beim Zuschauen oder in einem Menü), fragt ein Fenster: 🔄 Laden (der Spielstand bleibt in
+// localStorage) oder Später (für diese Version in diesem Tab nicht mehr fragen).
 const update = createUpdate();
-$('version').textContent = update.label; // klein unten auf der Karte
+// klein unten auf der Karte und dem ersten Startbildschirm; der Commit beim Draufzeigen
+for (const id of ['version', 'startVersion']) { $(id).textContent = update.label; $(id).title = update.version; }
 function checkUpdate() {
-  update.check().then(v => { if (v && !$('mapOv').classList.contains('hidden')) update.reload(v); });
+  update.check().then(neu => {
+    if (!neu || $('mapOv').classList.contains('hidden') || !$('updateOv').classList.contains('hidden')) return;
+    $('updateInfo').textContent = neu.label;
+    $('updateGo').onclick = () => { audio.sfx('tap'); update.reload(neu.version); };
+    $('updateLater').onclick = () => { audio.sfx('tap'); update.later(neu.version); show('updateOv', false); };
+    show('updateOv');
+  });
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
 

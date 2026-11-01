@@ -1,19 +1,21 @@
 // Veröffentlichen (.github/workflows/pages.yml): stempelt eine Kopie der Seite mit der Version (Commit), damit Browser
 // nach einem Update keine alten Dateien aus dem Cache mit neuen mischen und das Spiel ein Update erkennt (src/update.js).
-//   node .github/stempel.mjs <ordner> <version> [<zeit>]
-// - index.html: <meta name="version" content="dev"> bekommt die Version, <meta name="version-zeit" content="">
-//   die Zeit der Version (ISO 8601, Standard: jetzt; die Action gibt die Zeit des Commits), lokale Dateien
-//   (style.css, vendor/, src/main.js) ?v=<version>. Beides zeigt das Spiel klein unten auf der Karte.
+//   node .github/stempel.mjs <ordner> <version> [<zeit>] [<nummer>]
+// - index.html: <meta name="version" content="dev"> bekommt die Version (Commit, daran erkennt das Spiel ein Update),
+//   <meta name="version-zeit" content=""> die Zeit der Version (ISO 8601, Standard: jetzt; die Action gibt die Zeit des
+//   Commits), <meta name="version-nummer" content=""> die kurze Nummer zum Anzeigen (z. B. 0.3; die Action zählt die
+//   Updates auf main), lokale Dateien (style.css, vendor/, src/main.js) ?v=<version>. Nummer und Zeit zeigt das Spiel klein
+//   auf dem Startbildschirm und der Karte („Version 0.3 · 01.11.26, 22:38“).
 // - alle .js-Dateien ausser vendor/: relative Imports (statisch, dynamisch, export … from) bekommen ?v=<version>
-// - version.json: { "version", "zeit" }, holt das Spiel ohne Cache, um eine neue Version zu erkennen
+// - version.json: { "version", "zeit", "nummer" }, holt das Spiel ohne Cache, um eine neue Version zu erkennen
 // Bricht ab, wenn danach noch ein relativer Import ohne Version übrig ist.
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-const [dir, version, zeitArg] = process.argv.slice(2);
+const [dir, version, zeitArg, nummer = ''] = process.argv.slice(2);
 const zeit = zeitArg || new Date().toISOString();
-if (!dir || !/^[\w.-]+$/.test(version || '') || isNaN(Date.parse(zeit)) || /["<>&]/.test(zeit)) {
-  console.error('Aufruf: node .github/stempel.mjs <ordner> <version> [<zeit, ISO 8601>]'); process.exit(1);
+if (!dir || !/^[\w.-]+$/.test(version || '') || isNaN(Date.parse(zeit)) || /["<>&]/.test(zeit) || !/^(\d+(\.\d+)*)?$/.test(nummer)) {
+  console.error('Aufruf: node .github/stempel.mjs <ordner> <version> [<zeit, ISO 8601>] [<nummer, z. B. 0.3>]'); process.exit(1);
 }
 const v = `?v=${version}`;
 
@@ -43,9 +45,12 @@ if (h === before) missing.push('index.html: <meta name="version" content="dev"> 
 const ohneZeit = h;
 h = h.replace('<meta name="version-zeit" content="">', `<meta name="version-zeit" content="${zeit}">`);
 if (h === ohneZeit) missing.push('index.html: <meta name="version-zeit" content=""> fehlt');
+const ohneNummer = h;
+h = h.replace('<meta name="version-nummer" content="">', `<meta name="version-nummer" content="${nummer}">`);
+if (h === ohneNummer) missing.push('index.html: <meta name="version-nummer" content=""> fehlt');
 h = h.replace(/(\s(?:src|href)=")((?!https?:|\/\/|#)[^"?]+\.(?:js|css))"/g, (m, a, p) => { n++; return `${a}${p}${v}"`; });
 writeFileSync(html, h);
-writeFileSync(join(dir, 'version.json'), JSON.stringify({ version, zeit }) + '\n');
+writeFileSync(join(dir, 'version.json'), JSON.stringify(nummer ? { version, zeit, nummer } : { version, zeit }) + '\n');
 
 if (missing.length) { console.error('Ohne Version:\n' + missing.join('\n')); process.exit(1); }
-console.log(`Version ${version} (${zeit}): ${n} Verweise gestempelt`);
+console.log(`Version ${version}${nummer ? ` = ${nummer}` : ''} (${zeit}): ${n} Verweise gestempelt`);
