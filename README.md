@@ -61,7 +61,9 @@ Version, fragt ein Fenster „🆕 Neue Version – Jetzt laden?“ (mit Version
 **🔄 Laden** lädt die Seite neu, der Spielstand bleibt in localStorage; **Später** schliesst das Fenster, für diese Version fragt es in diesem Tab
 nicht mehr (sessionStorage), erst bei der nächsten neuen Version oder nach dem Neustart des Spiels. Lokal steht „dev“ in der Seite: keine Prüfung.
 Klein auf dem ersten Startbildschirm und ganz unten auf der Karte steht die laufende Version mit der Zeit des Commits
-(„Version 3fd0424 · 01.11.26, 22:38“, lokal „Version dev“).
+(„Version 0.3 · 01.11.26, 22:38“, lokal „Version dev“; beim Draufzeigen der Commit). Die Nummer zählt die Action selbst hoch:
+`0.<Anzahl Updates auf main seit 47990b0>` (`git rev-list --count --first-parent`), jeder Merge oder direkte Push auf main zählt eins.
+Für eine neue Hauptnummer (1.0) in `pages.yml` die `0.` und den Start-Commit ändern.
 
 Einmalig: Settings → Pages → Build and deployment → Source „GitHub Actions“. Neue Imports immer mit relativem Pfad und `.js` schreiben,
 sonst bricht `stempel.mjs` ab (der Test „Veröffentlichen …“ merkt das schon im PR).

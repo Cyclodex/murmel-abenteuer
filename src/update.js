@@ -4,29 +4,30 @@
 // Das Spiel fragt dann, ob es neu laden soll: reload(v) lädt neu, later(v) merkt sich das Nein.
 // Jede neue Version wird pro Tab nur einmal angeboten (sessionStorage): nach „Später“ fragt es für diese Version nicht
 // mehr, und kommt nach dem Neuladen noch die alte Seite (Cache, Verteilung noch nicht fertig), fragt es nicht endlos.
-// label: kurze Anzeige, "Version 3fd0424 · 01.11.26, 22:38" (Zeit des Commits, Ortszeit), lokal "Version dev".
+// label: kurze Anzeige, "Version 0.3 · 01.11.26, 22:38" (Nummer = Updates auf main, Zeit des Commits in Ortszeit),
+// ohne Nummer der Commit ("Version 3fd0424 · …"), lokal "Version dev".
 const KEY = 'murmel-update';
 
-const labelOf = (version, zeit) => {
+const labelOf = (version, zeit, nummer) => {
   const t = Date.parse(zeit || '');
-  return `Version ${version === 'dev' ? 'dev' : version.slice(0, 7)}` +
+  return `Version ${nummer || (version === 'dev' ? 'dev' : version.slice(0, 7))}` +
     (isNaN(t) ? '' : ' · ' + new Date(t).toLocaleString('de-CH', { dateStyle: 'short', timeStyle: 'short' }));
 };
 
 export function createUpdate(doc = document) {
   const meta = doc.querySelector('meta[name="version"]'), mine = meta ? meta.content : 'dev';
-  const zeitMeta = doc.querySelector('meta[name="version-zeit"]');
+  const zeitMeta = doc.querySelector('meta[name="version-zeit"]'), nrMeta = doc.querySelector('meta[name="version-nummer"]');
   const tried = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
   const remember = v => { try { sessionStorage.setItem(KEY, v); } catch (e) { /* ohne Speicher: dann fragt es wieder */ } };
   return {
     version: mine,
-    label: labelOf(mine, zeitMeta && zeitMeta.content),
+    label: labelOf(mine, zeitMeta && zeitMeta.content, nrMeta && nrMeta.content),
     async check() {
       if (!mine || mine === 'dev') return null;
       try {
         const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
         const j = r.ok ? await r.json() : null, v = j && j.version;
-        return typeof v === 'string' && v && v !== mine && v !== tried() ? { version: v, label: labelOf(v, j.zeit) } : null;
+        return typeof v === 'string' && v && v !== mine && v !== tried() ? { version: v, label: labelOf(v, j.zeit, typeof j.nummer === 'string' && j.nummer) } : null;
       } catch (e) { return null; } // ohne Netz: weiter mit der laufenden Version
     },
     reload(v) { remember(v); location.reload(); },

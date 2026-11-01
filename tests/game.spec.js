@@ -1825,23 +1825,25 @@ test('Neue Version: Fenster auf der Karte, nie mitten im Level, Später oder Lad
   await page.route(u => u.pathname === '/', async route => {
     const r = await route.fetch(); loads++;
     await route.fulfill({ response: r, body: (await r.text()).replace('<meta name="version" content="dev">', '<meta name="version" content="v1">')
-      .replace('<meta name="version-zeit" content="">', '<meta name="version-zeit" content="2026-11-01T22:38:00+01:00">') });
+      .replace('<meta name="version-zeit" content="">', '<meta name="version-zeit" content="2026-11-01T22:38:00+01:00">')
+      .replace('<meta name="version-nummer" content="">', '<meta name="version-nummer" content="0.1">') });
   });
   await page.route(u => u.pathname === '/version.json', route => { checks++; return route.fulfill({ contentType: 'application/json', body: JSON.stringify(latest) }); });
   const visible = () => page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
-  // Version klein auf dem ersten Startbildschirm und unten auf der Karte (Uhrzeit in der Zeitzone des Browsers)
-  await expect(page.locator('#startVersion')).toHaveText(/^Version v1 · 01\.11\.26, \d\d:\d\d$/);
+  // Version (Nummer) klein auf dem ersten Startbildschirm und unten auf der Karte (Uhrzeit in der Zeitzone des Browsers)
+  await expect(page.locator('#startVersion')).toHaveText(/^Version 0\.1 · 01\.11\.26, \d\d:\d\d$/);
+  await expect(page.locator('#startVersion')).toHaveAttribute('title', 'v1'); // der Commit beim Draufzeigen
   await page.click('#startJoy');
   await newPlayer(page, 'Test');
   await expect.poll(() => checks).toBe(1); // Karte: gleiche Version, kein Fenster
-  await expect(page.locator('#version')).toHaveText(/^Version v1 · 01\.11\.26, \d\d:\d\d$/);
+  await expect(page.locator('#version')).toHaveText(/^Version 0\.1 · 01\.11\.26, \d\d:\d\d$/);
   await expect(page.locator('#updateOv')).toBeHidden();
   await page.click('.lvl[data-level="ausflug"]');
   await expect(page.locator('#hud')).toBeVisible();
   // neue Version, während gefahren wird: das Spiel kommt in den Vordergrund, prüft, fragt aber nicht
-  latest = { version: 'v2', zeit: '2026-11-02T08:15:00+01:00' };
+  latest = { version: 'v2', zeit: '2026-11-02T08:15:00+01:00', nummer: '0.2' };
   await visible();
   await expect.poll(() => checks).toBe(2);
   await page.waitForTimeout(300);
@@ -1850,7 +1852,7 @@ test('Neue Version: Fenster auf der Karte, nie mitten im Level, Später oder Lad
   // zurück zur Karte: Fenster mit der neuen Version; Später schliesst es, ohne neu zu laden
   await page.click('#btnHome');
   await expect(page.locator('#updateOv')).toBeVisible();
-  await expect(page.locator('#updateInfo')).toHaveText(/^Version v2 · 02\.11\.26, \d\d:\d\d$/);
+  await expect(page.locator('#updateInfo')).toHaveText(/^Version 0\.2 · 02\.11\.26, \d\d:\d\d$/);
   await page.click('#updateLater');
   await expect(page.locator('#updateOv')).toBeHidden();
   // für v2 fragt es nicht mehr
@@ -1861,7 +1863,7 @@ test('Neue Version: Fenster auf der Karte, nie mitten im Level, Später oder Lad
   await expect(page.locator('#updateOv')).toBeHidden();
   expect(loads).toBe(1);
   // noch eine neue Version: wieder fragen; Laden lädt neu, der Spieler ist noch da
-  latest = { version: 'v3' };
+  latest = { version: 'v3' }; // ohne Nummer und Zeit: der Commit
   await visible();
   await expect(page.locator('#updateOv')).toBeVisible();
   await expect(page.locator('#updateInfo')).toHaveText('Version v3');
@@ -1903,16 +1905,17 @@ test('Veröffentlichen: stempel.mjs versieht alle eigenen Dateien mit der Versio
     const skip = /(^|[\\/])(node_modules|\.git|test-results|playwright-report)$/;
     cpSync('.', dir, { recursive: true, filter: src => !skip.test(src) });
     const zeit = '2026-11-01T22:38:00+01:00'; // wie git log -1 --format=%cI in der Action
-    const out = execFileSync('node', ['.github/stempel.mjs', dir, 'abc123', zeit], { encoding: 'utf8' });
-    expect(out).toMatch(/^Version abc123 \(2026-11-01T22:38:00\+01:00\): \d+ Verweise gestempelt/);
+    const out = execFileSync('node', ['.github/stempel.mjs', dir, 'abc123', zeit, '0.3'], { encoding: 'utf8' });
+    expect(out).toMatch(/^Version abc123 = 0\.3 \(2026-11-01T22:38:00\+01:00\): \d+ Verweise gestempelt/);
     const html = readFileSync(join(dir, 'index.html'), 'utf8');
     expect(html).toContain('<meta name="version" content="abc123">');
     expect(html).toContain(`<meta name="version-zeit" content="${zeit}">`);
+    expect(html).toContain('<meta name="version-nummer" content="0.3">');
     expect(html).toContain('src="src/main.js?v=abc123"');
     expect(html).toContain('href="style.css?v=abc123"');
     expect(html).toContain('href="https://fonts.googleapis.com/'); // fremde Adressen bleiben
     expect(readFileSync(join(dir, 'src/main.js'), 'utf8')).toContain("from './game.js?v=abc123'");
     expect(readFileSync(join(dir, 'src/main.js'), 'utf8')).toContain("import('../tests/autopilot.js?v=abc123')");
-    expect(JSON.parse(readFileSync(join(dir, 'version.json'), 'utf8'))).toEqual({ version: 'abc123', zeit });
+    expect(JSON.parse(readFileSync(join(dir, 'version.json'), 'utf8'))).toEqual({ version: 'abc123', zeit, nummer: '0.3' });
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
