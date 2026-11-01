@@ -1729,7 +1729,8 @@ test('Neue Version: lädt auf der Karte neu, nie mitten im Level, Spielstand ble
   // die Seite ist immer noch v1 (z. B. aus dem Cache): v2 wurde schon versucht, kein zweites Neuladen
   await page.click('#startJoy');
   await expect(page.locator('#mapOv')).toBeVisible();
-  await expect.poll(() => checks).toBe(3);
+  // (nach dem Neuladen kann der Browser zusätzlich „sichtbar“ melden: mindestens eine Prüfung, entscheidend ist kein Neuladen)
+  await expect.poll(() => checks).toBeGreaterThanOrEqual(3);
   await page.waitForTimeout(300);
   expect(loads).toBe(2);
   expect(errors).toEqual([]);
