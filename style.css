@@ -85,7 +85,11 @@ button.rank{width:auto;height:auto;font-size:20px}
 /* Rangliste: eine Zeile pro Spieler, Knöpfe 👁 zuschauen und 👻 gegen die Aufnahme fahren */
 #rankOv .row{align-items:center;gap:8px;width:min(100%,420px)}
 #rankOv .row button{flex-shrink:0}
-#rankOv h1{flex:1;min-width:0;font-size:24px;padding:6px 12px;overflow-wrap:anywhere}
+/* Titel so hoch wie die Knöpfe, Platz für zwei Zeilen: ◀️ ▶️ bleiben beim Blättern an derselben Stelle */
+#rankOv h1{flex:1;min-width:0;height:58px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden;
+font-size:22px;line-height:1.1;padding:4px 12px;overflow-wrap:anywhere}
+/* oben statt mittig (Rangliste, Sticker-Album, Murmel-Auswahl): kürzere oder längere Inhalte verschieben Titel und Knöpfe nicht */
+#rankOv>:first-child,#albumOv>:first-child,#skinOv>:first-child{margin-top:0}
 #rankList{width:min(100%,420px)}
 /* Rangliste als Tabelle (auch im Gewinn-Fenster): eine Karte, Kopfzeile 🏆 / 👻, Punkte rechtsbündig */
 .rtab{background:var(--panel);border-radius:18px;overflow:hidden;width:100%;text-align:left;box-shadow:0 3px 0 rgba(0,0,0,.18)}
@@ -172,6 +176,16 @@ backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);overflow:hidden}
 #cheerOv .rain.go i{animation-name:fall;animation-timing-function:linear;animation-fill-mode:both}
 @keyframes fall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:1}}
 @media (prefers-reduced-motion:reduce){#cheerOv .it{animation-duration:.01s}#cheerOv .rain{display:none}}
+/* Neue Version: Fenster über der Karte, 🔄 Laden oder Später */
+#updateOv{position:fixed;inset:0;z-index:11;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);
+backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#updateOv .card{background:var(--panel);border-radius:28px;padding:18px;width:min(86vw,340px);box-sizing:border-box;text-align:center}
+#updateOv .title{font-size:26px;font-weight:800}
+#updateOv p{margin:8px 0 4px;font-size:20px;line-height:1.25}
+#updateOv .info{font-size:13px;font-weight:600;opacity:.6;font-variant-numeric:tabular-nums}
+#updateOv .knoepfe{display:flex;gap:10px;margin-top:16px}
+#updateOv button{flex:1;width:auto;height:56px;font-size:20px;font-weight:800;border-radius:18px}
+#updateOv button.go{background:var(--go);color:#fff}
 /* lange Menüs: oben nicht abschneiden, trotzdem mittig wenn Platz */
 .overlay{justify-content:flex-start}
 .overlay>:first-child{margin-top:auto}
@@ -190,7 +204,8 @@ backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);overflow:hidden}
 }
 #mapOv .row{flex-wrap:wrap;justify-content:center;gap:12px}
 /* Version klein unten auf der Karte (Commit und Zeit, lokal „dev“) */
-#version{font-size:12px;font-weight:600;opacity:.6;background:var(--panel);border-radius:999px;padding:1px 10px;font-variant-numeric:tabular-nums;-webkit-user-select:text;user-select:text}
+/* (auch auf dem ersten Startbildschirm: #startVersion) */
+.ver{font-size:12px;font-weight:600;opacity:.6;background:var(--panel);border-radius:999px;padding:1px 10px;font-variant-numeric:tabular-nums;-webkit-user-select:text;user-select:text}
 /* Karten-Knöpfe: Symbol mit kurzem Text darunter */
 .mbtn{width:auto;min-width:70px;height:70px;padding:4px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
 .mbtn small{font-size:14px;font-weight:800;margin-top:4px;white-space:nowrap}
@@ -218,6 +233,46 @@ backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);overflow:hidden}
 .nextTag{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--go);color:#fff;font-size:13px;font-weight:800;line-height:1.4;border-radius:999px;padding:1px 8px;white-space:nowrap;pointer-events:none;z-index:2;animation:hop 1s ease-in-out infinite alternate}
 @keyframes hop{to{transform:translateX(-50%) translateY(-3px)}}
 @media (prefers-reduced-motion:reduce){.nextTag{animation:none}}
+/* Startseite: Schriftzug mit rollender Murmel oben, Mitte frei für die Treppe, Steuerwahl unten */
+#startOv{background:linear-gradient(rgba(158,216,245,.5),rgba(158,216,245,0) 32%,rgba(158,216,245,0) 55%,rgba(158,216,245,.55));
+ justify-content:flex-start;gap:6px;padding-top:calc(env(safe-area-inset-top,0px) + 40px)}
+#startOv>:first-child{margin-top:0}
+#startOv h1{background:none;padding:0;font-size:60px;line-height:.9;color:#fff;-webkit-text-stroke:2px #2E7FB8;paint-order:stroke fill;
+ text-shadow:0 3px 0 #2E7FB8,0 6px 0 #1F5F8C,0 10px 18px rgba(0,0,0,.25)}
+#startOv h1 span{display:block}
+#startOv h1 .sub{font-size:.62em;color:var(--star);-webkit-text-stroke-color:#B5761A;text-shadow:0 3px 0 #B5761A,0 8px 14px rgba(0,0,0,.25)}
+#startOv .logoBahn{--w:min(78vw,300px);position:relative;width:var(--w);height:34px;flex:none}
+#startOv .logoBahn:before{content:"";position:absolute;left:0;right:0;bottom:4px;height:10px;border-radius:6px;background:var(--wood);box-shadow:0 3px 0 #A97A3C}
+#startOv .logoBahn i{position:absolute;bottom:14px;left:0;width:26px;height:26px;border-radius:50%;
+ background:radial-gradient(circle at 35% 30%,#fff 0 12%,#5BB8FF 30%,#1E6FD9 75%);box-shadow:0 2px 3px rgba(0,0,0,.3);animation:logoRoll 3.2s ease-in-out infinite alternate}
+@keyframes logoRoll{from{transform:translateX(0) rotate(0)}to{transform:translateX(calc(var(--w) - 26px)) rotate(720deg)}}
+@media (prefers-reduced-motion:reduce){#startOv .logoBahn i{animation:none;left:calc(50% - 13px)}}
+#startOv .startWahl{margin-top:auto;background:var(--panel);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:28px;padding:14px;
+ width:min(100%,360px);box-sizing:border-box;display:flex;flex-direction:column;gap:10px}
+#startOv .startWahl:last-child{margin-bottom:8px}
+#startOv .ask{font-size:20px;font-weight:800}
+#startOv .wahl{display:flex;align-items:center;gap:12px;width:100%;height:auto;padding:10px 12px;text-align:left;border-radius:22px;
+ background:color-mix(in srgb,var(--go) 14%,var(--panel));border:3px solid color-mix(in srgb,var(--go) 50%,transparent)}
+#startOv .wahl .ico{font-size:44px;line-height:1}
+#startOv .wahl .txt{flex:1;min-width:0}
+#startOv .wahl b{display:block;font-size:26px;line-height:1.1}
+#startOv .wahl small{display:block;font-size:16px;font-weight:600;opacity:.75;line-height:1.2}
+#startOv .wahl .go{flex:none;width:44px;height:44px;border-radius:50%;background:var(--go);color:#fff;font-size:22px;display:grid;place-items:center}
+#startOv .wahl:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.18)}
+#startOv>.ver{margin:4px 0 8px;font-size:12px;font-weight:600;opacity:.6;background:var(--panel);border-radius:999px;padding:1px 10px}
+@media (orientation:landscape) and (max-height:500px){
+  #startOv{padding-top:calc(env(safe-area-inset-top,0px) + 12px);gap:2px}
+  #startOv h1{font-size:40px}
+  #startOv .logoBahn{--w:min(40vw,240px);height:28px}
+  #startOv .startWahl{width:min(100%,600px);flex-direction:row;flex-wrap:wrap;padding:10px;gap:8px}
+  #startOv .ask{width:100%;font-size:17px;line-height:1}
+  #startOv .wahl{flex:1 1 0;padding:6px 10px}
+  #startOv .wahl .ico{font-size:34px}
+  #startOv .wahl b{font-size:22px}
+  #startOv .wahl small{font-size:14px}
+  #startOv .wahl .go{width:38px;height:38px}
+}
+@media (max-width:360px){#startOv .wahl{gap:8px}#startOv .wahl .ico{font-size:36px}#startOv .wahl small{font-size:14px}#startOv .wahl .go{width:38px;height:38px}}
 /* App aufs Handy (src/install.js): Karte über der Weltkarte mit Symbol, kurzer Erklärung und Installieren / Später;
    gleich aufgebaut: Spielstand aus der Rangliste holen (#importOv, liegt darüber) */
 #appOv,#importOv{background:rgba(0,0,0,.55);z-index:5}
