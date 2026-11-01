@@ -83,6 +83,7 @@ export function createOnline(progress) {
     if (!r.ok || !Array.isArray(r.data)) return false;
     rows = r.data.filter(x => x && typeof x.name === 'string' && typeof x.level === 'string').map(x => ({
       name: x.name, level: x.level, power: x.power, ghost: !!x.ghost, fastGhost: !!x.fast_ghost,
+      stars: +x.stars, total: +x.total, falls: +x.falls,
       time: +x.seconds, best: Math.min(+x.seconds, +x.best_seconds || Infinity),
       score: score({ level: x.level, stars: +x.stars, total: +x.total, time: +x.seconds, falls: +x.falls })
     }));
@@ -101,6 +102,12 @@ export function createOnline(progress) {
     rows: () => rows,
     pending: () => Object.keys(store.queue).length,
     sync,
+    // Fahrten eines Namens aus der Rangliste (frisch geholt), z. B. um einen Spielstand auf ein neues Gerät zu holen
+    async findPlayer(name) {
+      if (!on || !name) return [];
+      await sync();
+      return rows.filter(r => r.name.toLowerCase() === name.toLowerCase());
+    },
     // Neuer Rekord (Punkte, dann mit Aufnahme, oder nur Bestzeit) eines Spielers in einem Level: vormerken und senden
     submit(name, level, run, ghost, best, fast) { if (!on) return Promise.resolve(false); queue(name, level, run, ghost, best, fast); save(); return sync(); },
     // Geist einer Online-Fahrt laden (null ohne Netz oder wenn es keinen gibt); kind 'zeit' = Aufnahme der schnellsten Fahrt

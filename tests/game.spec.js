@@ -1971,3 +1971,43 @@ test.describe('App aufs Handy auf dem iPhone', () => {
     expect(errors).toEqual([]);
   });
 });
+
+test('Spielstand aus der Rangliste: neuer Spieler mit bekanntem Namen holt Level, Sterne, Fahrten und Geister', async ({ page }) => {
+  const errors = watchErrors(page);
+  const lina = { t: 3, skin: 'fussball', p: [0, 100, 0, 0, 100, -500, 0, 100, -1000] };
+  const server = await fakeSupabase(page, [
+    { ...online('Lina', 'ausflug', 4, 5, 30, 1, true), best_seconds: 25 },
+    online('Lina', 'sz1', 6, 6, 40, 0),
+    online('Max', 'ausflug', 5, 5, 20, 0)
+  ], { 'Lina/ausflug': lina });
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  await page.click('#startJoy');
+  // Name nicht in der Rangliste: keine Frage
+  await newPlayer(page, 'Neu');
+  await expect.poll(() => server.calls.get_ranking.length).toBeGreaterThan(0);
+  await expect(page.locator('#importOv')).toBeHidden();
+  // Max: nein, neu anfangen
+  await page.click('#btnPlayer');
+  await newPlayer(page, 'max');
+  await expect(page.locator('#importOv')).toBeVisible();
+  await expect(page.locator('#importStars')).toHaveText('⭐ 5 · 1 Level');
+  await page.click('#importNo');
+  await expect(page.locator('#importOv')).toBeHidden();
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 0');
+  // lina (Gross/Klein egal): ja, übernehmen
+  await page.click('#btnPlayer');
+  await newPlayer(page, 'lina');
+  await expect(page.locator('#importTitle')).toHaveText('🌍 lina ist schon in der Rangliste');
+  await expect(page.locator('#importStars')).toHaveText('⭐ 10 · 2 Level');
+  await page.click('#importYes');
+  await expect(page.locator('#importOv')).toBeHidden();
+  await expect(page.locator('#mapStars')).toHaveText('⭐ 10');
+  await expect(page.locator('.lvl[data-level="ausflug"]')).toHaveClass(/done/);
+  const p = await page.evaluate(() => ({ run: window.murmel.progress.run('ausflug'), best: window.murmel.progress.bestTime('ausflug') }));
+  expect(p.run).toMatchObject({ stars: 4, total: 5, time: 30, falls: 1 });
+  expect(p.best).toBe(25);
+  await expect.poll(() => page.evaluate(() => window.murmel.progress.ghost('ausflug'))).toEqual(lina);
+  expect(server.calls.submit_run).toEqual([]); // übernommene Fahrten gehen nicht nochmal raus
+  expect(errors).toEqual([]);
+});

@@ -61,7 +61,7 @@ export function createProgress() {
     const g = get(ghosts, p, id);
     return get(fast, p, id) || (g && p.times[id] && g.t === p.times[id] ? g : null);
   };
-  const put = (o, key, id, track) => { const p = player(); if (!p) return; (o[p.id] = o[p.id] || {})[id] = track; store(key, o); };
+  const put = (o, key, id, track, p = player()) => { if (!p) return; (o[p.id] = o[p.id] || {})[id] = track; store(key, o); };
   const empty = newPlayer('');
   const player = () => data.players.find(p => p.id === data.current) || null;
   const me = () => player() || empty; // ohne Spieler (vor der Auswahl): leerer Spielstand
@@ -100,10 +100,23 @@ export function createProgress() {
     ghost: id => get(ghosts, player(), id),
     // Aufnahme eines Spielers auf diesem Gerät (Name ohne Gross/Klein)
     ghostOf: (name, id) => get(ghosts, byName(name), id),
-    setGhost: (id, track) => put(ghosts, GHOST_KEY, id, track),
+    setGhost: (id, track, p) => put(ghosts, GHOST_KEY, id, track, p),
     fastGhost: id => fastOf(player(), id),
     fastGhostOf: (name, id) => fastOf(byName(name), id),
-    setFastGhost: (id, track) => put(fast, FAST_KEY, id, track),
+    setFastGhost: (id, track, p) => put(fast, FAST_KEY, id, track, p),
+    // Fahrten aus der Online-Rangliste übernehmen (online.findPlayer, Spielstand auf einem neuen Gerät): Level geschafft,
+    // Sterne, Fahrt mit den meisten Punkten und Bestzeit; was schon besser ist, bleibt. Bonussterne kennt die Rangliste nicht.
+    importRows(list) {
+      const p = me();
+      for (const r of list) {
+        p.done[r.level] = true;
+        p.best[r.level] = Math.max(p.best[r.level] || 0, r.stars);
+        const old = p.runs[r.level];
+        if (!old || old.score < r.score) p.runs[r.level] = { stars: r.stars, total: r.total, time: r.time, falls: r.falls, power: r.power, score: r.score };
+        if (r.best > 0 && !(p.times[r.level] <= r.best)) p.times[r.level] = +r.best.toFixed(2);
+      }
+      save();
+    },
     setSkin(id) { me().skin = id; save(); },
     get trail() { return me().trail; },
     setTrail(id) { me().trail = id; save(); },

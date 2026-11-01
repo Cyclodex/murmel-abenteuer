@@ -55,7 +55,7 @@ const online = createOnline(progress);
 const update = createUpdate();
 $('version').textContent = update.label; // klein unten auf der Karte
 function checkUpdate() {
-  update.check().then(v => { if (v && !$('mapOv').classList.contains('hidden') && $('appOv').classList.contains('hidden')) update.reload(v); });
+  update.check().then(v => { if (v && !$('mapOv').classList.contains('hidden') && ['appOv', 'importOv'].every(id => $(id).classList.contains('hidden'))) update.reload(v); });
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
 
@@ -296,9 +296,36 @@ function showPlayers() {
 }
 $('playerForm').onsubmit = e => {
   e.preventDefault();
-  if (!progress.addPlayer($('playerName').value)) { $('playerName').focus(); return; }
+  const before = progress.players().length, p = progress.addPlayer($('playerName').value);
+  if (!p) { $('playerName').focus(); return; }
   $('playerName').blur(); audio.sfx('tap'); showMap();
+  if (progress.players().length > before) offerImport(p);
 };
+
+// Spielstand aus der Rangliste: Steht der Name eines neuen Spielers schon in der Online-Rangliste (anderes Gerät, App auf
+// dem iPhone ohne Umzug per Cookie), fragen, ob er das ist, und seine Fahrten übernehmen (progress.importRows), die Geister
+// danach im Hintergrund. Nur solange der Spieler noch nichts gefahren hat und die Karte offen ist.
+async function offerImport(p) {
+  const list = await online.findPlayer(p.name);
+  const fresh = () => progress.player() === p && !Object.keys(p.done).length && !$('mapOv').classList.contains('hidden');
+  if (!list.length || !fresh()) return;
+  $('importTitle').textContent = `🌍 ${p.name} ist schon in der Rangliste`;
+  $('importStars').textContent = `⭐ ${list.reduce((n, r) => n + r.stars, 0)} · ${list.length} Level`;
+  $('importYes').onclick = () => {
+    audio.sfx('tap'); show('importOv', false);
+    if (!fresh()) return;
+    progress.importRows(list); showMap(); toast('🌍 ✔️');
+    loadGhosts(p, list);
+  };
+  show('importOv');
+}
+$('importNo').onclick = () => { audio.sfx('tap'); show('importOv', false); };
+async function loadGhosts(p, list) {
+  for (const r of list) {
+    if (r.ghost) { const g = await online.ghost(r.name, r.level); if (g) progress.setGhost(r.level, g, p); }
+    if (r.fastGhost && r.best < r.time) { const g = await online.ghost(r.name, r.level, 'zeit'); if (g) progress.setFastGhost(r.level, g, p); }
+  }
+}
 
 // ---------- Murmel-Auswahl ----------
 function showSkins() {
