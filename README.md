@@ -44,7 +44,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne, Bestzeiten, beste Fahrt mit Punkten, Murmel, Spur, Bonussterne und Sticker pro Spieler; Einstellungen für alle; Geister-Fahrten getrennt (`murmel-geist-v1`, schnellste Fahrten `murmel-geist-schnell-v1`) |
 | `src/score.js` | Punkte einer Fahrt (pro Level höchstens 2050: Sterne-Anteil 1000, Zeit gegen die Richtzeit bis 750, ohne Absturz 300, je Absturz 100 weniger) und Rangliste nach Punkten (Stärke wird nur angezeigt), Rangliste nach Bestzeit und Streckenrekorde (`fastest`) |
 | `src/levels/richtzeiten.js` | Richtzeit pro Level für die Punkte (Autopilot, Stärke normal, Standard-Murmel), erzeugt mit `node tests/richtzeiten.mjs [id ...]` |
-| `src/online.js` | Online-Rangliste über Supabase (nur `fetch`, 3 s Timeout, Fehler still): neue Rekorde mit Geist-Aufnahme senden (ohne Netz in localStorage `murmel-online-v1` vormerken, später nachsenden), Rangliste holen, Geist laden. Auf localhost aus (Tests: localStorage `murmel-online` = `an`). Neuer Spieler, dessen Name schon online steht: Frage „Bist du das?“, dann Level, Sterne, Fahrten, Bestzeiten und Geister übernehmen (`findPlayer`, `progress.importRows`; ohne Bonussterne) |
+| `src/online.js` | Online-Rangliste über Supabase (nur `fetch`, 3 s Timeout, Fehler still): neue Rekorde (auch nur Bestzeit oder mehr Sterne) mit Geist-Aufnahme senden (ohne Netz in localStorage `murmel-online-v1` vormerken, später nachsenden), Rangliste holen, Geist laden. Auf localhost aus (Tests: localStorage `murmel-online` = `an`) |
 | `supabase/schema.sql` | Tabelle und Funktionen der Online-Rangliste (dazu `keepalive` gegen das Pausieren), einmal im Supabase SQL-Editor ausführen |
 | `src/update.js` | Neue Version erkennen (`version.json`) und auf der Karte neu laden |
 | `src/install.js`, `manifest.json`, `sw.js`, `icons/` | App aufs Handy: Popup auf der Karte (Android: Dialog des Browsers über `beforeinstallprompt`, iPhone/iPad: Teilen → „Zum Home-Bildschirm“), danach über ⚙️ → 📲; Service Worker speichert nichts (nur für die Installierbarkeit). Symbole aus `icons/icon.svg` mit `node icons/mache-icons.mjs` |
@@ -73,7 +73,7 @@ sonst bricht `stempel.mjs` ab (der Test „Veröffentlichen …“ merkt das sch
 ## Online-Rangliste
 
 Eine weltweite Rangliste ohne Konten: pro Name und Level die Fahrt mit den meisten Punkten und ihre Aufnahme,
-dazu die Bestzeit (schnellste Fahrt ins Ziel) mit ihrer Aufnahme.
+dazu die Bestzeit (schnellste Fahrt ins Ziel) mit ihrer Aufnahme und die meisten Sterne (irgendeine Fahrt ins Ziel).
 Die Aufnahme der Fahrt mit den meisten Punkten ist der eigene Geist beim Levelstart; die der schnellsten Fahrt gibt es in der Rangliste „⏱ Schnellste“.
 Ohne Netz läuft alles lokal weiter, dann mit den Spielern auf dem Gerät.
 
@@ -85,6 +85,12 @@ Ohne Netz läuft alles lokal weiter, dann mit den Spielern auf dem Gerät.
   und die Geister als Schalter: „Dein Geist“ und „Bester Geist“ (bester anderer mit Aufnahme, nach Punkten), beide oder keiner (die Wahl wird gemerkt);
   ▶️ Los sagt, gegen wen es geht. Fremde Geister tragen ein Namensschild, bei zwei Geistern auch der eigene.
 - **Gewinn-Bildschirm:** die besten 5 im Level und der eigene Platz, 👻 fährt gegen die Aufnahme des besten anderen.
+- **Spielstand holen:** Hat ein Spieler online (gleicher Name) Level geschafft oder Sterne, die auf dem Gerät fehlen, fragt das Spiel
+  „☁️ Name · +N Level · +N ⭐“: gleich beim Anlegen eines neuen Spielers („☁️ Name gibt es schon“), sonst auf der Karte.
+  ✅ übernimmt geschaffte Level, meiste Sterne (alle Sterne = Bonusstern), Fahrten mit mehr Punkten und Bestzeiten und lädt deren Aufnahmen
+  (eigener und schnellster Geist) im Hintergrund nach; Murmeln, Spuren und Welt-Sticker kommen über die Sterne zurück.
+  Nicht online: Bonussterne aus Fahrten ohne alle Sterne, die Extra-Sticker 🐷🧼👻, gewählte Murmel und Spur.
+  ✖️: erst wieder fragen, wenn online mehr Sterne dazukommen.
 
 - **Datenschutz:** Namen und Fahrten sind für alle sichtbar und liegen bei Supabase (Region EU, Frankfurt). Nur Vornamen oder Spitznamen verwenden.
 - **Kein Schutz gegen Schummeln:** Jeder kann beliebige Namen und Punkte senden. Gleicher Name = gleicher Eintrag, auch auf einem anderen Gerät.

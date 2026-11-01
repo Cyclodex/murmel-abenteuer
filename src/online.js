@@ -40,34 +40,43 @@ export function createOnline(progress) {
   const save = () => { try { localStorage.setItem(STORE, JSON.stringify(store)); } catch (e) { /* kein Speicher oder voll */ } };
   let rows = [], busy = null;
 
-  // Beste Fahrt und Bestzeit zum Senden vormerken (pro Name und Level nur die neueste, sie hat immer die meisten Punkte).
-  // ghost = Aufnahme der Fahrt mit den meisten Punkten, fast = Aufnahme der schnellsten Fahrt, wenn es eine andere ist
-  // (sonst nimmt der Server ghost). Noch wartende Aufnahmen bleiben erhalten, solange Fahrt und Bestzeit dieselben sind.
-  const queue = (name, level, run, ghost, best, fast = null) => {
+  // Beste Fahrt, Bestzeit und meiste Sterne zum Senden vormerken (pro Name und Level nur die neueste, sie hat immer die
+  // meisten Punkte). ghost = Aufnahme der Fahrt mit den meisten Punkten, fast = Aufnahme der schnellsten Fahrt, wenn es
+  // eine andere ist (sonst nimmt der Server ghost). Noch wartende Aufnahmen bleiben erhalten, solange Fahrt und Bestzeit
+  // dieselben sind.
+  const queue = (name, level, run, ghost, best, fast = null, stars = 0) => {
     const k = name.toLowerCase() + '\n' + level, old = store.queue[k];
     best = Math.min(run.time, best || Infinity);
+    stars = Math.max(run.stars, stars || 0, old ? old.stars || 0 : 0);
     if (!ghost && old && old.run.score === run.score) ghost = old.ghost;
     if (!fast && old && old.best === best && old.run.time !== best) fast = old.fast || (old.run.time === best ? old.ghost : null);
-    store.queue[k] = { name, level, run, ghost, best, fast };
+    store.queue[k] = { name, level, run, ghost, best, fast, stars };
   };
   // Erster Start mit Rangliste: die schon gespeicherten besten Fahrten aller Spieler (ohne Aufnahme) nachtragen,
-  // seit es die Rangliste „Schnellste“ gibt auch mit Bestzeit
-  if (!store.seededBest) {
-    for (const p of progress.players()) for (const [level, run] of Object.entries(p.runs || {})) queue(p.name, level, run, null, (p.times || {})[level]);
-    store.seeded = store.seededBest = true; save();
+  // seit es die Rangliste „Schnellste“ gibt auch mit Bestzeit, seit „Spielstand holen“ mit den meisten Sternen.
+  // Aus der Rangliste übernommene Fahrten (run.online) nicht: ohne Aufnahme würden sie online den Geist löschen,
+  // wenn score() inzwischen mehr Punkte gibt.
+  if (!store.seededBest || !store.seededStars) {
+    for (const p of progress.players()) {
+      for (const [level, run] of Object.entries(p.runs || {})) {
+        if (!run.online) queue(p.name, level, run, null, (p.times || {})[level], null, (p.best || {})[level]);
+      }
+    }
+    store.seeded = store.seededBest = store.seededStars = true; save();
   }
 
   // Vorgemerkte Fahrten der Reihe nach senden; bei Netzfehler aufhören und beim nächsten Mal weitermachen
   async function flush() {
     for (const [k, e] of Object.entries(store.queue)) {
-      const { name, level, run, ghost, best, fast } = e;
+      const { name, level, run, ghost, best, fast, stars } = e;
       const args = {
         p_name: name, p_level: level, p_stars: run.stars, p_total: run.total, p_seconds: run.time,
         p_falls: run.falls, p_power: run.power, p_score: run.score, p_ghost: ghost
-      };
-      let r = await rpc('submit_run', { ...args, p_best: best || run.time, p_fast_ghost: fast || null });
-      // Server noch mit dem alten schema.sql (submit_run ohne p_best): ohne Bestzeit senden und beim nächsten Start
-      // alle Bestzeiten nochmal nachtragen, bis der Server sie annimmt
+      }, timeArgs = { ...args, p_best: best || run.time, p_fast_ghost: fast || null };
+      let r = await rpc('submit_run', { ...timeArgs, p_max_stars: Math.max(run.stars, stars || 0) });
+      // Server noch mit einem alten schema.sql (submit_run ohne p_max_stars, ohne p_best): ohne sie senden und beim
+      // nächsten Start alles nochmal nachtragen, bis der Server es annimmt
+      if (r.status === 404) { r = await rpc('submit_run', timeArgs); store.seededStars = false; }
       if (r.status === 404) { r = await rpc('submit_run', args); store.seededBest = false; }
       if (!r.ok && !r.rejected) return false;
       if (store.queue[k] === e) delete store.queue[k];
@@ -76,14 +85,15 @@ export function createOnline(progress) {
     return true;
   }
 
-  // Rangliste holen: Zeilen wie progress.rows() (Punkte mit der aktuellen score() neu gerechnet), dazu ob es einen Geist gibt.
+  // Rangliste holen: Zeilen wie progress.rows() (Punkte mit der aktuellen score() neu gerechnet), dazu ob es einen Geist gibt
+  // und die Rohwerte (stars, total, falls, maxStars = meiste Sterne in irgendeiner Fahrt) für progress.restore().
   // best_seconds fehlt bei einem Server mit altem schema.sql: dann zählt die Zeit der Fahrt mit den meisten Punkten.
   async function refresh() {
     const r = await rpc('get_ranking', {});
     if (!r.ok || !Array.isArray(r.data)) return false;
     rows = r.data.filter(x => x && typeof x.name === 'string' && typeof x.level === 'string').map(x => ({
       name: x.name, level: x.level, power: x.power, ghost: !!x.ghost, fastGhost: !!x.fast_ghost,
-      stars: +x.stars, total: +x.total, falls: +x.falls,
+      stars: +x.stars, total: +x.total, falls: +x.falls, maxStars: Math.max(+x.stars, +x.max_stars || 0),
       time: +x.seconds, best: Math.min(+x.seconds, +x.best_seconds || Infinity),
       score: score({ level: x.level, stars: +x.stars, total: +x.total, time: +x.seconds, falls: +x.falls })
     }));
@@ -102,14 +112,12 @@ export function createOnline(progress) {
     rows: () => rows,
     pending: () => Object.keys(store.queue).length,
     sync,
-    // Fahrten eines Namens aus der Rangliste (frisch geholt), z. B. um einen Spielstand auf ein neues Gerät zu holen
-    async findPlayer(name) {
-      if (!on || !name) return [];
-      await sync();
-      return rows.filter(r => r.name.toLowerCase() === name.toLowerCase());
+    // Neuer Rekord (Punkte, dann mit Aufnahme, oder nur Bestzeit oder mehr Sterne) eines Spielers in einem Level:
+    // vormerken und senden; stars = meiste Sterne in diesem Level
+    submit(name, level, run, ghost, best, fast, stars) {
+      if (!on) return Promise.resolve(false);
+      queue(name, level, run, ghost, best, fast, stars); save(); return sync();
     },
-    // Neuer Rekord (Punkte, dann mit Aufnahme, oder nur Bestzeit) eines Spielers in einem Level: vormerken und senden
-    submit(name, level, run, ghost, best, fast) { if (!on) return Promise.resolve(false); queue(name, level, run, ghost, best, fast); save(); return sync(); },
     // Geist einer Online-Fahrt laden (null ohne Netz oder wenn es keinen gibt); kind 'zeit' = Aufnahme der schnellsten Fahrt
     async ghost(name, level, kind = 'punkte') {
       if (!on) return null;
