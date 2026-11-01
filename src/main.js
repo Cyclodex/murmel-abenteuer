@@ -168,6 +168,7 @@ function showMap() {
   ['hud', 'joy', 'winOv', 'skinOv', 'albumOv', 'startOv', 'playerOv', 'treppeBack', 'rankOv', 'rankGhostOv', 'ghostOv'].forEach(id => show(id, false));
   syncStickers(); // schon verdiente Sticker nachtragen (alter Spielstand, anderer Spieler), ohne Jubel
   $('mapStars').textContent = `⭐ ${progress.totalStars()}`;
+  settings(false);
   $('btnPlayer').textContent = `👤 ${progress.player().name}`;
   label('btnPower', power().emoji, power().name);
   syncControl();
@@ -186,10 +187,11 @@ function showMap() {
     b.onclick = () => { audio.sfx('tap'); chooseLevel(i); };
     return b;
   };
-  const stars = lv => `<span class="s">⭐${progress.best(lv.id)}</span>`;
+  // ⭐ gesammelt/möglich, z. B. ⭐2/9
+  const stars = lv => `<span class="s">⭐${progress.best(lv.id)}/${lv.parts.filter(p => p.type === 'stern').length}</span>`;
   for (const w of WORLDS) {
     const row = document.createElement('div'); row.className = 'world'; row.dataset.world = w.id;
-    row.innerHTML = `<div class="wicon" title="${w.name}">${w.emoji}</div><div class="levels"></div>`;
+    row.innerHTML = `<div class="wicon">${w.emoji}<span class="wname">${w.name}</span></div><div class="levels"></div>`;
     w.levels.forEach((lv, k) => {
       const hard = (w.hard || []).find(h => h.schwer === lv.id);
       if (!isOpen(LEVELS.indexOf(lv))) {
@@ -205,9 +207,27 @@ function showMap() {
     });
     box.appendChild(row);
   }
+  markNext();
   show('mapOv');
+  showNext();
   online.sync(); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen
   checkUpdate();
+}
+
+// Nächstes Level zum Spielen: das erste offene, noch nicht geschaffte (zuerst die normalen, dann die schweren)
+function markNext() {
+  const open = [...$('worlds').querySelectorAll('.lvl:not(:disabled):not(.done)')];
+  const next = open.find(b => !b.classList.contains('hard')) || open[0];
+  if (!next) return;
+  next.classList.add('next');
+  const tag = document.createElement('span'); tag.className = 'nextTag'; tag.textContent = '▶️ Weiter';
+  (next.closest('.pair') || next).appendChild(tag);
+}
+// Karte so weit scrollen, dass das nächste Level zu sehen ist
+function showNext() {
+  const next = $('worlds').querySelector('.lvl.next'); if (!next) return;
+  const r = (next.closest('.pair') || next).getBoundingClientRect();
+  if (r.top < 0 || r.bottom > innerHeight) (next.closest('.pair') || next).scrollIntoView({ block: 'center' });
 }
 
 // ---------- Spieler ----------
@@ -339,6 +359,11 @@ $('btnSound').onclick = () => {
   progress.setSound(m.id); audio.setMode(m.id); label('btnSound', m.emoji, m.name); audio.sfx('tap');
 };
 $('skinBack').onclick = showMap;
+// Einstellungen (Steuerung, Tempo, Ton) hinter ⚙️ auf der Karte
+function settings(open) {
+  show('mapSettings', open); $('btnSettings').setAttribute('aria-expanded', open);
+}
+$('btnSettings').onclick = () => { audio.sfx('tap'); settings($('mapSettings').classList.contains('hidden')); };
 $('btnPlayer').onclick = () => { audio.sfx('tap'); showPlayers(); };
 // Treppe im Vollbild anschauen: alle Murmeln im Vergleich
 $('btnTreppe').onclick = () => { audio.sfx('tap'); show('mapOv', false); show('treppeBack'); treppe.treppe.reset(); };
@@ -586,7 +611,7 @@ for (const b of document.querySelectorAll('#rankMode button')) {
 $('rankPrev').onclick = () => flip(-1);
 $('rankNext').onclick = () => flip(1);
 $('rankBack').onclick = () => { audio.sfx('tap'); if (rankFromWin) { show('rankOv', false); show('winOv'); } else showMap(); };
-$('mapStars').onclick = () => { audio.sfx('tap'); showRanks(); };
+$('btnRank').onclick = () => { audio.sfx('tap'); showRanks(); };
 
 // ---------- Zuschauen: eine Aufnahme abspielen ----------
 // Das Level läuft wie beim Fahren (Sterne, Schalter, Kamera), nur wird die Murmel jedes Bild auf die Aufnahme gesetzt,
