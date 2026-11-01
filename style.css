@@ -88,8 +88,8 @@ button.rank{width:auto;height:auto;font-size:20px}
 /* Titel so hoch wie die Knöpfe, Platz für zwei Zeilen: ◀️ ▶️ bleiben beim Blättern an derselben Stelle */
 #rankOv h1{flex:1;min-width:0;height:58px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden;
 font-size:22px;line-height:1.1;padding:4px 12px;overflow-wrap:anywhere}
-/* oben statt mittig: kürzere oder längere Listen verschieben Titel und Knöpfe nicht */
-#rankOv>:first-child{margin-top:0}
+/* oben statt mittig (Rangliste, Sticker-Album, Murmel-Auswahl): kürzere oder längere Inhalte verschieben Titel und Knöpfe nicht */
+#rankOv>:first-child,#albumOv>:first-child,#skinOv>:first-child{margin-top:0}
 #rankList{width:min(100%,420px)}
 /* Rangliste als Tabelle (auch im Gewinn-Fenster): eine Karte, Kopfzeile 🏆 / 👻, Punkte rechtsbündig */
 .rtab{background:var(--panel);border-radius:18px;overflow:hidden;width:100%;text-align:left;box-shadow:0 3px 0 rgba(0,0,0,.18)}
