@@ -1,21 +1,68 @@
-# Online-Rangliste wach halten: Supabase pausiert Projekte im Gratis-Plan nach einer Woche ohne Anfragen.
-# Alle 3 Tage einmal die Rangliste abrufen. URL und Key (öffentlich) stehen in src/online.js.
+# Online-Rangliste wach halten: Supabase pausiert Projekte im Gratis-Plan nach einer Woche ohne Aktivität.
+# Bis Oktober 2026 reichte es, alle 3 Tage die Rangliste zu lesen; dann wurde das Projekt trotzdem pausiert.
+# Darum jetzt täglich ein Schreibzugriff (keepalive in supabase/schema.sql) und dazu die Rangliste lesen.
+# Klappt das nicht, öffnet die Action ein Issue (Supabase pausiert? Im Dashboard „Restore project“), beim
+# nächsten Erfolg schliesst sie es wieder. Die Zusammenfassung des Laufs zeigt Spieler und Fahrten pro Level.
+# URL und Key (öffentlich) stehen in src/online.js.
 name: Rangliste wach halten
 
 on:
   schedule:
-    - cron: '41 4 */3 * *' # 04:41 UTC
+    - cron: '41 4 * * *' # täglich 04:41 UTC
   workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
+      - id: ping
+        run: |
           url=$(grep -oP "SUPABASE_URL = '\K[^']+" src/online.js)
           key=$(grep -oP "const KEY = '\K[^']+" src/online.js)
-          code=$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$url/rest/v1/rpc/get_ranking" \
-            -H "apikey: $key" -H 'Content-Type: application/json' -d '{}')
-          echo "HTTP $code"
-          test "$code" = 200
+          rpc() {
+            curl -sS -o "$1.json" -w '%{http_code}' --max-time 30 --retry 3 --retry-all-errors -X POST \
+              "$url/rest/v1/rpc/$1" -H "apikey: $key" -H 'Content-Type: application/json' -d '{}' || true # bei Netzfehler: 000
+          }
+          ok=1
+          for fn in keepalive get_ranking; do
+            code=$(rpc $fn)
+            echo "$fn: HTTP $code"
+            [ "$code" = 200 ] || ok=0
+          done
+          # Kurze Statistik in die Zusammenfassung des Laufs: wie viele Spieler und Fahrten, pro Level
+          if jq -e 'type == "array"' get_ranking.json >/dev/null 2>&1; then
+            {
+              echo "### Rangliste"
+              jq -r '"\(map(.name | ascii_downcase) | unique | length) Spieler, \(length) Fahrten, \(map(select(.ghost)) | length) mit Geist"' get_ranking.json
+              echo
+              echo "| Level | Spieler | Beste Punkte |"
+              echo "|---|---|---|"
+              jq -r 'group_by(.level) | sort_by(-length)[] | "| \(.[0].level) | \(length) | \(map(.score) | max) |"' get_ranking.json
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          test $ok = 1
+      - name: Issue öffnen oder schliessen
+        if: always() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.ping.outcome }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title='Online-Rangliste: Supabase antwortet nicht'
+          open=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ "$OUTCOME" = success ]; then
+            [ -z "$open" ] || gh issue close "$open" --comment "Supabase antwortet wieder: $RUN"
+          elif [ -z "$open" ]; then
+            gh issue create --title "$title" --body "$(printf '%s\n' \
+              "Die Action „Rangliste wach halten“ ist fehlgeschlagen: $RUN" '' \
+              'Meist ist das Supabase-Projekt pausiert („Could not resolve host“). Dann im Supabase-Dashboard das Projekt' \
+              'öffnen und „Restore project“ klicken. HTTP 404 bei keepalive: supabase/schema.sql im SQL-Editor neu ausführen.' '' \
+              'Das Issue schliesst sich beim nächsten erfolgreichen Lauf von selbst.')"
+          else
+            gh issue comment "$open" --body "Wieder fehlgeschlagen: $RUN"
+          fi

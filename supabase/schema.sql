@@ -8,6 +8,8 @@
 --   submit_run  Fahrt eintragen, ersetzt die alte nur bei mehr Punkten; Bestzeit nur, wenn sie schneller ist
 --   get_ranking alle Fahrten ohne Aufnahme (klein), die Punkte rechnet das Spiel mit src/score.js neu
 --   get_ghost   Aufnahme einer Fahrt (meiste Punkte oder schnellste), erst wenn jemand sie braucht
+-- Dazu keepalive für die Action „Rangliste wach halten“ (.github/workflows/rangliste-wach.yml): Supabase pausiert
+-- Gratis-Projekte ohne Aktivität, und Lesezugriffe allein haben das im Oktober 2026 nicht verhindert.
 
 create table if not exists public.runs (
   name       text        not null,
@@ -99,13 +101,32 @@ language sql stable security definer set search_path = '' as $$
   from public.runs r where r.name_key = lower(btrim(p_name)) and r.level = p_level;
 $$;
 
--- Nur diese drei Funktionen sind mit dem öffentlichen Key aufrufbar
+-- Herzschlag: eine einzige Zeile, die keepalive bei jedem Aufruf überschreibt (ein echter Schreibzugriff)
+create table if not exists public.heartbeat (
+  id    int         primary key default 1 check (id = 1),
+  at    timestamptz not null default now(),
+  beats bigint      not null default 1
+);
+alter table public.heartbeat enable row level security;
+revoke all on table public.heartbeat from anon, authenticated, public;
+
+create or replace function public.keepalive()
+returns timestamptz
+language sql volatile security definer set search_path = '' as $$
+  insert into public.heartbeat as h (id) values (1)
+  on conflict (id) do update set at = now(), beats = h.beats + 1
+  returning h.at;
+$$;
+
+-- Nur diese Funktionen sind mit dem öffentlichen Key aufrufbar
 revoke all on function public.submit_run(text, text, int, int, numeric, int, text, int, jsonb, numeric, jsonb) from public;
 revoke all on function public.get_ranking() from public;
 revoke all on function public.get_ghost(text, text, text) from public;
+revoke all on function public.keepalive() from public;
 grant execute on function public.submit_run(text, text, int, int, numeric, int, text, int, jsonb, numeric, jsonb) to anon, authenticated;
 grant execute on function public.get_ranking() to anon, authenticated;
 grant execute on function public.get_ghost(text, text, text) to anon, authenticated;
+grant execute on function public.keepalive() to anon, authenticated;
 
 -- PostgREST soll die neuen Funktionen sofort kennen
 notify pgrst, 'reload schema';
