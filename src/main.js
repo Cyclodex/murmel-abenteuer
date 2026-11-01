@@ -347,14 +347,16 @@ function onWin() {
   const hadRun = progress.run(lv.id), record = !lv.pruefstand && progress.setRun(lv.id, run); // Prüfstand: kein Rekord, nicht online
   // Neuer Rekord: die Fahrt wird der eigene Geist (auch in einer laufenden Wettfahrt) und geht mit Aufnahme in die
   // Online-Rangliste, danach Rangliste neu zeigen
-  // Neue Bestzeit ohne mehr Punkte: nur die Bestzeit geht raus (Rangliste „Schnellste“)
-  const track = record ? rec.track(t, currentSkin().id) : null;
+  // Neue Bestzeit: die Fahrt wird zusätzlich der schnellste Geist (Rangliste „Schnellste“: zuschauen, gegen ihn fahren).
+  // Ist es dieselbe Fahrt, schickt online.submit die Aufnahme nur einmal.
+  const fastRun = newBest && !lv.pruefstand, track = record || fastRun ? rec.track(t, currentSkin().id) : null;
   if (record) {
     progress.setGhost(lv.id, track);
     if (race) for (const g of race.list) if (g.own) g.track = track;
   }
+  if (fastRun) progress.setFastGhost(lv.id, track);
   if (!lv.pruefstand && (record || newBest) && progress.run(lv.id)) {
-    online.submit(progress.player().name, lv.id, progress.run(lv.id), track, progress.bestTime(lv.id))
+    online.submit(progress.player().name, lv.id, progress.run(lv.id), record ? track : null, progress.bestTime(lv.id), fastRun && !record ? track : null)
       .then(ok => { if (ok && lv === LEVELS[levelIdx]) showWinRank(); });
   }
   $('winScore').textContent = `🏆 ${fmtScore(run.score)}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : hadRun ? ` · 🏆 ${fmtScore(hadRun.score)}` : '');
@@ -401,10 +403,12 @@ $('winRank').onclick = () => { audio.sfx('tap'); showRanks(LEVELS[levelIdx].id, 
 const same = (a, b) => a.toLowerCase() === b.toLowerCase();
 const place = i => MEDALS[i] || `${i + 1}.`;
 const okTrack = tr => (tr && Array.isArray(tr.p) && tr.p.length >= 3 ? tr : null);
-// Aufnahme zu einem Namen: zuerst ein Spieler auf dem Gerät, sonst online (hasGhost weiss nur, ob es online eine gibt)
-const localGhost = (name, id) => okTrack(progress.ghostOf(name, id));
-const hasGhost = (name, id) => !!localGhost(name, id) || online.rows().some(x => x.ghost && x.level === id && same(x.name, name));
-const loadGhost = async (name, id) => localGhost(name, id) || await online.ghost(name, id);
+// Aufnahme zu einem Namen: zuerst ein Spieler auf dem Gerät, sonst online (hasGhost weiss nur, ob es online eine gibt).
+// kind: 'punkte' = Fahrt mit den meisten Punkten (Standard, auch beim Levelstart), 'zeit' = schnellste Fahrt
+const localGhost = (name, id, kind = 'punkte') => okTrack(kind === 'zeit' ? progress.fastGhostOf(name, id) : progress.ghostOf(name, id));
+const hasGhost = (name, id, kind = 'punkte') => !!localGhost(name, id, kind) ||
+  online.rows().some(x => (kind === 'zeit' ? x.fastGhost : x.ghost) && x.level === id && same(x.name, name));
+const loadGhost = async (name, id, kind = 'punkte') => localGhost(name, id, kind) || await online.ghost(name, id, kind);
 // Rangliste als Tabelle: Kopfzeile head (und 👻, wenn es Aufnahmen gibt), Platz, Name mit Stärke, Wert (val: Punkte,
 // Zeit oder Rekorde) rechtsbündig, eigene Zeile hervorgehoben. rows[j] gehört zu list[j]. Namen nur als Text einsetzen, nie als HTML.
 const MODES = {
@@ -528,30 +532,31 @@ function renderRanks() {
   const byTime = rankMode === 'zeit', mode = byTime ? (id ? MODES.zeit : MODES.rekorde) : MODES.punkte;
   $('rankHint').textContent = byTime && !id ? '🏁 In so vielen Leveln die schnellste Zeit' : '';
   show('rankHint', byTime && !id);
-  // die besten 10 und der eigene Platz; 👻-Spalte nur bei Punkten in einem Level (die Aufnahme ist die Fahrt mit den meisten Punkten)
+  // die besten 10 und der eigene Platz; 👻-Spalte in einem Level: bei Punkten die Fahrt mit den meisten Punkten,
+  // bei Schnellste die schnellste Fahrt
   const rank = byTime ? fastest(allRows(), id) : ranking(allRows(), id), k = rank.findIndex(r => same(r.name, me));
   const list = [...rank.slice(0, 10), ...(k >= 10 ? [rank[k]] : [])];
-  const ghosts = !!id && !byTime;
-  const { tab, rows } = rankTable(rank, list, me, ghosts, mode);
+  const { tab, rows } = rankTable(rank, list, me, !!id, mode);
   $('rankList').replaceChildren(...(rank.length ? [tab] : []));
   // 👻 nur bei Aufnahmen: öffnet die Auswahl zuschauen / gegen den Geist fahren
-  if (ghosts) list.forEach((r, j) => {
-    if (!hasGhost(r.name, id)) return;
+  if (id) list.forEach((r, j) => {
+    if (!hasGhost(r.name, id, rankMode)) return;
     const b = document.createElement('button'); b.textContent = '👻'; b.setAttribute('aria-label', `Aufnahme von ${r.name}`);
-    b.onclick = () => { audio.sfx('tap'); pickGhost(lv, r); };
+    b.onclick = () => { audio.sfx('tap'); pickGhost(lv, r, rankMode); };
     rows[j].querySelector('.rghost').appendChild(b);
   });
   show('rankEmpty', !rank.length);
 }
-// Auswahl zur Aufnahme eines Spielers: 📺 zuschauen, 🏁 gegen den Geist fahren (nicht gegen sich selbst), ✖️ zurück
-function pickGhost(lv, r) {
+// Auswahl zur Aufnahme eines Spielers (kind: 'punkte' oder 'zeit', siehe loadGhost): 📺 zuschauen, 🏁 gegen den Geist
+// fahren (nicht gegen sich selbst), ✖️ zurück
+function pickGhost(lv, r, kind = 'punkte') {
   const own = same(r.name, progress.player().name);
-  $('rankGhostTitle').textContent = `👻 ${r.name} · 🏆 ${fmtScore(r.score)}`;
+  $('rankGhostTitle').textContent = `👻 ${r.name} · ` + (kind === 'zeit' ? `⏱ ${formatTime(r.time)}` : `🏆 ${fmtScore(r.score)}`);
   $('rankRace').textContent = `🏁 Gegen ${r.name} fahren`;
   show('rankRace', !own);
   const go = fn => async () => {
     audio.sfx('tap');
-    const track = await loadGhost(r.name, lv.id);
+    const track = await loadGhost(r.name, lv.id, kind);
     if ($('rankGhostOv').classList.contains('hidden')) return; // inzwischen geschlossen
     show('rankGhostOv', false);
     if (!track) { toast('📡 ❌'); return; }

@@ -2,9 +2,12 @@
 // Einstellungen (Steuerung, Stärke, Ton) gelten für alle, Sterne, Bonussterne, Bestzeiten, Punkte, Murmel, Spur und Sticker pro Spieler.
 // bonus = Level, in denen der Bonusstern schon einmal ins Ziel gebracht wurde.
 // runs = pro Level die Fahrt mit den meisten Punkten { stars, total, time, falls, power, score } (siehe score.js).
-// Die Aufnahmen der Fahrten aus runs (Geistermurmel) liegen getrennt unter GHOST_KEY (grösser, dürfen verloren gehen).
+// Die Aufnahmen der Fahrten aus runs (Geistermurmel) liegen getrennt unter GHOST_KEY (grösser, dürfen verloren gehen),
+// die Aufnahmen der schnellsten Fahrten (Bestzeit aus times) unter FAST_KEY (eigener Schlüssel: ist der Speicher voll,
+// bleiben die Geister der Fahrten mit den meisten Punkten trotzdem erhalten).
 const KEY = 'murmel-abenteuer-v2';
 const GHOST_KEY = 'murmel-geist-v1';
+const FAST_KEY = 'murmel-geist-schnell-v1';
 const OLD_KEY = 'murmel-abenteuer-v1'; // alter Spielstand ohne Spieler
 export const NAME_MAX = 16;
 
@@ -48,7 +51,12 @@ export function createProgress() {
   const data = read();
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { /* kein Speicher */ } };
   const ghosts = load(GHOST_KEY) || {}; // Spieler-ID -> Level-ID -> Aufnahme
-  const saveGhosts = () => { try { localStorage.setItem(GHOST_KEY, JSON.stringify(ghosts)); } catch (e) { /* kein Speicher oder voll */ } };
+  const fast = load(FAST_KEY) || {}; // Spieler-ID -> Level-ID -> Aufnahme der schnellsten Fahrt
+  const store = (key, o) => { try { localStorage.setItem(key, JSON.stringify(o)); } catch (e) { /* kein Speicher oder voll */ } };
+  const saveGhosts = () => { store(GHOST_KEY, ghosts); store(FAST_KEY, fast); };
+  const byName = name => data.players.find(x => x.name.toLowerCase() === name.toLowerCase());
+  const get = (o, p, id) => (p && o[p.id] && o[p.id][id]) || null;
+  const put = (o, key, id, track) => { const p = player(); if (!p) return; (o[p.id] = o[p.id] || {})[id] = track; store(key, o); };
   const empty = newPlayer('');
   const player = () => data.players.find(p => p.id === data.current) || null;
   const me = () => player() || empty; // ohne Spieler (vor der Auswahl): leerer Spielstand
@@ -81,10 +89,14 @@ export function createProgress() {
     // Bestzeit in Sekunden (0 = noch keine); setTime gibt true zurück, wenn die Zeit neu die beste ist
     bestTime: id => me().times[id] || 0,
     setTime(id, t) { const p = me(), old = p.times[id]; if (old && old <= t) return false; p.times[id] = +t.toFixed(2); save(); return true; },
-    ghost: id => (player() && ghosts[player().id] && ghosts[player().id][id]) || null,
+    // Aufnahmen: ghost = Fahrt mit den meisten Punkten, fastGhost = schnellste Fahrt (oft dieselbe)
+    ghost: id => get(ghosts, player(), id),
     // Aufnahme eines Spielers auf diesem Gerät (Name ohne Gross/Klein)
-    ghostOf(name, id) { const p = data.players.find(x => x.name.toLowerCase() === name.toLowerCase()); return (p && ghosts[p.id] && ghosts[p.id][id]) || null; },
-    setGhost(id, track) { const p = player(); if (!p) return; (ghosts[p.id] = ghosts[p.id] || {})[id] = track; saveGhosts(); },
+    ghostOf: (name, id) => get(ghosts, byName(name), id),
+    setGhost: (id, track) => put(ghosts, GHOST_KEY, id, track),
+    fastGhost: id => get(fast, player(), id),
+    fastGhostOf: (name, id) => get(fast, byName(name), id),
+    setFastGhost: (id, track) => put(fast, FAST_KEY, id, track),
     setSkin(id) { me().skin = id; save(); },
     get trail() { return me().trail; },
     setTrail(id) { me().trail = id; save(); },
@@ -97,6 +109,6 @@ export function createProgress() {
     setSound(m) { data.sound = m; save(); },
     // zuletzt gewählte Geister beim Levelstart ('ich', 'best', 'beide', 'kein')
     setGeist(g) { data.geist = g; save(); },
-    clear() { const p = me(); p.done = {}; p.best = {}; p.bonus = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; p.times = {}; p.runs = {}; delete ghosts[p.id]; save(); saveGhosts(); }
+    clear() { const p = me(); p.done = {}; p.best = {}; p.bonus = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; p.times = {}; p.runs = {}; delete ghosts[p.id]; delete fast[p.id]; save(); saveGhosts(); }
   };
 }

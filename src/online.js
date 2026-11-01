@@ -1,5 +1,5 @@
 // Online-Rangliste (#9) über Supabase: pro Name und Level die Fahrt mit den meisten Punkten, dazu ihre Geist-Aufnahme
-// und die Bestzeit (schnellste Fahrt ins Ziel, für die Rangliste „Schnellste“).
+// und die Bestzeit (schnellste Fahrt ins Ziel, für die Rangliste „Schnellste“) mit ihrer Aufnahme.
 // Nur fetch auf die drei Funktionen aus supabase/schema.sql, kein SDK. Ohne Netz, bei Fehlern oder Timeout läuft
 // alles wie ohne Rangliste: Fehler werden geschluckt, neue Rekorde warten in localStorage und gehen später raus.
 // Auf localhost (Tests, Entwicklung) ist die Rangliste aus, damit keine Testfahrten online landen;
@@ -41,11 +41,14 @@ export function createOnline(progress) {
   let rows = [], busy = null;
 
   // Beste Fahrt und Bestzeit zum Senden vormerken (pro Name und Level nur die neueste, sie hat immer die meisten Punkte).
-  // Ohne neue Aufnahme (nur neue Bestzeit) bleibt eine noch wartende Aufnahme derselben Fahrt erhalten.
-  const queue = (name, level, run, ghost, best) => {
+  // ghost = Aufnahme der Fahrt mit den meisten Punkten, fast = Aufnahme der schnellsten Fahrt, wenn es eine andere ist
+  // (sonst nimmt der Server ghost). Noch wartende Aufnahmen bleiben erhalten, solange Fahrt und Bestzeit dieselben sind.
+  const queue = (name, level, run, ghost, best, fast = null) => {
     const k = name.toLowerCase() + '\n' + level, old = store.queue[k];
+    best = Math.min(run.time, best || Infinity);
     if (!ghost && old && old.run.score === run.score) ghost = old.ghost;
-    store.queue[k] = { name, level, run, ghost, best: Math.min(run.time, best || Infinity) };
+    if (!fast && old && old.best === best && old.run.time !== best) fast = old.fast || (old.run.time === best ? old.ghost : null);
+    store.queue[k] = { name, level, run, ghost, best, fast };
   };
   // Erster Start mit Rangliste: die schon gespeicherten besten Fahrten aller Spieler (ohne Aufnahme) nachtragen,
   // seit es die Rangliste „Schnellste“ gibt auch mit Bestzeit
@@ -57,12 +60,12 @@ export function createOnline(progress) {
   // Vorgemerkte Fahrten der Reihe nach senden; bei Netzfehler aufhören und beim nächsten Mal weitermachen
   async function flush() {
     for (const [k, e] of Object.entries(store.queue)) {
-      const { name, level, run, ghost, best } = e;
+      const { name, level, run, ghost, best, fast } = e;
       const args = {
         p_name: name, p_level: level, p_stars: run.stars, p_total: run.total, p_seconds: run.time,
         p_falls: run.falls, p_power: run.power, p_score: run.score, p_ghost: ghost
       };
-      let r = await rpc('submit_run', { ...args, p_best: best || run.time });
+      let r = await rpc('submit_run', { ...args, p_best: best || run.time, p_fast_ghost: fast || null });
       // Server noch mit dem alten schema.sql (submit_run ohne p_best): ohne Bestzeit senden
       if (r.status === 404) r = await rpc('submit_run', args);
       if (!r.ok && !r.rejected) return false;
@@ -78,7 +81,7 @@ export function createOnline(progress) {
     const r = await rpc('get_ranking', {});
     if (!r.ok || !Array.isArray(r.data)) return false;
     rows = r.data.filter(x => x && typeof x.name === 'string' && typeof x.level === 'string').map(x => ({
-      name: x.name, level: x.level, power: x.power, ghost: !!x.ghost,
+      name: x.name, level: x.level, power: x.power, ghost: !!x.ghost, fastGhost: !!x.fast_ghost,
       time: +x.seconds, best: Math.min(+x.seconds, +x.best_seconds || Infinity),
       score: score({ level: x.level, stars: +x.stars, total: +x.total, time: +x.seconds, falls: +x.falls })
     }));
@@ -98,11 +101,11 @@ export function createOnline(progress) {
     pending: () => Object.keys(store.queue).length,
     sync,
     // Neuer Rekord (Punkte, dann mit Aufnahme, oder nur Bestzeit) eines Spielers in einem Level: vormerken und senden
-    submit(name, level, run, ghost, best) { if (!on) return Promise.resolve(false); queue(name, level, run, ghost, best); save(); return sync(); },
-    // Geist einer Online-Fahrt laden (null ohne Netz oder wenn es keinen gibt)
-    async ghost(name, level) {
+    submit(name, level, run, ghost, best, fast) { if (!on) return Promise.resolve(false); queue(name, level, run, ghost, best, fast); save(); return sync(); },
+    // Geist einer Online-Fahrt laden (null ohne Netz oder wenn es keinen gibt); kind 'zeit' = Aufnahme der schnellsten Fahrt
+    async ghost(name, level, kind = 'punkte') {
       if (!on) return null;
-      const r = await rpc('get_ghost', { p_name: name, p_level: level });
+      const r = await rpc('get_ghost', { p_name: name, p_level: level, ...(kind === 'zeit' ? { p_kind: 'zeit' } : {}) });
       return r.ok && validTrack(r.data) ? r.data : null;
     }
   };
