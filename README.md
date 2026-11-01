@@ -78,10 +78,12 @@ Ohne Netz läuft alles lokal weiter, dann mit den Spielern auf dem Gerät.
   und die Geister als Schalter: „Dein Geist“ und „Bester Geist“ (bester anderer mit Aufnahme, nach Punkten), beide oder keiner (die Wahl wird gemerkt);
   ▶️ Los sagt, gegen wen es geht. Fremde Geister tragen ein Namensschild, bei zwei Geistern auch der eigene.
 - **Gewinn-Bildschirm:** die besten 5 im Level und der eigene Platz, 👻 fährt gegen die Aufnahme des besten anderen.
-- **Spielstand holen:** Hat ein Spieler online (gleicher Name) Level geschafft oder Sterne, die auf dem Gerät fehlen, fragt die Karte
-  „☁️ Name · +N Level · +N ⭐“: ✅ übernimmt geschaffte Level, meiste Sterne (alle Sterne = Bonusstern), Fahrten mit mehr Punkten und Bestzeiten;
-  Murmeln, Spuren und Welt-Sticker kommen über die Sterne zurück. Nicht online: eigene Aufnahmen, Bonussterne aus Fahrten ohne alle Sterne,
-  die Extra-Sticker 🐷🧼👻. ✖️: erst wieder fragen, wenn online mehr Sterne dazukommen.
+- **Spielstand holen:** Hat ein Spieler online (gleicher Name) Level geschafft oder Sterne, die auf dem Gerät fehlen, fragt das Spiel
+  „☁️ Name · +N Level · +N ⭐“: gleich beim Anlegen eines neuen Spielers („☁️ Name gibt es schon“), sonst auf der Karte.
+  ✅ übernimmt geschaffte Level, meiste Sterne (alle Sterne = Bonusstern), Fahrten mit mehr Punkten und Bestzeiten und lädt deren Aufnahmen
+  (eigener und schnellster Geist) im Hintergrund nach; Murmeln, Spuren und Welt-Sticker kommen über die Sterne zurück.
+  Nicht online: Bonussterne aus Fahrten ohne alle Sterne, die Extra-Sticker 🐷🧼👻, gewählte Murmel und Spur.
+  ✖️: erst wieder fragen, wenn online mehr Sterne dazukommen.
 
 - **Datenschutz:** Namen und Fahrten sind für alle sichtbar und liegen bei Supabase (Region EU, Frankfurt). Nur Vornamen oder Spitznamen verwenden.
 - **Kein Schutz gegen Schummeln:** Jeder kann beliebige Namen und Punkte senden. Gleicher Name = gleicher Eintrag, auch auf einem anderen Gerät.

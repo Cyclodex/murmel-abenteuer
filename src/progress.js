@@ -109,9 +109,10 @@ export function createProgress() {
     // Fahrt, auch mit weniger Punkten; alle Sterne = Bonusstern dabei),
     // Fahrt mit mehr Punkten (run.online: wird nicht nochmal gesendet), schnellere Bestzeit. Aufnahmen, Sticker und
     // Bonussterne aus Fahrten ohne alle Sterne gibt es online nicht. apply = false: nur zählen, was dazukäme.
-    // Gibt { levels (neu geschafft), stars (neue Sterne), score (Punkte online), online (Sterne online) } zurück.
+    // Gibt { levels (neu geschafft), stars (neue Sterne), score (Punkte online), online (Sterne online),
+    // took: { runs, times } (Level, in denen die Fahrt oder die Bestzeit von online kommt, für die Aufnahmen) } zurück.
     restore(rows, levels, apply = true) {
-      const p = player(), gain = { levels: 0, stars: 0, score: 0, online: 0 };
+      const p = player(), gain = { levels: 0, stars: 0, score: 0, online: 0, took: { runs: [], times: [] } };
       if (!p) return gain;
       for (const r of rows) {
         if (r.name.toLowerCase() !== p.name.toLowerCase() || !levels.has(r.level) || !(r.stars >= 0 && r.total > 0)) continue;
@@ -123,8 +124,11 @@ export function createProgress() {
         if (!apply) continue;
         p.done[id] = true; p.best[id] = Math.max(p.best[id] || 0, most);
         if (most >= r.total) p.bonus[id] = true;
-        if (!old || old.score < r.score) p.runs[id] = { stars: r.stars, total: r.total, time: r.time, falls: r.falls, power: r.power, score: r.score, online: true };
-        if (r.best > 0 && !(p.times[id] <= r.best)) p.times[id] = r.best;
+        if (!old || old.score < r.score) {
+          p.runs[id] = { stars: r.stars, total: r.total, time: r.time, falls: r.falls, power: r.power, score: r.score, online: true };
+          gain.took.runs.push(id);
+        }
+        if (r.best > 0 && !(p.times[id] <= r.best)) { p.times[id] = r.best; gain.took.times.push(id); }
       }
       if (apply) save();
       return gain;

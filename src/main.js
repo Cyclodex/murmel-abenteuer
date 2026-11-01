@@ -216,21 +216,43 @@ function showMap() {
 }
 
 // ---------- Spielstand von einem anderen Gerät ----------
-// Hat der Spieler online (gleicher Name) Level geschafft oder Sterne, die hier fehlen: auf der Karte fragen, ob er den
-// Spielstand übernehmen will (progress.restore). Abgelehnt: erst wieder fragen, wenn online mehr Sterne dazukommen.
+// Hat der Spieler online (gleicher Name) Level geschafft oder Sterne, die hier fehlen: fragen, ob er den Spielstand
+// übernehmen will (progress.restore), gleich beim Anlegen (fresh: den Namen gibt es schon online) oder auf der Karte.
+// Abgelehnt: erst wieder fragen, wenn online mehr Sterne dazukommen. Gibt true zurück, wenn gefragt wird.
 const ONLINE_LEVELS = new Set(LEVELS.filter(l => !l.pruefstand).map(l => l.id));
-function offerRestore() {
+let restoreFresh = false;
+function offerRestore(fresh = false) {
   const p = progress.player();
-  if (!p || $('mapOv').classList.contains('hidden') || !$('restoreOv').classList.contains('hidden')) return;
+  if (!p || !$('restoreOv').classList.contains('hidden') || $(fresh ? 'playerOv' : 'mapOv').classList.contains('hidden')) return false;
   const g = progress.restore(online.rows(), ONLINE_LEVELS, false);
-  if (!(g.levels || g.stars) || g.online <= progress.noRestore) return;
-  $('restoreTitle').textContent = `☁️ ${p.name}`;
+  if (!(g.levels || g.stars) || g.online <= progress.noRestore) return false;
+  restoreFresh = fresh;
+  $('restoreTitle').textContent = fresh ? `☁️ ${p.name} gibt es schon` : `☁️ ${p.name}`;
   $('restoreInfo').textContent = [g.levels && `+${g.levels} Level`, g.stars && `+${g.stars} ⭐`, `🏆 ${fmtScore(g.score)}`].filter(Boolean).join(' · ');
+  $('restoreHint').textContent = fresh ? 'Bist du das? Dann hol deinen Spielstand auf dieses Gerät.'
+    : 'Spielst du schon auf einem anderen Gerät? Dann hol deinen Spielstand hierher.';
   show('restoreOv');
+  return true;
+}
+// Eigene Aufnahmen der geholten Fahrten und Bestzeiten nachladen (im Hintergrund, eine nach der anderen);
+// wechselt inzwischen der Spieler, hört es auf. Ist die Fahrt oder Bestzeit inzwischen eine eigene (neuer Rekord
+// während des Ladens), bleibt deren Aufnahme.
+async function restoreGhosts(p, took) {
+  const rows = online.rows().filter(r => r.name.toLowerCase() === p.name.toLowerCase());
+  const has = (id, k) => rows.some(r => r.level === id && r[k]);
+  for (const [ids, kind, k, set] of [[took.runs, 'punkte', 'ghost', progress.setGhost], [took.times, 'zeit', 'fastGhost', progress.setFastGhost]]) {
+    for (const id of ids) {
+      if (!has(id, k)) continue;
+      const best = progress.bestTime(id), track = await online.ghost(p.name, id, kind);
+      if (progress.player() !== p) return;
+      if (track && (kind === 'zeit' ? progress.bestTime(id) === best : progress.run(id)?.online)) set(id, track);
+    }
+  }
 }
 $('restoreYes').onclick = () => {
   audio.sfx('tap'); show('restoreOv', false);
-  progress.restore(online.rows(), ONLINE_LEVELS);
+  const p = progress.player(), g = progress.restore(online.rows(), ONLINE_LEVELS);
+  restoreGhosts(p, g.took);
   syncStickers(); // Welt-Sticker, Murmel und Spur aus den geholten Sternen
   toast('✅ Spielstand geholt');
   showMap();
@@ -238,6 +260,7 @@ $('restoreYes').onclick = () => {
 $('restoreNo').onclick = () => {
   audio.sfx('tap'); show('restoreOv', false);
   progress.setNoRestore(progress.restore(online.rows(), ONLINE_LEVELS, false).online);
+  if (restoreFresh) showMap();
 };
 
 // Nächstes Level zum Spielen: das erste offene, noch nicht geschaffte (zuerst die normalen, dann die schweren)
@@ -286,11 +309,14 @@ function showPlayers() {
   });
   $('playerName').value = '';
   show('playerOv');
+  online.sync(); // Rangliste holen: gibt es einen neuen Namen schon online, gleich beim Anlegen fragen
 }
 $('playerForm').onsubmit = e => {
   e.preventDefault();
+  const n = progress.players().length;
   if (!progress.addPlayer($('playerName').value)) { $('playerName').focus(); return; }
-  $('playerName').blur(); audio.sfx('tap'); showMap();
+  $('playerName').blur(); audio.sfx('tap');
+  if (!(progress.players().length > n && offerRestore(true))) showMap();
 };
 
 // ---------- Murmel-Auswahl ----------

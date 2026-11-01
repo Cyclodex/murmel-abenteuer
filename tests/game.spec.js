@@ -1717,7 +1717,7 @@ test('Online-Rangliste ohne Server: Spiel läuft, Rekord wartet und geht beim n�
 
 test('Online-Rangliste: Spielstand von einem anderen Gerät holen (gleicher Name), mit Nachfrage', async ({ page }) => {
   const errors = watchErrors(page);
-  const server = await fakeSupabase(page);
+  const ghosts = {}, server = await fakeSupabase(page, [], ghosts);
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
   // Online: erste Welt mit allen Sternen (auch die schweren Level), dazu das erste Level der zweiten Welt: Fahrt mit den meisten
@@ -1726,19 +1726,29 @@ test('Online-Rangliste: Spielstand von einem anderen Gerät holen (gleicher Name
     const n = l => l.parts.filter(p => p.type === 'stern').length, [a, b] = window.murmel.WORLDS;
     return { id: a.id, full: [...a.levels, ...(a.hard || [])].map(l => ({ id: l.id, n: n(l) })), part: { id: b.levels[0].id, n: n(b.levels[0]) } };
   });
-  const rows = part => [...w.full.map(l => ({ ...online('fäbu', l.id, l.n, l.n, 20, 0), best_seconds: 15 })),
+  // erstes Level mit Aufnahmen (meiste Punkte und schnellste): kommen beim Holen mit
+  const track = t => ({ t, skin: 'fussball', p: [0, 100, 0, 0, 100, -500, 0, 100, -1000] }), g0 = w.full[0].id;
+  ghosts['Fäbu/' + g0] = track(20); ghosts['Fäbu/' + g0 + '/zeit'] = track(15);
+  const rows = part => [...w.full.map(l => ({ ...online('fäbu', l.id, l.n, l.n, 20, 0, l.id === g0), best_seconds: 15, fast_ghost: l.id === g0 })),
     { ...online('fäbu', w.part.id, w.part.n - 1, w.part.n, 30, 1), max_stars: part },
     online('Max', w.part.id, w.part.n, w.part.n, 10, 0), online('Fäbu', 'gibtsnicht', 3, 3, 10, 0)];
   server.rows = rows(w.part.n - 1);
   const stars = w.full.reduce((a, l) => a + l.n, 0) + w.part.n - 1;
+  // Spieler-Auswahl holt die Rangliste; neuer Name, den es online schon gibt: Nachfrage gleich beim Anlegen, vor der Karte
   await page.click('#startJoy');
-  await newPlayer(page, 'Fäbu');
+  await expect(page.locator('#playerOv')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.murmel.online.rows().length)).toBe(w.full.length + 3);
+  await page.fill('#playerName', 'Fäbu');
+  await page.click('#playerForm button');
   await expect(page.locator('#restoreOv')).toBeVisible();
-  await expect(page.locator('#restoreTitle')).toHaveText('☁️ Fäbu');
+  await expect(page.locator('#mapOv')).toBeHidden();
+  await expect(page.locator('#restoreTitle')).toHaveText('☁️ Fäbu gibt es schon');
+  await expect(page.locator('#restoreHint')).toHaveText('Bist du das? Dann hol deinen Spielstand auf dieses Gerät.');
   await expect(page.locator('#restoreInfo')).toContainText(`+${w.full.length + 1} Level · +${stars} ⭐ · 🏆 `);
-  // Nein: nichts übernommen, auf der Karte nicht nochmal gefragt
+  // Nein: nichts übernommen, weiter zur Karte, dort nicht nochmal gefragt
   await page.click('#restoreNo');
   await expect(page.locator('#restoreOv')).toBeHidden();
+  await expect(page.locator('#mapOv')).toBeVisible();
   expect(await page.evaluate(() => window.murmel.progress.totalStars())).toBe(0);
   await page.click('#btnPlayer'); await page.click('#playerList .player');
   await page.evaluate(() => window.murmel.online.sync());
@@ -1747,6 +1757,7 @@ test('Online-Rangliste: Spielstand von einem anderen Gerät holen (gleicher Name
   server.rows = rows(w.part.n);
   await page.click('#btnPlayer'); await page.click('#playerList .player');
   await expect(page.locator('#restoreOv')).toBeVisible();
+  await expect(page.locator('#restoreTitle')).toHaveText('☁️ Fäbu');
   await page.click('#restoreYes');
   await expect(page.locator('#restoreOv')).toBeHidden();
   const r = await page.evaluate(({ w }) => {
@@ -1759,6 +1770,9 @@ test('Online-Rangliste: Spielstand von einem anderen Gerät holen (gleicher Name
   expect(r).toMatchObject({ done: true, stars: stars + 1, bonus: true, sticker: true, other: false });
   expect(r.times).toEqual([...w.full.map(() => 15), 30]);
   expect(r.run).toMatchObject({ stars: w.part.n - 1, total: w.part.n, time: 30, falls: 1, power: 'normal', online: true });
+  // eigene Aufnahmen nachgeladen: eigener Geist und schnellster Geist (nur wo es online welche gibt)
+  await expect.poll(() => page.evaluate(id => [window.murmel.progress.ghost(id)?.t, window.murmel.progress.fastGhost(id)?.t], g0)).toEqual([20, 15]);
+  expect(server.calls.get_ghost).toEqual([{ p_name: 'Fäbu', p_level: g0 }, { p_name: 'Fäbu', p_level: g0, p_kind: 'zeit' }]);
   // Punkte in der Spielerliste, geholte Fahrten gehen nicht nochmal an den Server, keine weitere Nachfrage
   await page.evaluate(() => window.murmel.online.sync());
   await expect(page.locator('#restoreOv')).toBeHidden();
