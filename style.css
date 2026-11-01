@@ -80,6 +80,12 @@ button.rank{width:auto;height:auto;font-size:20px}
 /* Gewinn-Fenster: Titel, Sterne, Zeit, Punkte, Neues, Rangliste und Geist-Knopf gleich breit */
 #winOv>h1,#winOv>.pill,#winRank{width:min(100%,420px);box-sizing:border-box}
 #winGhost{height:auto}
+/* Werte im Gewinn-Fenster gross, darunter klein in Worten, was sie bedeuten */
+#winOv .wv{display:block;line-height:1.2}
+#winOv>.pill small{display:block;font-size:16px;font-weight:700;opacity:.75;line-height:1.25;padding-bottom:3px}
+/* Nochmal / Weiter / Karte: so breit wie die Karten darüber, auch auf schmalen Handys nebeneinander */
+#winOv>.row{width:min(100%,420px);gap:10px}
+#winOv>.row .big{flex:1;min-width:0;padding:10px 4px;font-size:30px}
 #winRank{padding:0;background:none;box-shadow:none;width:min(100%,420px);white-space:normal}
 #mapStars{width:auto;height:auto}
 /* Rangliste: eine Zeile pro Spieler, Knöpfe 👁 zuschauen und 👻 gegen die Aufnahme fahren */
@@ -97,6 +103,11 @@ font-size:22px;line-height:1.1;padding:4px 12px;overflow-wrap:anywhere}
 .rtab .rhead{min-height:38px;font-size:22px;border-top:0}
 .rtab .me{background:rgba(59,178,115,.28)}
 .rtab .me .rname{font-weight:800}
+/* Kopfzeile mit Text (Gewinn-Fenster), unten in Worten: 🐢🐇🚀 = Tempo, 👻 = Aufnahme */
+#winRank .rhead .rname,#winRank .rhead .rscore{font-size:17px;font-weight:800}
+#winRank .rhead .rscore{width:auto}
+.rtab .rfoot{flex-direction:column;align-items:center;justify-content:center;gap:0;min-height:0;padding:6px 14px;font-size:15px;font-weight:700;line-height:1.3;text-align:center}
+.rtab .rfoot span{opacity:.75}
 .rpl{width:1.5em;flex-shrink:0;text-align:center}
 .rname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rscore{width:3.8em;flex-shrink:0;text-align:right;font-variant-numeric:tabular-nums}

@@ -430,6 +430,11 @@ $('btnTreppe').onclick = () => { audio.sfx('tap'); show('mapOv', false); show('t
 $('treppeBack').onclick = () => { audio.sfx('tap'); showMap(); };
 addEventListener('resize', () => { if (view) view.resize(); treppe.resize(); });
 
+// Zeile im Gewinn-Fenster: grosser Wert, darunter klein in Worten, was er bedeutet
+function stat(id, value, note) {
+  $(id).replaceChildren(Object.assign(document.createElement('b'), { className: 'wv', textContent: value }),
+    Object.assign(document.createElement('small'), { textContent: note }));
+}
 function onWin() {
   running = false;
   const lv = LEVELS[levelIdx], before = progress.totalStars(), trailsBefore = TRAILS.filter(trailOpen);
@@ -458,15 +463,19 @@ function onWin() {
       progress.best(lv.id))
       .then(ok => { if (ok && lv === LEVELS[levelIdx]) showWinRank(); });
   }
-  $('winScore').textContent = `🏆 ${fmtScore(run.score)}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : hadRun ? ` · 🏆 ${fmtScore(hadRun.score)}` : '');
-  $('winTime').textContent = `⏱ ${formatTime(t)}` + (newBest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
+  const notes = [record ? (hadRun ? '🆕 Neuer Rekord!' : '') : hadRun ? `Dein Rekord ${fmtScore(hadRun.score)}` : '',
+    run.falls ? `💥 ${run.falls} ${run.falls === 1 ? 'Absturz' : 'Abstürze'}` : ''].filter(Boolean);
+  stat('winScore', `🏆 ${fmtScore(run.score)}`, ['Punkte', ...notes].join(' · '));
+  stat('winTime', `⏱ ${formatTime(t)}`, 'Zeit' + (newBest ? (had ? ' · 🏁 Neue Bestzeit!' : '') : ` · Deine Bestzeit ${formatTime(had)}`));
   const after = progress.totalStars();
   const stickers = syncStickers({ dreckig: game.dirtPeak >= 1, sauber: game.washed, geist: ghosts.length > 0 && ghosts.every(g => t < g.t) });
   const fresh = SKINS.filter(s => skinNeed(s) > before && skinNeed(s) <= after);
   const freshTrails = TRAILS.filter(t => trailOpen(t) && !trailsBefore.includes(t));
   const news = [...fresh, ...freshTrails];
-  $('winStars').textContent = starRow(game.st.stars, game.st.starTotal);
-  $('winUnlock').textContent = news.length ? '🔮 ' + news.map(s => s.emoji).join(' ') + ' 🆕' : '';
+  const have = Math.min(game.st.stars, game.st.starTotal), total = game.st.starTotal;
+  stat('winStars', starRow(game.st.stars, total), have === total ? `Alle ${total} Sterne gesammelt!` : `${have} von ${total} Sternen gesammelt`);
+  const newNames = [...fresh.map(s => `Murmel ${s.name}`), ...freshTrails.map(t => `Spur ${t.name}`)].join(', ');
+  if (news.length) stat('winUnlock', news.map(s => s.emoji).join(' '), `🆕 Neu: ${newNames} – auf der Karte unter 🔮 Murmel`);
   show('winUnlock', news.length > 0);
   const cheers = [...fresh.map(s => ({ emoji: s.emoji, text: s.name, kind: 'Neue Murmel' })), ...freshTrails.map(t => ({ emoji: t.emoji, text: t.name, kind: 'Neue Spur' })),
     ...stickers.map(st => ({ emoji: st.emoji, text: st.text, kind: 'Neuer Sticker' }))];
@@ -483,20 +492,21 @@ function onWin() {
 function showWinRank() {
   const id = LEVELS[levelIdx].id, rank = ranking(allRows(), id), me = progress.player().name.toLowerCase();
   const k = rank.findIndex(r => r.name.toLowerCase() === me);
-  $('winRank').replaceChildren(rankTable(rank, [...rank.slice(0, 5), ...(k >= 5 ? [rank[k]] : [])], me).tab);
+  $('winRank').replaceChildren(rankTable(rank, [...rank.slice(0, 5), ...(k >= 5 ? [rank[k]] : [])], me, false,
+    { ...MODES.punkte, head: 'Punkte' }, { title: '🏅 Rangliste', more: 'Antippen: ganze Rangliste ›' }).tab);
   show('winRank', rank.length > 1);
   const b = bestOther(id);
-  $('winGhost').textContent = b ? `👻 ${place(b.i)} ${b.r.name}` : '';
+  if (b) stat('winGhost', `👻 Gegen ${place(b.i)} ${b.r.name} fahren`, 'Die Aufnahme fährt als Geist neben dir');
   $('winGhost').dataset.name = b ? b.r.name : '';
   show('winGhost', !!b);
 }
 $('winGhost').onclick = async () => {
   audio.sfx('tap');
   const id = LEVELS[levelIdx].id, name = $('winGhost').dataset.name, track = name && await loadGhost(name, id);
-  if (!track) { toast('📡 ❌'); return; }
+  if (!track) { toast('📡 Keine Verbindung'); return; }
   race = { level: id, list: [{ name, track }] }; restart(); toast(`👻 ${name}`);
 };
-$('winRank').onclick = () => { audio.sfx('tap'); showRanks(LEVELS[levelIdx].id, false); };
+$('winRank').onclick = () => { audio.sfx('tap'); showRanks(LEVELS[levelIdx].id, true); };
 
 // ---------- Geister: eigene Aufnahmen und die der anderen (auf dem Gerät oder online) ----------
 const same = (a, b) => a.toLowerCase() === b.toLowerCase();
@@ -508,14 +518,15 @@ const localGhost = (name, id, kind = 'punkte') => okTrack(kind === 'zeit' ? prog
 const hasGhost = (name, id, kind = 'punkte') => !!localGhost(name, id, kind) ||
   online.rows().some(x => (kind === 'zeit' ? x.fastGhost : x.ghost) && x.level === id && same(x.name, name));
 const loadGhost = async (name, id, kind = 'punkte') => localGhost(name, id, kind) || await online.ghost(name, id, kind);
-// Rangliste als Tabelle: Kopfzeile head (und 👻, wenn es Aufnahmen gibt), Platz, Name mit Stärke, Wert (val: Punkte,
-// Zeit oder Rekorde) rechtsbündig, eigene Zeile hervorgehoben. rows[j] gehört zu list[j]. Namen nur als Text einsetzen, nie als HTML.
+// Rangliste als Tabelle: Kopfzeile title und head (und 👻, wenn es Aufnahmen gibt), Platz, Name mit Stärke, Wert (val: Punkte,
+// Zeit oder Rekorde) rechtsbündig, eigene Zeile hervorgehoben; darunter in Worten, was 🐢🐇🚀 und 👻 bedeuten, und more.
+// rows[j] gehört zu list[j]. Namen nur als Text einsetzen, nie als HTML.
 const MODES = {
   punkte: { head: '🏆', val: r => fmtScore(r.score), power: true },
   zeit: { head: '⏱', val: r => formatTime(r.time), power: false },
   rekorde: { head: '🏁', val: r => String(r.records), power: false }
 };
-function rankTable(rank, list, me, ghosts = false, mode = MODES.punkte) {
+function rankTable(rank, list, me, ghosts = false, mode = MODES.punkte, { title = '', more = '' } = {}) {
   const tab = document.createElement('div'); tab.className = 'rtab';
   const line = (cls, cells) => {
     const row = document.createElement('div'); row.className = cls;
@@ -523,9 +534,11 @@ function rankTable(rank, list, me, ghosts = false, mode = MODES.punkte) {
     tab.appendChild(row); return row;
   };
   const cols = (pl, name, pts, gh) => [['rpl', pl], ['rname', name], ['rscore', pts], ...(ghosts ? [['rghost', gh]] : [])];
-  line('rhead', cols('', '', mode.head, '👻'));
+  line('rhead', cols('', title, mode.head, '👻'));
   const rows = list.map(r => line('rrow' + (same(r.name, me) ? ' me' : ''),
     cols(place(rank.indexOf(r)), [r.name, mode.power && powerEmoji(r)].filter(Boolean).join(' '), mode.val(r), '')));
+  const foot = [mode.power && list.some(powerEmoji) && '🐢 🐇 🚀 = Tempo der Murmel', ghosts && '👻 = Fahrt anschauen oder dagegen fahren', more].filter(Boolean);
+  if (list.length && foot.length) line('rfoot', foot.map(t => ['', t]));
   return { tab, rows };
 }
 // Bester andere Spieler mit Aufnahme in der Level-Rangliste: { r, i } (i = Platz) oder null
@@ -587,7 +600,7 @@ function chooseLevel(i) {
     if (other) list.push({ name: best.r.name, track: other });
     if ($('ghostOv').classList.contains('hidden')) return; // inzwischen zur Karte
     startLevel(i, list);
-    if (on.best && !other) toast('📡 ❌');
+    if (on.best && !other) toast('📡 Keine Verbindung');
   };
   ['mapOv', 'winOv', 'rankOv'].forEach(id => show(id, false));
   show('ghostOv');
@@ -658,7 +671,7 @@ function pickGhost(lv, r, kind = 'punkte') {
     const track = await loadGhost(r.name, lv.id, kind);
     if ($('rankGhostOv').classList.contains('hidden')) return; // inzwischen geschlossen
     show('rankGhostOv', false);
-    if (!track) { toast('📡 ❌'); return; }
+    if (!track) { toast('📡 Keine Verbindung'); return; }
     fn(track);
   };
   $('rankWatch').onclick = go(track => watchRun(LEVELS.indexOf(lv), r.name, track));
