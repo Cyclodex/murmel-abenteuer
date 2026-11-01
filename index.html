@@ -46,15 +46,20 @@
   </form>
 </div>
 <div class="overlay hidden" id="mapOv">
-  <button class="pill" id="btnPlayer" aria-label="Spieler wechseln">👤</button>
+  <div class="mtop">
+    <button class="pill" id="btnPlayer" aria-label="Spieler wechseln">👤</button>
+    <button id="btnTreppe" aria-label="Treppe" title="Alle Murmeln auf der Treppe">🪜</button>
+    <button id="btnSettings" aria-label="Einstellungen" aria-expanded="false" aria-controls="mapSettings" title="Einstellungen">⚙️</button>
+  </div>
+  <div class="sheet hidden" id="mapSettings">
+    <div class="setrow"><span>Steuerung</span><button class="mbtn" id="mapControl" title="Steuerung wechseln: Kippen oder Joystick"><span>🕹️</span><small>Joystick</small></button></div>
+    <div class="setrow"><span>Murmel-Tempo</span><button class="mbtn" id="btnPower" title="Tempo der Murmel"><span>🐇</span><small>Mittel</small></button></div>
+    <div class="setrow"><span>Ton</span><button class="mbtn" id="btnSound" title="Ton und Musik"><span>🔊</span><small>Ton an</small></button></div>
+  </div>
   <div class="row">
-    <button class="pill" id="mapStars" aria-label="Rangliste">⭐ 0</button>
+    <button class="mbtn" id="btnRank" title="Rangliste"><span>🏆 <b id="mapStars">⭐ 0</b></span><small>Rangliste</small></button>
     <button class="mbtn" id="btnAlbum" title="Sticker-Album"><span>🏅</span><small>Sticker</small></button>
     <button class="mbtn" id="btnSkins" title="Murmel aussuchen"><span>🔮</span><small>Murmel</small></button>
-    <button class="mbtn" id="mapControl" title="Steuerung wechseln: Kippen oder Joystick"><span>🕹️</span><small>Joystick</small></button>
-    <button class="mbtn" id="btnPower" title="Tempo der Murmel"><span>🐇</span><small>Mittel</small></button>
-    <button class="mbtn" id="btnSound" title="Ton und Musik"><span>🔊</span><small>Ton an</small></button>
-    <button class="mbtn" id="btnTreppe" title="Alle Murmeln auf der Treppe"><span>🪜</span><small>Treppe</small></button>
   </div>
   <div id="worlds"></div>
 </div>

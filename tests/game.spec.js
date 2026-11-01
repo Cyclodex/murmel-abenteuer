@@ -1128,11 +1128,17 @@ test('Stärke und Ton umschalten, wird gespeichert', async ({ page }) => {
   await page.click('#startJoy');
   await newPlayer(page, 'Test');
   await expect(page.locator('#btnPower')).toHaveText('🐇Mittel');
+  // Einstellungen sind hinter ⚙️ versteckt
+  await expect(page.locator('#mapSettings')).toBeHidden();
+  await page.click('#btnSettings');
+  await expect(page.locator('#btnSettings')).toHaveAttribute('aria-expanded', 'true');
   await page.click('#btnPower');
   await expect(page.locator('#btnPower')).toHaveText('🚀Schnell');
   await page.click('.lvl[data-level="sz1"]');
   expect(await page.evaluate(() => +(window.murmel.game.tilt * 180 / Math.PI).toFixed(1))).toBe(55);
   await page.click('#btnHome');
+  await expect(page.locator('#mapSettings')).toBeHidden(); // auf der Karte wieder zu
+  await page.click('#btnSettings');
   await expect(page.locator('#btnSound')).toHaveText('🔊Ton an');
   await page.click('#btnSound');
   await expect(page.locator('#btnSound')).toHaveText('🔉Ohne Musik');
@@ -1234,6 +1240,7 @@ test('Steuerung wechseln: im Spiel und auf der Karte, wird gespeichert', async (
   // auf der Karte: Joystick bleibt unsichtbar, Knopf zeigt den Modus
   await page.tap('#btnHome');
   await expect(page.locator('#mapControl')).toHaveText('🕹️Joystick');
+  await page.click('#btnSettings');
   await page.click('#mapControl');
   await expect(page.locator('#mapControl')).toHaveText('📱Kippen');
   await expect(page.locator('#joy')).toBeHidden();
@@ -1245,7 +1252,7 @@ test('Karte im Querformat: oberste Knöpfe und letzte Welt erreichbar', async ({
   await page.goto('/');
   await page.click('#startJoy');
   await newPlayer(page, 'Quer');
-  await expect(page.locator('#btnSound')).toBeInViewport();
+  await expect(page.locator('#btnSettings')).toBeInViewport();
   await page.locator('.lvl[data-level="v1"]').scrollIntoViewIfNeeded(); // Profi-Welt ganz unten
   await expect(page.locator('.lvl[data-level="v1"]')).toBeInViewport();
   await page.click('.lvl[data-level="u1"]'); // erste Level jeder Welt sind offen
@@ -1259,12 +1266,15 @@ test('Schwere Versionen: diagonal geteilte Kachel, offen nach dem normalen Level
   const hard = page.locator('.pair .lvl.hard[data-level="ausflugs"]');
   await expect(hard).toBeDisabled();
   await expect(hard).toContainText('🔒');
-  await expect(page.locator('.pair .lvl[data-level="ausflug"]')).toContainText('⭐0');
+  await expect(page.locator('.pair .lvl[data-level="ausflug"]')).toContainText('⭐0/5'); // gesammelt/möglich
+  await expect(page.locator('.lvl.next')).toHaveAttribute('data-level', 'ausflug'); // nächstes Level: ▶️ Weiter
+  await expect(page.locator('.world[data-world="uebung"] .wname')).toHaveText('Übung');
   await page.click('.lvl[data-level="ausflug"]'); // Mitte der Kachel = normales Level
   await winLevel(page, 5);
   await page.click('#cheerOv').catch(() => {});
   await page.click('#mapBtn');
-  await expect(page.locator('.lvl[data-level="ausflug"]')).toContainText('⭐5');
+  await expect(page.locator('.lvl[data-level="ausflug"]')).toContainText('⭐5/5');
+  await expect(page.locator('.lvl.next')).toHaveAttribute('data-level', 'sz1');
   await expect(hard).toBeEnabled();
   await hard.click({ position: { x: 75, y: 75 } }); // schwere Hälfte unten rechts
   await expect(page.locator('#hud')).toBeVisible();
