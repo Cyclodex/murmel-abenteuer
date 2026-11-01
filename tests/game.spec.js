@@ -1798,3 +1798,74 @@ test('Ohne localStorage: gewinnen, Sticker, Album und Spur funktionieren', async
   await expect(page.locator('.skin[data-trail="funken"]')).toHaveClass(/sel/);
   expect(errors).toEqual([]);
 });
+
+// Neue Version (src/update.js): die Seite trägt eine Version (hier per Route statt „dev“), version.json sagt die neueste.
+// Auf der Karte lädt sie bei einer neuen Version neu, im Level nicht; dieselbe neue Version wird nur einmal versucht.
+test('Neue Version: lädt auf der Karte neu, nie mitten im Level, Spielstand bleibt', async ({ page }) => {
+  const errors = watchErrors(page);
+  let latest = 'v1', loads = 0, checks = 0;
+  await page.route(u => u.pathname === '/', async route => {
+    const r = await route.fetch(); loads++;
+    await route.fulfill({ response: r, body: (await r.text()).replace('<meta name="version" content="dev">', '<meta name="version" content="v1">') });
+  });
+  await page.route(u => u.pathname === '/version.json', route => { checks++; return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: latest }) }); });
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  await page.click('#startJoy');
+  await newPlayer(page, 'Test');
+  await expect.poll(() => checks).toBe(1); // Karte: gleiche Version, bleibt
+  await page.click('.lvl[data-level="ausflug"]');
+  await expect(page.locator('#hud')).toBeVisible();
+  // neue Version, während gefahren wird: das Spiel kommt in den Vordergrund, prüft, lädt aber nicht neu
+  latest = 'v2';
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect.poll(() => checks).toBe(2);
+  await page.waitForTimeout(300);
+  expect(loads).toBe(1);
+  expect(await page.evaluate(() => window.murmel.running)).toBe(true);
+  // zurück zur Karte: lädt neu, der Spieler ist noch da
+  await page.click('#btnHome');
+  await expect.poll(() => loads).toBe(2);
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  expect(await page.evaluate(() => window.murmel.progress.player().name)).toBe('Test');
+  // die Seite ist immer noch v1 (z. B. aus dem Cache): v2 wurde schon versucht, kein zweites Neuladen
+  await page.click('#startJoy');
+  await expect(page.locator('#mapOv')).toBeVisible();
+  // (nach dem Neuladen kann der Browser zusätzlich „sichtbar“ melden: mindestens eine Prüfung, entscheidend ist kein Neuladen)
+  await expect.poll(() => checks).toBeGreaterThanOrEqual(3);
+  await page.waitForTimeout(300);
+  expect(loads).toBe(2);
+  expect(errors).toEqual([]);
+});
+
+test('Lokal („dev“) fragt das Spiel nicht nach einer neuen Version', async ({ page }) => {
+  let checks = 0;
+  await page.route(u => u.pathname === '/version.json', route => { checks++; return route.fulfill({ status: 404, body: '' }); });
+  await play(page, 'ausflug');
+  await page.click('#btnHome');
+  await expect(page.locator('#mapOv')).toBeVisible();
+  expect(checks).toBe(0);
+});
+
+// Veröffentlichen (.github/workflows/pages.yml): stempel.mjs auf eine Kopie anwenden; bricht ab, wenn ein Import nicht passt
+test('Veröffentlichen: stempel.mjs versieht alle eigenen Dateien mit der Version', async () => {
+  const { cpSync, mkdtempSync, readFileSync, rmSync } = await import('node:fs');
+  const { execFileSync } = await import('node:child_process');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'murmel-seite-'));
+  try {
+    const skip = /(^|[\\/])(node_modules|\.git|test-results|playwright-report)$/;
+    cpSync('.', dir, { recursive: true, filter: src => !skip.test(src) });
+    const out = execFileSync('node', ['.github/stempel.mjs', dir, 'abc123'], { encoding: 'utf8' });
+    expect(out).toMatch(/^Version abc123: \d+ Verweise gestempelt/);
+    const html = readFileSync(join(dir, 'index.html'), 'utf8');
+    expect(html).toContain('<meta name="version" content="abc123">');
+    expect(html).toContain('src="src/main.js?v=abc123"');
+    expect(html).toContain('href="style.css?v=abc123"');
+    expect(html).toContain('href="https://fonts.googleapis.com/'); // fremde Adressen bleiben
+    expect(readFileSync(join(dir, 'src/main.js'), 'utf8')).toContain("from './game.js?v=abc123'");
+    expect(readFileSync(join(dir, 'src/main.js'), 'utf8')).toContain("import('../tests/autopilot.js?v=abc123')");
+    expect(JSON.parse(readFileSync(join(dir, 'version.json'), 'utf8'))).toEqual({ version: 'abc123' });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

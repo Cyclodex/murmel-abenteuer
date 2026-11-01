@@ -16,6 +16,7 @@ import { figurVon } from './checkpoint-figuren.js';
 import { createRecorder, ghostAt, formatTime, DT } from './ghost.js';
 import { score, ranking, fastest } from './score.js';
 import { createOnline } from './online.js';
+import { createUpdate } from './update.js';
 
 const $ = id => document.getElementById(id);
 const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
@@ -42,6 +43,16 @@ const stickerCount = () => ALBUM.all.filter(st => progress.hasSticker(st.id)).le
 const cheer = createCheer($('cheerOv'), audio);
 const rec = createRecorder(); // Fahrt aufnehmen (für die Geistermurmel und die Online-Rangliste)
 const online = createOnline(progress);
+
+// ---------- Neue Version ----------
+// Auf der Karte und wenn das Spiel wieder in den Vordergrund kommt: Gibt es eine neue Version, lädt die Seite neu, aber nur,
+// wenn die Karte noch offen ist (nie mitten im Level, beim Zuschauen oder in einem Menü). Der Spielstand bleibt in localStorage.
+const update = createUpdate();
+function checkUpdate() {
+  update.check().then(v => { if (v && !$('mapOv').classList.contains('hidden')) update.reload(v); });
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+
 // Geister, die mitfahren: { level, list: [{ name, track, own }] }; null = die eigene beste Fahrt
 let race = null;
 // Zuschauen: { level, name, track, end }; die Murmel fährt eine Aufnahme nach (siehe followTrack)
@@ -196,6 +207,7 @@ function showMap() {
   }
   show('mapOv');
   online.sync(); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen
+  checkUpdate();
 }
 
 // ---------- Spieler ----------
