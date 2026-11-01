@@ -58,6 +58,7 @@ Datei und jedem relativen Import, dazu `version.json`. So mischt der Browser nac
 
 Das Spiel (`src/update.js`) holt `version.json` ohne Cache, wenn die Karte aufgeht und wenn es wieder in den Vordergrund kommt. Gibt es eine neue
 Version, lädt es neu, aber nur auf der Karte (nie mitten im Level). Der Spielstand bleibt in localStorage. Lokal steht „dev“ in der Seite: keine Prüfung.
+Ganz unten auf der Karte steht klein die laufende Version mit der Zeit des Commits („Version 3fd0424 · 01.11.26, 22:38“, lokal „Version dev“).
 
 Einmalig: Settings → Pages → Build and deployment → Source „GitHub Actions“. Neue Imports immer mit relativem Pfad und `.js` schreiben,
 sonst bricht `stempel.mjs` ab (der Test „Veröffentlichen …“ merkt das schon im PR).
