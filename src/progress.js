@@ -18,7 +18,8 @@ const oldBonus = st => Object.fromEntries(Object.keys(st || {}).filter(k => k.st
 const newPlayer = (name, from = {}) => ({
   id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
   name, done: from.done || {}, best: from.best || {}, bonus: { ...oldBonus(from.stickers), ...from.bonus }, skin: from.skin || 'standard',
-  stickers: pick(from.stickers, k => !OLD_STICKER.test(k)), trail: from.trail || 'keine', times: from.times || {}, runs: from.runs || {}
+  stickers: pick(from.stickers, k => !OLD_STICKER.test(k)), trail: from.trail || 'keine', times: from.times || {}, runs: from.runs || {},
+  noRestore: from.noRestore || 0
 });
 
 function load(key) {
@@ -103,6 +104,34 @@ export function createProgress() {
     fastGhost: id => fastOf(player(), id),
     fastGhostOf: (name, id) => fastOf(byName(name), id),
     setFastGhost: (id, track) => put(fast, FAST_KEY, id, track),
+    // Spielstand aus der Online-Rangliste übernehmen (anderes Gerät, gleicher Name ohne Gross/Klein): rows = online.rows(),
+    // levels = bekannte Level-IDs. Nimmt nur, was besser ist: geschafft, mehr Sterne (maxStars: meiste Sterne in irgendeiner
+    // Fahrt, auch mit weniger Punkten; alle Sterne = Bonusstern dabei),
+    // Fahrt mit mehr Punkten (run.online: wird nicht nochmal gesendet), schnellere Bestzeit. Aufnahmen, Sticker und
+    // Bonussterne aus Fahrten ohne alle Sterne gibt es online nicht. apply = false: nur zählen, was dazukäme.
+    // Gibt { levels (neu geschafft), stars (neue Sterne), score (Punkte online), online (Sterne online) } zurück.
+    restore(rows, levels, apply = true) {
+      const p = player(), gain = { levels: 0, stars: 0, score: 0, online: 0 };
+      if (!p) return gain;
+      for (const r of rows) {
+        if (r.name.toLowerCase() !== p.name.toLowerCase() || !levels.has(r.level) || !(r.stars >= 0 && r.total > 0)) continue;
+        const id = r.level, old = p.runs[id];
+        const most = Math.max(r.stars, r.maxStars || 0);
+        gain.score += r.score; gain.online += most;
+        if (!p.done[id]) gain.levels++;
+        gain.stars += Math.max(0, most - (p.best[id] || 0));
+        if (!apply) continue;
+        p.done[id] = true; p.best[id] = Math.max(p.best[id] || 0, most);
+        if (most >= r.total) p.bonus[id] = true;
+        if (!old || old.score < r.score) p.runs[id] = { stars: r.stars, total: r.total, time: r.time, falls: r.falls, power: r.power, score: r.score, online: true };
+        if (r.best > 0 && !(p.times[id] <= r.best)) p.times[id] = r.best;
+      }
+      if (apply) save();
+      return gain;
+    },
+    // Übernehmen abgelehnt: erst wieder fragen, wenn online mehr Sterne dazukommen
+    get noRestore() { return me().noRestore; },
+    setNoRestore(n) { me().noRestore = n; save(); },
     setSkin(id) { me().skin = id; save(); },
     get trail() { return me().trail; },
     setTrail(id) { me().trail = id; save(); },

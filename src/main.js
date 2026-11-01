@@ -211,9 +211,34 @@ function showMap() {
   markNext();
   show('mapOv');
   showNext();
-  online.sync(); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen
+  online.sync().then(ok => { if (ok) offerRestore(); }); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen
   checkUpdate();
 }
+
+// ---------- Spielstand von einem anderen Gerät ----------
+// Hat der Spieler online (gleicher Name) Level geschafft oder Sterne, die hier fehlen: auf der Karte fragen, ob er den
+// Spielstand übernehmen will (progress.restore). Abgelehnt: erst wieder fragen, wenn online mehr Sterne dazukommen.
+const ONLINE_LEVELS = new Set(LEVELS.filter(l => !l.pruefstand).map(l => l.id));
+function offerRestore() {
+  const p = progress.player();
+  if (!p || $('mapOv').classList.contains('hidden') || !$('restoreOv').classList.contains('hidden')) return;
+  const g = progress.restore(online.rows(), ONLINE_LEVELS, false);
+  if (!(g.levels || g.stars) || g.online <= progress.noRestore) return;
+  $('restoreTitle').textContent = `☁️ ${p.name}`;
+  $('restoreInfo').textContent = [g.levels && `+${g.levels} Level`, g.stars && `+${g.stars} ⭐`, `🏆 ${fmtScore(g.score)}`].filter(Boolean).join(' · ');
+  show('restoreOv');
+}
+$('restoreYes').onclick = () => {
+  audio.sfx('tap'); show('restoreOv', false);
+  progress.restore(online.rows(), ONLINE_LEVELS);
+  syncStickers(); // Welt-Sticker, Murmel und Spur aus den geholten Sternen
+  toast('✅ Spielstand geholt');
+  showMap();
+};
+$('restoreNo').onclick = () => {
+  audio.sfx('tap'); show('restoreOv', false);
+  progress.setNoRestore(progress.restore(online.rows(), ONLINE_LEVELS, false).online);
+};
 
 // Nächstes Level zum Spielen: das erste offene, noch nicht geschaffte (zuerst die normalen, dann die schweren)
 function markNext() {
@@ -374,8 +399,9 @@ addEventListener('resize', () => { if (view) view.resize(); treppe.resize(); });
 function onWin() {
   running = false;
   const lv = LEVELS[levelIdx], before = progress.totalStars(), trailsBefore = TRAILS.filter(trailOpen);
-  const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got);
+  const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got), hadStars = progress.best(lv.id);
   progress.finish(lv.id, game.st.stars, bonus);
+  const moreStars = progress.best(lv.id) > hadStars; // auch ohne Rekord online melden (für „Spielstand holen“)
   const t = game.time, had = progress.bestTime(lv.id), newBest = progress.setTime(lv.id, t);
   // Geister, die mitgefahren sind: schneller als alle = Sticker 👻
   const ghosts = race && race.level === lv.id ? race.list.map(g => g.track) : [progress.ghost(lv.id)].filter(Boolean);
@@ -393,8 +419,9 @@ function onWin() {
     if (race) for (const g of race.list) if (g.own) g.track = track;
   }
   if (fastRun) progress.setFastGhost(lv.id, track);
-  if (!lv.pruefstand && (record || newBest) && progress.run(lv.id)) {
-    online.submit(progress.player().name, lv.id, progress.run(lv.id), record ? track : null, progress.bestTime(lv.id), fastRun && !record ? track : null)
+  if (!lv.pruefstand && (record || newBest || moreStars) && progress.run(lv.id)) {
+    online.submit(progress.player().name, lv.id, progress.run(lv.id), record ? track : null, progress.bestTime(lv.id), fastRun && !record ? track : null,
+      progress.best(lv.id))
       .then(ok => { if (ok && lv === LEVELS[levelIdx]) showWinRank(); });
   }
   $('winScore').textContent = `🏆 ${fmtScore(run.score)}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : hadRun ? ` · 🏆 ${fmtScore(hadRun.score)}` : '');
