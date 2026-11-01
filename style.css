@@ -85,7 +85,11 @@ button.rank{width:auto;height:auto;font-size:20px}
 /* Rangliste: eine Zeile pro Spieler, Knöpfe 👁 zuschauen und 👻 gegen die Aufnahme fahren */
 #rankOv .row{align-items:center;gap:8px;width:min(100%,420px)}
 #rankOv .row button{flex-shrink:0}
-#rankOv h1{flex:1;min-width:0;font-size:24px;padding:6px 12px;overflow-wrap:anywhere}
+/* Titel so hoch wie die Knöpfe, Platz für zwei Zeilen: ◀️ ▶️ bleiben beim Blättern an derselben Stelle */
+#rankOv h1{flex:1;min-width:0;height:58px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden;
+font-size:22px;line-height:1.1;padding:4px 12px;overflow-wrap:anywhere}
+/* oben statt mittig: kürzere oder längere Listen verschieben Titel und Knöpfe nicht */
+#rankOv>:first-child{margin-top:0}
 #rankList{width:min(100%,420px)}
 /* Rangliste als Tabelle (auch im Gewinn-Fenster): eine Karte, Kopfzeile 🏆 / 👻, Punkte rechtsbündig */
 .rtab{background:var(--panel);border-radius:18px;overflow:hidden;width:100%;text-align:left;box-shadow:0 3px 0 rgba(0,0,0,.18)}

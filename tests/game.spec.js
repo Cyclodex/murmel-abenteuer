@@ -1528,9 +1528,13 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geis
   await expect(page.locator('#rankList .rrow .rname')).toHaveText(['Max', 'Test', 'Zoe']);
   await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['4’000', '2’050', '1’850']);
   await expect(page.locator('#rankList .rrow.me .rname')).toHaveText('Test');
+  // ◀️ ▶️ bleiben beim Blättern an derselben Stelle (oben, nicht mittig; Titel mit einer oder zwei Zeilen gleich hoch)
+  const arrows = async () => { const b = await page.locator('#rankNext').boundingBox(); return [Math.round(b.x), Math.round(b.y)]; };
+  const arrowsAt = await arrows();
   // ▶️ erstes Level: Spalte 👻, Knopf nur bei einer Aufnahme
   await page.click('#rankNext');
   await expect(page.locator('#rankTitle')).toHaveText('🌳 Erster Ausflug');
+  expect(await arrows()).toEqual(arrowsAt);
   await expect(page.locator('#rankList .rhead')).toHaveText('🏆👻');
   await expect(page.locator('#rankList .rrow .rname')).toHaveText(['Test 🐇', 'Max 🐇', 'Zoe 🐇']);
   await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['2’050', '1’950', '1’850']);
@@ -1581,6 +1585,7 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geis
   await page.click('#rankMode [data-mode="zeit"]');
   await expect(page.locator('#rankTitle')).toHaveText('🌍');
   await expect(page.locator('#rankHint')).toBeVisible();
+  expect(await arrows()).toEqual(arrowsAt); // kürzere Liste mit Erklärung: Knöpfe bleiben
   await expect(page.locator('#rankList .rhead')).toHaveText('🏁');
   await expect(page.locator('#rankList .rrow .rname')).toHaveText(['Max']);
   await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['2']);
