@@ -46,8 +46,21 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/levels/richtzeiten.js` | Richtzeit pro Level für die Punkte (Autopilot, Stärke normal, Standard-Murmel), erzeugt mit `node tests/richtzeiten.mjs [id ...]` |
 | `src/online.js` | Online-Rangliste über Supabase (nur `fetch`, 3 s Timeout, Fehler still): neue Rekorde mit Geist-Aufnahme senden (ohne Netz in localStorage `murmel-online-v1` vormerken, später nachsenden), Rangliste holen, Geist laden. Auf localhost aus (Tests: localStorage `murmel-online` = `an`) |
 | `supabase/schema.sql` | Tabelle und die drei Funktionen der Online-Rangliste, einmal im Supabase SQL-Editor ausführen |
+| `src/update.js` | Neue Version erkennen (`version.json`) und auf der Karte neu laden |
 | `src/main.js` | Start, Karte, Menüs, Spielschleife |
 | `tests/` | Playwright-Tests, Autopilot mit Route pro Level |
+
+## Veröffentlichen und Updates
+
+Die Action „Seite veröffentlichen“ (`.github/workflows/pages.yml`) veröffentlicht bei jedem Push auf main eine Kopie aller Dateien auf GitHub Pages.
+Vorher stempelt `.github/stempel.mjs` die Kopie mit der Version (Commit): `<meta name="version">` in `index.html`, `?v=<version>` an jeder eigenen
+Datei und jedem relativen Import, dazu `version.json`. So mischt der Browser nach einem Update keine alten Dateien aus dem Cache mit neuen.
+
+Das Spiel (`src/update.js`) holt `version.json` ohne Cache, wenn die Karte aufgeht und wenn es wieder in den Vordergrund kommt. Gibt es eine neue
+Version, lädt es neu, aber nur auf der Karte (nie mitten im Level). Der Spielstand bleibt in localStorage. Lokal steht „dev“ in der Seite: keine Prüfung.
+
+Einmalig: Settings → Pages → Build and deployment → Source „GitHub Actions“. Neue Imports immer mit relativem Pfad und `.js` schreiben,
+sonst bricht `stempel.mjs` ab (der Test „Veröffentlichen …“ merkt das schon im PR).
 
 ## Online-Rangliste
 
