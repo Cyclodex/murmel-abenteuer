@@ -189,6 +189,8 @@ backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);overflow:hidden}
   #skinOv .skin small{font-size:9px}
 }
 #mapOv .row{flex-wrap:wrap;justify-content:center;gap:12px}
+/* Version klein unten auf der Karte (Commit und Zeit, lokal „dev“) */
+#version{font-size:12px;font-weight:600;opacity:.6;background:var(--panel);border-radius:999px;padding:1px 10px;font-variant-numeric:tabular-nums;-webkit-user-select:text;user-select:text}
 /* Karten-Knöpfe: Symbol mit kurzem Text darunter */
 .mbtn{width:auto;min-width:70px;height:70px;padding:4px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
 .mbtn small{font-size:14px;font-weight:800;margin-top:4px;white-space:nowrap}

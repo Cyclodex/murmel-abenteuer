@@ -48,6 +48,7 @@ const online = createOnline(progress);
 // Auf der Karte und wenn das Spiel wieder in den Vordergrund kommt: Gibt es eine neue Version, lädt die Seite neu, aber nur,
 // wenn die Karte noch offen ist (nie mitten im Level, beim Zuschauen oder in einem Menü). Der Spielstand bleibt in localStorage.
 const update = createUpdate();
+$('version').textContent = update.label; // klein unten auf der Karte
 function checkUpdate() {
   update.check().then(v => { if (v && !$('mapOv').classList.contains('hidden')) update.reload(v); });
 }
