@@ -47,6 +47,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/online.js` | Online-Rangliste über Supabase (nur `fetch`, 3 s Timeout, Fehler still): neue Rekorde mit Geist-Aufnahme senden (ohne Netz in localStorage `murmel-online-v1` vormerken, später nachsenden), Rangliste holen, Geist laden. Auf localhost aus (Tests: localStorage `murmel-online` = `an`) |
 | `supabase/schema.sql` | Tabelle und Funktionen der Online-Rangliste (dazu `keepalive` gegen das Pausieren), einmal im Supabase SQL-Editor ausführen |
 | `src/update.js` | Neue Version erkennen (`version.json`) und auf der Karte neu laden |
+| `src/install.js`, `manifest.json`, `sw.js`, `icons/` | App aufs Handy: Popup auf der Karte (Android: Dialog des Browsers über `beforeinstallprompt`, iPhone/iPad: Teilen → „Zum Home-Bildschirm“), danach über ⚙️ → 📲; Service Worker speichert nichts (nur für die Installierbarkeit). Symbole aus `icons/icon.svg` mit `node icons/mache-icons.mjs` |
 | `src/main.js` | Start, Karte, Menüs, Spielschleife |
 | `tests/` | Playwright-Tests, Autopilot mit Route pro Level |
 

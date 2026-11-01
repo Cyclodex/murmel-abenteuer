@@ -17,6 +17,7 @@ import { createRecorder, ghostAt, formatTime, DT } from './ghost.js';
 import { score, ranking, fastest } from './score.js';
 import { createOnline } from './online.js';
 import { createUpdate } from './update.js';
+import { createInstall } from './install.js';
 
 const $ = id => document.getElementById(id);
 const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
@@ -50,9 +51,34 @@ const online = createOnline(progress);
 const update = createUpdate();
 $('version').textContent = update.label; // klein unten auf der Karte
 function checkUpdate() {
-  update.check().then(v => { if (v && !$('mapOv').classList.contains('hidden')) update.reload(v); });
+  update.check().then(v => { if (v && !$('mapOv').classList.contains('hidden') && $('appOv').classList.contains('hidden')) update.reload(v); });
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+
+// ---------- App aufs Handy ----------
+// Popup auf der Karte (src/install.js): Android zeigt den Dialog des Browsers, iPhone/iPad die Schritte Teilen → Home-Bildschirm.
+// Kommt von selbst nur auf der Karte (nie im Level oder in einem Menü), sonst über ⚙️ → 📲.
+const install = createInstall({ onChange: () => { syncApp(); offerApp(); } });
+function syncApp() {
+  show('appRow', install.can());
+  if (!install.can()) show('appOv', false);
+}
+function showApp(auto) {
+  show('appIos', install.ios); show('appYes', !install.ios);
+  $('appLater').textContent = install.ios ? '👍 OK' : 'Später';
+  if (auto) install.shown();
+  show('appOv');
+}
+function offerApp() {
+  if (install.offer() && !$('mapOv').classList.contains('hidden') && $('cheerOv').classList.contains('hidden')) showApp(true);
+}
+$('appYes').onclick = async () => {
+  audio.sfx('tap'); show('appOv', false);
+  if (await install.prompt()) toast('📲 ✔️');
+  syncApp();
+};
+$('appLater').onclick = () => { audio.sfx('tap'); show('appOv', false); };
+$('btnApp').onclick = () => { audio.sfx('tap'); settings(false); showApp(false); };
 
 // Geister, die mitfahren: { level, list: [{ name, track, own }] }; null = die eigene beste Fahrt
 let race = null;
@@ -211,6 +237,7 @@ function showMap() {
   markNext();
   show('mapOv');
   showNext();
+  syncApp(); offerApp();
   online.sync(); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen
   checkUpdate();
 }
