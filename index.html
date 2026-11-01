@@ -37,6 +37,7 @@
     <button class="big" id="startTilt">📱<small>Kippen</small></button>
     <button class="big" id="startJoy">🕹️<small>Joystick</small></button>
   </div>
+  <div class="ver" id="startVersion"></div>
 </div>
 <div class="overlay hidden" id="playerOv">
   <h1>👤 Wer spielt?</h1>
@@ -63,7 +64,7 @@
     <button class="mbtn" id="btnSkins" title="Murmel aussuchen"><span>🔮</span><small>Murmel</small></button>
   </div>
   <div id="worlds"></div>
-  <div id="version"></div>
+  <div class="ver" id="version"></div>
 </div>
 <div class="overlay hidden" id="skinOv">
   <h1>🔮</h1>
@@ -126,6 +127,17 @@
 </div>
 <div class="hidden" id="cheerOv" aria-live="polite"><div class="rain"></div>
   <div class="card"><div class="title">🆕 Neu freigeschaltet</div><div class="items"></div></div>
+</div>
+<div class="hidden" id="updateOv" role="dialog" aria-modal="true" aria-labelledby="updateTitle">
+  <div class="card">
+    <div class="title" id="updateTitle">🆕 Neue Version</div>
+    <p>Das Spiel hat ein Update. Jetzt laden?</p>
+    <div class="info" id="updateInfo"></div>
+    <div class="knoepfe">
+      <button id="updateLater">Später</button>
+      <button class="go" id="updateGo">🔄 Laden</button>
+    </div>
+  </div>
 </div>
 
 <script src="vendor/three.min.js"></script>

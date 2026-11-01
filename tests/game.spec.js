@@ -1818,43 +1818,65 @@ test('Ohne localStorage: gewinnen, Sticker, Album und Spur funktionieren', async
 });
 
 // Neue Version (src/update.js): die Seite trägt eine Version (hier per Route statt „dev“), version.json sagt die neueste.
-// Auf der Karte lädt sie bei einer neuen Version neu, im Level nicht; dieselbe neue Version wird nur einmal versucht.
-test('Neue Version: lädt auf der Karte neu, nie mitten im Level, Spielstand bleibt', async ({ page }) => {
+// Auf der Karte fragt ein Fenster (🔄 Laden / Später), im Level nicht; nach „Später“ fragt es für diese Version nicht mehr.
+test('Neue Version: Fenster auf der Karte, nie mitten im Level, Später oder Laden, Spielstand bleibt', async ({ page }) => {
   const errors = watchErrors(page);
-  let latest = 'v1', loads = 0, checks = 0;
+  let latest = { version: 'v1' }, loads = 0, checks = 0;
   await page.route(u => u.pathname === '/', async route => {
     const r = await route.fetch(); loads++;
     await route.fulfill({ response: r, body: (await r.text()).replace('<meta name="version" content="dev">', '<meta name="version" content="v1">')
       .replace('<meta name="version-zeit" content="">', '<meta name="version-zeit" content="2026-11-01T22:38:00+01:00">') });
   });
-  await page.route(u => u.pathname === '/version.json', route => { checks++; return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: latest }) }); });
+  await page.route(u => u.pathname === '/version.json', route => { checks++; return route.fulfill({ contentType: 'application/json', body: JSON.stringify(latest) }); });
+  const visible = () => page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
+  // Version klein auf dem ersten Startbildschirm und unten auf der Karte (Uhrzeit in der Zeitzone des Browsers)
+  await expect(page.locator('#startVersion')).toHaveText(/^Version v1 · 01\.11\.26, \d\d:\d\d$/);
   await page.click('#startJoy');
   await newPlayer(page, 'Test');
-  await expect.poll(() => checks).toBe(1); // Karte: gleiche Version, bleibt
-  // Version klein unten auf der Karte (Uhrzeit in der Zeitzone des Browsers)
+  await expect.poll(() => checks).toBe(1); // Karte: gleiche Version, kein Fenster
   await expect(page.locator('#version')).toHaveText(/^Version v1 · 01\.11\.26, \d\d:\d\d$/);
+  await expect(page.locator('#updateOv')).toBeHidden();
   await page.click('.lvl[data-level="ausflug"]');
   await expect(page.locator('#hud')).toBeVisible();
-  // neue Version, während gefahren wird: das Spiel kommt in den Vordergrund, prüft, lädt aber nicht neu
-  latest = 'v2';
-  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  // neue Version, während gefahren wird: das Spiel kommt in den Vordergrund, prüft, fragt aber nicht
+  latest = { version: 'v2', zeit: '2026-11-02T08:15:00+01:00' };
+  await visible();
   await expect.poll(() => checks).toBe(2);
   await page.waitForTimeout(300);
-  expect(loads).toBe(1);
+  await expect(page.locator('#updateOv')).toBeHidden();
   expect(await page.evaluate(() => window.murmel.running)).toBe(true);
-  // zurück zur Karte: lädt neu, der Spieler ist noch da
+  // zurück zur Karte: Fenster mit der neuen Version; Später schliesst es, ohne neu zu laden
   await page.click('#btnHome');
+  await expect(page.locator('#updateOv')).toBeVisible();
+  await expect(page.locator('#updateInfo')).toHaveText(/^Version v2 · 02\.11\.26, \d\d:\d\d$/);
+  await page.click('#updateLater');
+  await expect(page.locator('#updateOv')).toBeHidden();
+  // für v2 fragt es nicht mehr
+  const n = checks;
+  await visible();
+  await expect.poll(() => checks).toBe(n + 1);
+  await page.waitForTimeout(300);
+  await expect(page.locator('#updateOv')).toBeHidden();
+  expect(loads).toBe(1);
+  // noch eine neue Version: wieder fragen; Laden lädt neu, der Spieler ist noch da
+  latest = { version: 'v3' };
+  await visible();
+  await expect(page.locator('#updateOv')).toBeVisible();
+  await expect(page.locator('#updateInfo')).toHaveText('Version v3');
+  await page.click('#updateGo');
   await expect.poll(() => loads).toBe(2);
   await page.waitForFunction(() => window.murmel && window.murmel.game);
   expect(await page.evaluate(() => window.murmel.progress.player().name)).toBe('Test');
-  // die Seite ist immer noch v1 (z. B. aus dem Cache): v2 wurde schon versucht, kein zweites Neuladen
+  // die Seite ist immer noch v1 (z. B. aus dem Cache): v3 wurde schon angeboten, kein zweites Fenster
   await page.click('#startJoy');
   await expect(page.locator('#mapOv')).toBeVisible();
-  // (nach dem Neuladen kann der Browser zusätzlich „sichtbar“ melden: mindestens eine Prüfung, entscheidend ist kein Neuladen)
-  await expect.poll(() => checks).toBeGreaterThanOrEqual(3);
+  const m = checks;
+  await visible();
+  await expect.poll(() => checks).toBeGreaterThan(m);
   await page.waitForTimeout(300);
+  await expect(page.locator('#updateOv')).toBeHidden();
   expect(loads).toBe(2);
   expect(errors).toEqual([]);
 });
@@ -1866,6 +1888,7 @@ test('Lokal („dev“) fragt das Spiel nicht nach einer neuen Version', async (
   await page.click('#btnHome');
   await expect(page.locator('#mapOv')).toBeVisible();
   await expect(page.locator('#version')).toHaveText('Version dev');
+  await expect(page.locator('#startVersion')).toHaveText('Version dev');
   expect(checks).toBe(0);
 });
 
