@@ -38,8 +38,11 @@ function read() {
 }
 
 const stars = p => Object.values(p.best).reduce((a, b) => a + b, 0);
-// Beste Fahrten als Zeilen für die Rangliste (gleiche Form wie später die Online-Rangliste, #9)
-const rows = p => Object.entries(p.runs).map(([level, r]) => ({ name: p.name, level, score: r.score, power: r.power }));
+// Beste Fahrten als Zeilen für die Rangliste (gleiche Form wie die Online-Rangliste, #9): time = Zeit der Fahrt mit den
+// meisten Punkten, best = Bestzeit in diesem Level (irgendeine Fahrt ins Ziel)
+const rows = p => Object.entries(p.runs).map(([level, r]) => ({
+  name: p.name, level, score: r.score, power: r.power, time: r.time, best: Math.min(r.time, p.times[level] || Infinity)
+}));
 
 export function createProgress() {
   const data = read();

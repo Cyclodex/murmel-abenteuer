@@ -106,10 +106,39 @@ button.rank{width:auto;height:auto;font-size:20px}
 #rankGhostTitle{font-size:22px;font-weight:800}
 #rankGhostOv button{width:100%;height:56px;font-size:22px;font-weight:700;background:rgba(128,128,128,.2);box-shadow:none}
 #rankGhostOv button.go{background:var(--go);color:#fff}
-/* Geister beim Levelstart */
-#ghostPick{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;max-width:520px}
-#ghostPick .big{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#ghostPick .sel{outline:5px solid var(--go)}
+/* Startbildschirm eines Levels: die besten 3 (Punkte / Schnellste), Geister zum Ein- und Ausschalten, ▶️ Los */
+#ghostOv{gap:14px}
+#ghostOv>h1,#ghostTop,#ghostPick,#ghostOv>.row{width:min(100%,420px);box-sizing:border-box}
+#ghostOv>h1{font-size:34px}
+#ghostTop{display:flex;flex-wrap:wrap;gap:10px}
+.tcol{flex:1 1 150px;min-width:0;background:var(--panel);border-radius:18px;padding:8px 10px;text-align:left;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+.thead{font-size:16px;font-weight:800;opacity:.75;margin-bottom:2px}
+.trow{display:flex;align-items:center;gap:4px;font-size:18px;line-height:1.5;border-radius:8px;padding:0 4px}
+.trow.me{background:rgba(59,178,115,.28);font-weight:800}
+.tval{flex-shrink:0;font-weight:700;font-variant-numeric:tabular-nums}
+#ghostPick{display:flex;flex-direction:column;gap:8px}
+.ghead{align-self:flex-start;font-size:20px;font-weight:800;background:var(--panel);border-radius:12px;padding:2px 12px}
+.gopt{width:100%;height:auto;min-height:72px;display:flex;align-items:center;gap:12px;padding:8px 14px;text-align:left;font-size:22px;
+border:3px solid transparent;box-sizing:border-box}
+.gopt[aria-pressed="true"]{border-color:var(--go);background:color-mix(in srgb,var(--go) 22%,var(--panel))}
+.gopt[aria-pressed="false"] .gemo{filter:grayscale(1);opacity:.35}
+.gchk{flex-shrink:0;width:34px;height:34px;border-radius:10px;border:3px solid rgba(128,128,128,.6);box-sizing:border-box;
+display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff}
+.gopt[aria-pressed="true"] .gchk{background:var(--go);border-color:var(--go)}
+.gopt[aria-pressed="true"] .gchk::after{content:"✓"}
+.gtxt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.gtxt b{font-size:22px}
+.gtxt small{font-size:17px;opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gemo{flex-shrink:0;font-size:34px}
+#ghostOv>.row{justify-content:center;gap:12px}
+#ghostGo{flex:1;background:var(--go);color:#fff;font-weight:800;line-height:1.1}
+#ghostGo small{font-size:16px;font-weight:700;opacity:.9}
+#ghostGo:disabled{opacity:.6}
+/* Rangliste: Umschalter Punkte / Schnellste */
+.seg{display:flex;width:min(100%,420px);background:var(--panel);border-radius:18px;padding:4px;gap:4px;box-sizing:border-box}
+.seg button{flex:1;width:auto;height:44px;font-size:20px;font-weight:800;border-radius:14px;background:transparent;box-shadow:none}
+.seg button[aria-pressed="true"]{background:var(--go);color:#fff}
+#rankHint{font-size:16px;font-weight:700;background:var(--panel);border-radius:12px;padding:2px 12px}
 /* Zuschauen: nur Zeit, Name und Knöpfe von vorne / zurück */
 #watchName{display:none}
 .hud.watch #watchName{display:block}
