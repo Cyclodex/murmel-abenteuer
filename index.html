@@ -32,10 +32,12 @@
 <button class="big hidden" id="treppeBack" aria-label="Zurück zur Karte">🏠</button>
 
 <div class="overlay" id="startOv">
-  <h1>🔵 Murmel-Abenteuer</h1>
-  <div class="row">
-    <button class="big" id="startTilt">📱<small>Kippen</small></button>
-    <button class="big" id="startJoy">🕹️<small>Joystick</small></button>
+  <h1 aria-label="Murmel-Abenteuer"><span>Murmel-</span><span class="sub">Abenteuer</span></h1>
+  <div class="logoBahn" aria-hidden="true"><i></i></div>
+  <div class="startWahl">
+    <div class="ask">Wie willst du steuern?</div>
+    <button class="wahl" id="startTilt"><span class="ico">📱</span><span class="txt"><b>Kippen</b><small>Handy schräg halten</small></span><span class="go">▶</span></button>
+    <button class="wahl" id="startJoy"><span class="ico">🕹️</span><span class="txt"><b>Joystick</b><small>Mit dem Daumen lenken</small></span><span class="go">▶</span></button>
   </div>
 </div>
 <div class="overlay hidden" id="playerOv">
