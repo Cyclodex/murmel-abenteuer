@@ -45,7 +45,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/score.js` | Punkte einer Fahrt (pro Level höchstens 2050: Sterne-Anteil 1000, Zeit gegen die Richtzeit bis 750, ohne Absturz 300, je Absturz 100 weniger) und Rangliste nach Punkten (Stärke wird nur angezeigt) |
 | `src/levels/richtzeiten.js` | Richtzeit pro Level für die Punkte (Autopilot, Stärke normal, Standard-Murmel), erzeugt mit `node tests/richtzeiten.mjs [id ...]` |
 | `src/online.js` | Online-Rangliste über Supabase (nur `fetch`, 3 s Timeout, Fehler still): neue Rekorde mit Geist-Aufnahme senden (ohne Netz in localStorage `murmel-online-v1` vormerken, später nachsenden), Rangliste holen, Geist laden. Auf localhost aus (Tests: localStorage `murmel-online` = `an`) |
-| `supabase/schema.sql` | Tabelle und die drei Funktionen der Online-Rangliste, einmal im Supabase SQL-Editor ausführen |
+| `supabase/schema.sql` | Tabelle und Funktionen der Online-Rangliste (mit `keepalive`), einmal im Supabase SQL-Editor ausführen |
 | `src/main.js` | Start, Karte, Menüs, Spielschleife |
 | `tests/` | Playwright-Tests, Autopilot mit Route pro Level |
 
@@ -64,7 +64,7 @@ Ohne Netz läuft alles lokal weiter, dann mit den Spielern auf dem Gerät.
 - **Datenschutz:** Namen und Fahrten sind für alle sichtbar und liegen bei Supabase (Region EU, Frankfurt). Nur Vornamen oder Spitznamen verwenden.
 - **Kein Schutz gegen Schummeln:** Jeder kann beliebige Namen und Punkte senden. Gleicher Name = gleicher Eintrag, auch auf einem anderen Gerät.
 - **Einrichtung:** Supabase-Projekt (Gratis-Plan), `supabase/schema.sql` im SQL-Editor ausführen, Projekt-URL und Publishable Key in `src/online.js`.
-- **Pausieren:** Supabase pausiert Gratis-Projekte nach einer Woche ohne Anfragen. Die Action „Rangliste wach halten“ (`.github/workflows/rangliste-wach.yml`) ruft die Rangliste alle 3 Tage ab.
+- **Pausieren:** Supabase pausiert Gratis-Projekte nach einer Woche ohne Aktivität; Lesezugriffe alle 3 Tage reichten im Oktober 2026 nicht mehr. Die Action „Rangliste wach halten“ (`.github/workflows/rangliste-wach.yml`) ruft darum täglich `keepalive` auf (schreibt eine Herzschlag-Zeile) und liest die Rangliste. Schlägt sie fehl, öffnet sie ein Issue; ist das Projekt pausiert, im Supabase-Dashboard „Restore project“ klicken.
 
 ## Level bauen
 
