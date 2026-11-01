@@ -1780,7 +1780,7 @@ test('Online-Rangliste: mehr Sterne ohne Rekord gehen trotzdem raus (meiste Ster
   expect(server.calls.submit_run[0]).toMatchObject({ p_stars: 3, p_max_stars: 3 });
   // 4 Sterne, aber langsamer und viele Abstürze: weniger Punkte, keine Bestzeit; die Fahrt mit den meisten Punkten
   // geht nochmal raus, mit den meisten Sternen
-  await page.click('#cheerOv').catch(() => {});
+  if (await page.locator('#cheerOv').isVisible()) await page.click('#cheerOv'); // ohne neuen Sticker kein Jubel
   await page.click('#againBtn');
   if (await page.locator('#ghostOv').isVisible()) await startWith(page, []);
   await expect(page.locator('#hud')).toBeVisible();
@@ -1791,7 +1791,7 @@ test('Online-Rangliste: mehr Sterne ohne Rekord gehen trotzdem raus (meiste Ster
   expect(server.calls.submit_run[1]).toMatchObject({ p_stars: 3, p_max_stars: 4, p_ghost: null });
   expect(server.rows[0]).toMatchObject({ stars: 3, max_stars: 4 });
   // gleich viele Sterne nochmal, ohne Rekord: nichts zu senden
-  await page.click('#cheerOv').catch(() => {});
+  if (await page.locator('#cheerOv').isVisible()) await page.click('#cheerOv'); // ohne neuen Sticker kein Jubel
   await page.click('#againBtn');
   if (await page.locator('#ghostOv').isVisible()) await startWith(page, []);
   await expect(page.locator('#hud')).toBeVisible();
