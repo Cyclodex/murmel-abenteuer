@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<meta name="version" content="dev">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Murmel-Abenteuer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -86,8 +87,12 @@
 </div>
 <div class="overlay hidden" id="ghostOv">
   <h1 id="ghostTitle"></h1>
+  <div id="ghostTop"></div>
   <div id="ghostPick"></div>
-  <button class="big" id="ghostBack" aria-label="Zur Karte">🏠</button>
+  <div class="row">
+    <button class="big" id="ghostBack" aria-label="Zur Karte">🏠</button>
+    <button class="big" id="ghostGo">▶️ Los!</button>
+  </div>
 </div>
 <div class="overlay hidden" id="rankOv">
   <div class="row">
@@ -95,6 +100,11 @@
     <h1 id="rankTitle">🌍</h1>
     <button id="rankNext" aria-label="Nächste Rangliste">▶️</button>
   </div>
+  <div class="seg" id="rankMode" role="group" aria-label="Rangliste nach">
+    <button data-mode="punkte" aria-pressed="true">🏆 Punkte</button>
+    <button data-mode="zeit" aria-pressed="false">⏱ Schnellste</button>
+  </div>
+  <div class="hidden" id="rankHint"></div>
   <div id="rankList"></div>
   <div class="pill hidden" id="rankEmpty">🤷</div>
   <button class="big" id="rankBack" aria-label="Fertig">✔️</button>

@@ -18,8 +18,8 @@ export function score({ level, stars, total, time, falls }) {
   return Math.round(s + t + c);
 }
 
-// Rangliste aus Zeilen { name, level, score, power }, z. B. alle lokalen Spieler oder zusammen mit der Online-Rangliste.
-// levelId: nur dieses Level (mit Stärke der Fahrt), sonst Summe über alle Level. Pro Name und Level zählt die beste Zeile.
+// Rangliste aus Zeilen { name, level, score, power, time }, z. B. alle lokalen Spieler oder zusammen mit der Online-Rangliste.
+// levelId: nur dieses Level (mit Stärke und Zeit der Fahrt), sonst Summe über alle Level. Pro Name und Level zählt die beste Zeile.
 export function ranking(rows, levelId = null) {
   const best = new Map();
   for (const r of rows) {
@@ -29,8 +29,30 @@ export function ranking(rows, levelId = null) {
   }
   const by = new Map();
   for (const r of best.values()) {
-    const k = r.name.toLowerCase(), e = by.get(k) || { name: r.name, score: 0, ...(levelId ? { power: r.power } : {}) };
+    const k = r.name.toLowerCase(), e = by.get(k) || { name: r.name, score: 0, ...(levelId ? { power: r.power, time: r.time } : {}) };
     e.score += r.score; by.set(k, e);
   }
   return [...by.values()].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+}
+
+// Schnellste Fahrten aus Zeilen { name, level, best } (best = Bestzeit in Sekunden, irgendeine Fahrt ins Ziel).
+// levelId: pro Name die Bestzeit in diesem Level, die schnellste zuerst -> [{ name, time }].
+// Ohne levelId: Streckenrekorde, also in wie vielen Leveln jemand die schnellste Zeit hat (gleich schnell: beide) -> [{ name, records }].
+export function fastest(rows, levelId = null) {
+  const best = new Map();
+  for (const r of rows) {
+    if (!(r.best > 0) || (levelId && r.level !== levelId)) continue;
+    const k = r.name.toLowerCase() + '\n' + r.level;
+    if (!best.has(k) || best.get(k).time > r.best) best.set(k, { name: r.name, level: r.level, time: r.best });
+  }
+  if (levelId) return [...best.values()].map(({ name, time }) => ({ name, time })).sort((a, b) => a.time - b.time || a.name.localeCompare(b.name));
+  const top = new Map();
+  for (const r of best.values()) if (!top.has(r.level) || top.get(r.level) > r.time) top.set(r.level, r.time);
+  const by = new Map();
+  for (const r of best.values()) {
+    if (r.time !== top.get(r.level)) continue;
+    const k = r.name.toLowerCase(), e = by.get(k) || { name: r.name, records: 0 };
+    e.records++; by.set(k, e);
+  }
+  return [...by.values()].sort((a, b) => b.records - a.records || a.name.localeCompare(b.name));
 }
