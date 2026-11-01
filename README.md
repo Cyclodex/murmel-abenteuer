@@ -48,6 +48,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `supabase/schema.sql` | Tabelle und Funktionen der Online-Rangliste (dazu `keepalive` gegen das Pausieren), einmal im Supabase SQL-Editor ausführen |
 | `src/update.js` | Neue Version erkennen (`version.json`) und auf der Karte neu laden |
 | `src/install.js`, `manifest.json`, `sw.js`, `icons/` | App aufs Handy: Popup auf der Karte (Android: Dialog des Browsers über `beforeinstallprompt`, iPhone/iPad: Teilen → „Zum Home-Bildschirm“), danach über ⚙️ → 📲; Service Worker speichert nichts (nur für die Installierbarkeit). Symbole aus `icons/icon.svg` mit `node icons/mache-icons.mjs` |
+| `src/umzug.js` | Umzug in die App auf iPhone/iPad: Die App vom Home-Bildschirm hat unter iOS einen eigenen Speicher, Safari kopiert beim Hinzufügen nur die Cookies (seit iOS 17.2). In Safari liegt darum der Spielstand gepackt im Cookie `murmel-umzug` (höchstens 3800 Zeichen, sonst ohne Fahrten/Bestzeiten der anderen Spieler; ohne Geister), die App übernimmt ihn beim ersten Start und löscht das Cookie |
 | `src/main.js` | Start, Karte, Menüs, Spielschleife |
 | `tests/` | Playwright-Tests, Autopilot mit Route pro Level |
 

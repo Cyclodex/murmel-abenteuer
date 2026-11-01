@@ -6,6 +6,7 @@
 // die Aufnahmen der schnellsten Fahrten (Bestzeit aus times) unter FAST_KEY (eigener Schlüssel: ist der Speicher voll,
 // bleiben die Geister der Fahrten mit den meisten Punkten trotzdem erhalten).
 const KEY = 'murmel-abenteuer-v2';
+export { KEY as SAVE_KEY }; // für den Umzug in die App (umzug.js)
 const GHOST_KEY = 'murmel-geist-v1';
 const FAST_KEY = 'murmel-geist-schnell-v1';
 const OLD_KEY = 'murmel-abenteuer-v1'; // alter Spielstand ohne Spieler

@@ -1935,7 +1935,7 @@ test('App aufs Handy: Popup auf der Karte, Installieren zeigt den Dialog des Bro
 
 test.describe('App aufs Handy auf dem iPhone', () => {
   test.use({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
-  test('Popup erklärt Teilen → Zum Home-Bildschirm, als App geöffnet kommt es nie', async ({ page }) => {
+  test('Popup erklärt Teilen → Zum Home-Bildschirm, der Spielstand zieht per Cookie in die App um, dort kein Popup', async ({ page }) => {
     const errors = watchErrors(page);
     await page.goto('/');
     await page.waitForFunction(() => window.murmel && window.murmel.game);
@@ -1948,15 +1948,23 @@ test.describe('App aufs Handy auf dem iPhone', () => {
     await expect(page.locator('#appOv')).toBeHidden();
     await page.click('#btnSettings');
     await expect(page.locator('#appRow')).toBeVisible();
-    // vom Home-Bildschirm geöffnet (navigator.standalone): weder Popup noch Knopf, auch ohne gemerktes „Später“
+    // in Safari: Spielstand mit 3 Sternen liegt gepackt im Cookie bereit (umzug.js)
+    await page.evaluate(() => { window.murmel.progress.finish('ausflug', 3); window.murmel.showMap(); });
+    await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
+    await expect.poll(() => page.evaluate(() => document.cookie)).toContain('murmel-umzug=');
+    // vom Home-Bildschirm geöffnet (navigator.standalone): eigener, leerer Speicher wie unter iOS, nur das Cookie ist da
     await page.addInitScript(() => {
       Object.defineProperty(navigator, 'standalone', { value: true });
-      localStorage.removeItem('murmel-app');
+      if (!sessionStorage.getItem('app')) { sessionStorage.setItem('app', '1'); localStorage.clear(); }
     });
     await page.reload();
     await page.waitForFunction(() => window.murmel && window.murmel.game);
     await page.click('#startJoy');
-    await expect(page.locator('#mapOv')).toBeVisible();
+    await expect(page.locator('#mapOv')).toBeVisible(); // Spieler schon da: direkt auf die Karte
+    await expect(page.locator('#btnPlayer')).toHaveText('👤 Test');
+    await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
+    expect(await page.evaluate(() => document.cookie)).not.toContain('murmel-umzug=');
+    // als App: weder Popup noch Knopf
     await expect(page.locator('#appOv')).toBeHidden();
     await page.click('#btnSettings');
     await expect(page.locator('#appRow')).toBeHidden();

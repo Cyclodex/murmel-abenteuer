@@ -18,6 +18,7 @@ import { score, ranking, fastest } from './score.js';
 import { createOnline } from './online.js';
 import { createUpdate } from './update.js';
 import { createInstall } from './install.js';
+import { pack, unpack } from './umzug.js';
 
 const $ = id => document.getElementById(id);
 const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
@@ -28,6 +29,9 @@ function toast(t) {
   clearTimeout(toastT); toastT = setTimeout(() => el.classList.add('hidden'), 2200);
 }
 
+// iPhone/iPad: beim ersten Start als App den Spielstand aus Safari übernehmen (umzug.js), bevor progress.js ihn liest
+const umzug = unpack();
+if (umzug) await umzug;
 const progress = createProgress();
 const audio = createAudio();
 audio.setMode(progress.data.sound);
@@ -238,6 +242,7 @@ function showMap() {
   show('mapOv');
   showNext();
   syncApp(); offerApp();
+  pack(); // iPhone/iPad in Safari: Spielstand fürs Hinzufügen zum Home-Bildschirm bereitlegen
   online.sync(); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen
   checkUpdate();
 }

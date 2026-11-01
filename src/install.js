@@ -8,13 +8,18 @@
 const KEY = 'murmel-app';
 const MAX = 3, PAUSE = 3 * 24 * 3600 * 1000;
 
+// iPhone/iPad (iPadOS meldet sich als Mac, hat aber Touch)
+export const isIos = (nav = navigator) => /iPhone|iPad|iPod/.test(nav.userAgent) || (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1);
+// vom Home-Bildschirm als App geöffnet
+export const isApp = (win = window) =>
+  ['standalone', 'fullscreen'].some(m => win.matchMedia(`(display-mode: ${m})`).matches) || win.navigator.standalone === true;
+
 export function createInstall({ win = window, onChange = () => {} } = {}) {
   const nav = win.navigator;
   const load = () => { try { return JSON.parse(win.localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
   let memo = load(); // { n: so oft von selbst gezeigt, t: zuletzt (ms), ok: installiert }
   const save = d => { memo = { ...memo, ...d }; try { win.localStorage.setItem(KEY, JSON.stringify(memo)); } catch (e) { /* ohne Speicher */ } };
-  const ios = /iPhone|iPad|iPod/.test(nav.userAgent) || (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1);
-  const app = () => ['standalone', 'fullscreen'].some(m => win.matchMedia(`(display-mode: ${m})`).matches) || nav.standalone === true;
+  const ios = isIos(nav);
   let deferred = null; // beforeinstallprompt, bis der Dialog gezeigt wurde
 
   win.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; onChange(); });
@@ -22,7 +27,7 @@ export function createInstall({ win = window, onChange = () => {} } = {}) {
   // Unter Playwright (navigator.webdriver) nicht: Anfragen über einen Service Worker sieht page.route nicht
   if ('serviceWorker' in nav && !nav.webdriver) nav.serviceWorker.register('sw.js').catch(() => { /* ohne: nur nicht installierbar */ });
 
-  const can = () => !app() && !memo.ok && (ios || !!deferred);
+  const can = () => !isApp(win) && !memo.ok && (ios || !!deferred);
   return {
     ios,
     can,
