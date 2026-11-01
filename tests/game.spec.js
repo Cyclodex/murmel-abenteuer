@@ -1467,6 +1467,9 @@ async function fakeSupabase(page, rows = [], ghosts = {}) {
 const online = (name, level, stars, total, seconds, falls, ghost = false) => ({ name, level, stars, total, seconds, falls, power: 'normal', score: 0, ghost });
 
 test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geist fahren, zuschauen', async ({ page }) => {
+  // viele Schritte mit Spielzeit (Fahrt ins Ziel, Wettfahrten, eine Aufnahme ganz zuschauen, beide Ranglisten-Modi):
+  // in der Action knapp über 60 s, die Karte war beim Abbruch schon wieder offen
+  test.setTimeout(120_000);
   const errors = watchErrors(page);
   // ausflug: Max 1000 + 750 + 200 = 1950, Zoe 800 + 750 + 300 = 1850 (mit Aufnahme); sz1: Max 1000 + 750 + 300 = 2050
   const track = { t: 3, skin: 'fussball', p: [0, 100, 0, 0, 100, -500, 0, 100, -1000] }; // Zentimeter
