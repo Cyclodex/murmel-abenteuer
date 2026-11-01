@@ -176,6 +176,16 @@ backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);overflow:hidden}
 #cheerOv .rain.go i{animation-name:fall;animation-timing-function:linear;animation-fill-mode:both}
 @keyframes fall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:1}}
 @media (prefers-reduced-motion:reduce){#cheerOv .it{animation-duration:.01s}#cheerOv .rain{display:none}}
+/* Neue Version: Fenster über der Karte, 🔄 Laden oder Später */
+#updateOv{position:fixed;inset:0;z-index:11;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);
+backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#updateOv .card{background:var(--panel);border-radius:28px;padding:18px;width:min(86vw,340px);box-sizing:border-box;text-align:center}
+#updateOv .title{font-size:26px;font-weight:800}
+#updateOv p{margin:8px 0 4px;font-size:20px;line-height:1.25}
+#updateOv .info{font-size:13px;font-weight:600;opacity:.6;font-variant-numeric:tabular-nums}
+#updateOv .knoepfe{display:flex;gap:10px;margin-top:16px}
+#updateOv button{flex:1;width:auto;height:56px;font-size:20px;font-weight:800;border-radius:18px}
+#updateOv button.go{background:var(--go);color:#fff}
 /* lange Menüs: oben nicht abschneiden, trotzdem mittig wenn Platz */
 .overlay{justify-content:flex-start}
 .overlay>:first-child{margin-top:auto}
@@ -194,7 +204,8 @@ backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);overflow:hidden}
 }
 #mapOv .row{flex-wrap:wrap;justify-content:center;gap:12px}
 /* Version klein unten auf der Karte (Commit und Zeit, lokal „dev“) */
-#version{font-size:12px;font-weight:600;opacity:.6;background:var(--panel);border-radius:999px;padding:1px 10px;font-variant-numeric:tabular-nums;-webkit-user-select:text;user-select:text}
+/* (auch auf dem ersten Startbildschirm: #startVersion) */
+.ver{font-size:12px;font-weight:600;opacity:.6;background:var(--panel);border-radius:999px;padding:1px 10px;font-variant-numeric:tabular-nums;-webkit-user-select:text;user-select:text}
 /* Karten-Knöpfe: Symbol mit kurzem Text darunter */
 .mbtn{width:auto;min-width:70px;height:70px;padding:4px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
 .mbtn small{font-size:14px;font-weight:800;margin-top:4px;white-space:nowrap}
