@@ -4,6 +4,7 @@
 -- Eine Tabelle: pro Name (ohne Gross/Klein) und Level die Fahrt mit den meisten Punkten, mit Geist-Aufnahme,
 -- dazu die Bestzeit (best_seconds: schnellste Fahrt ins Ziel, auch wenn sie weniger Punkte hatte) mit ihrer Aufnahme
 -- (fast_ghost; die Geister beim Levelstart bleiben die Fahrten mit den meisten Punkten).
+-- updated_at: letzte angenommene Fahrt (mehr Punkte oder schneller), also wann jemand zuletzt einen Rekord gefahren ist.
 -- Das Spiel (src/online.js) greift nur über die drei Funktionen unten zu, nie direkt auf die Tabelle:
 --   submit_run  Fahrt eintragen, ersetzt die alte nur bei mehr Punkten; Bestzeit nur, wenn sie schneller ist
 --   get_ranking alle Fahrten ohne Aufnahme (klein), die Punkte rechnet das Spiel mit src/score.js neu
@@ -75,7 +76,7 @@ begin
         falls = excluded.falls, power = excluded.power, score = excluded.score, ghost = excluded.ghost, updated_at = now()
     where excluded.score > r.score;
   get diagnostics changed = row_count;
-  update public.runs r set best_seconds = b, fast_ghost = f
+  update public.runs r set best_seconds = b, fast_ghost = f, updated_at = now()
     where r.name_key = lower(n) and r.level = p_level and (r.best_seconds is null or r.best_seconds > b);
   get diagnostics faster = row_count;
   return changed + faster > 0;
