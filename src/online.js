@@ -66,8 +66,9 @@ export function createOnline(progress) {
         p_falls: run.falls, p_power: run.power, p_score: run.score, p_ghost: ghost
       };
       let r = await rpc('submit_run', { ...args, p_best: best || run.time, p_fast_ghost: fast || null });
-      // Server noch mit dem alten schema.sql (submit_run ohne p_best): ohne Bestzeit senden
-      if (r.status === 404) r = await rpc('submit_run', args);
+      // Server noch mit dem alten schema.sql (submit_run ohne p_best): ohne Bestzeit senden und beim nächsten Start
+      // alle Bestzeiten nochmal nachtragen, bis der Server sie annimmt
+      if (r.status === 404) { r = await rpc('submit_run', args); store.seededBest = false; }
       if (!r.ok && !r.rejected) return false;
       if (store.queue[k] === e) delete store.queue[k];
       save();

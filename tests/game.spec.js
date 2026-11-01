@@ -1440,6 +1440,8 @@ async function fakeSupabase(page, rows = [], ghosts = {}) {
     expect(req.headers().apikey).toMatch(/^sb_publishable_/);
     if (server.hang) return; // keine Antwort: online.js bricht nach 3 s ab
     if (server.down) return route.fulfill({ status: 503, body: '' });
+    // server.old: Server mit altem schema.sql, submit_run kennt p_best noch nicht
+    if (server.old && fn === 'submit_run' && 'p_best' in body) return route.fulfill({ status: 404, body: '' });
     server.calls[fn].push(body);
     const json = data => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
     if (fn === 'get_ranking') return json(server.rows);
@@ -1638,6 +1640,42 @@ test('Startbildschirm: die besten 3, Geister eigener, bester, beide oder keiner,
   await expect(page.locator('#hud')).toBeVisible();
   expect(await ghosts()).toEqual({ n: 0, tags: 0 });
   expect(errors).toEqual([]);
+});
+
+test('Umstellung auf Bestzeiten: alte Rekorde nachsenden, auch nach altem Server; Geist der schnellsten Fahrt vom Gerät', async ({ page }) => {
+  const errors = watchErrors(page);
+  // Spielstand von vorher (Rangliste gab es schon): ausflug mit Aufnahme, gleich schnell wie die Bestzeit; sz1 einmal schneller gefahren
+  await page.addInitScript(() => {
+    if (localStorage.getItem('murmel-abenteuer-v2')) return;
+    const run = (time, score) => ({ stars: 5, total: 5, time, falls: 0, power: 'normal', score });
+    const track = t => ({ t, skin: 'standard', p: [0, 100, 0, 0, 100, -100] });
+    localStorage.setItem('murmel-abenteuer-v2', JSON.stringify({ current: 'p1', players: [
+      { id: 'p1', name: 'Alt', runs: { ausflug: run(20, 1900), sz1: run(30, 1800) }, times: { ausflug: 20, sz1: 25 } }] }));
+    localStorage.setItem('murmel-geist-v1', JSON.stringify({ p1: { ausflug: track(20), sz1: track(30) } }));
+    localStorage.setItem('murmel-online-v1', JSON.stringify({ seeded: true, queue: {} }));
+  });
+  const server = await fakeSupabase(page);
+  server.old = true;
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  // schnellster Geist: in ausflug ist die Fahrt mit den meisten Punkten auch die schnellste, in sz1 nicht
+  expect(await page.evaluate(() => [window.murmel.progress.fastGhost('ausflug').t, window.murmel.progress.fastGhost('sz1')])).toEqual([20, null]);
+  // alter Server: die Fahrten gehen ohne Bestzeit raus, beim nächsten Start wird nochmal nachgetragen
+  expect(await page.evaluate(() => window.murmel.online.sync())).toBe(true);
+  expect(server.calls.submit_run.map(c => [c.p_level, c.p_best])).toEqual([['ausflug', undefined], ['sz1', undefined]]);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-online-v1')).seededBest)).toBe(false);
+  // Server mit neuem schema.sql: beim nächsten Start gehen die Bestzeiten raus, danach nicht mehr
+  server.old = false;
+  await page.reload();
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  expect(await page.evaluate(() => window.murmel.online.sync())).toBe(true);
+  expect(server.calls.submit_run.slice(2).map(c => [c.p_level, c.p_best])).toEqual([['ausflug', 20], ['sz1', 25]]);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-online-v1')).seededBest)).toBe(true);
+  await page.reload();
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  expect(await page.evaluate(() => window.murmel.online.sync())).toBe(true);
+  expect(server.calls.submit_run).toHaveLength(4);
+  expect(errors.filter(e => !e.includes('404'))).toEqual([]);
 });
 
 test('Online-Rangliste ohne Server: Spiel läuft, Rekord wartet und geht beim nächsten Start raus', async ({ page }) => {

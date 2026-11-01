@@ -56,6 +56,10 @@ export function createProgress() {
   const saveGhosts = () => { store(GHOST_KEY, ghosts); store(FAST_KEY, fast); };
   const byName = name => data.players.find(x => x.name.toLowerCase() === name.toLowerCase());
   const get = (o, p, id) => (p && o[p.id] && o[p.id][id]) || null;
+  const fastOf = (p, id) => {
+    const g = get(ghosts, p, id);
+    return get(fast, p, id) || (g && p.times[id] && g.t === p.times[id] ? g : null);
+  };
   const put = (o, key, id, track) => { const p = player(); if (!p) return; (o[p.id] = o[p.id] || {})[id] = track; store(key, o); };
   const empty = newPlayer('');
   const player = () => data.players.find(p => p.id === data.current) || null;
@@ -89,13 +93,15 @@ export function createProgress() {
     // Bestzeit in Sekunden (0 = noch keine); setTime gibt true zurück, wenn die Zeit neu die beste ist
     bestTime: id => me().times[id] || 0,
     setTime(id, t) { const p = me(), old = p.times[id]; if (old && old <= t) return false; p.times[id] = +t.toFixed(2); save(); return true; },
-    // Aufnahmen: ghost = Fahrt mit den meisten Punkten, fastGhost = schnellste Fahrt (oft dieselbe)
+    // Aufnahmen: ghost = Fahrt mit den meisten Punkten, fastGhost = schnellste Fahrt (oft dieselbe). Ohne eigene Aufnahme
+    // der schnellsten Fahrt (Spielstand von vor den Bestzeit-Geistern) gilt die der Fahrt mit den meisten Punkten, wenn sie
+    // gleich schnell ist wie die Bestzeit.
     ghost: id => get(ghosts, player(), id),
     // Aufnahme eines Spielers auf diesem Gerät (Name ohne Gross/Klein)
     ghostOf: (name, id) => get(ghosts, byName(name), id),
     setGhost: (id, track) => put(ghosts, GHOST_KEY, id, track),
-    fastGhost: id => get(fast, player(), id),
-    fastGhostOf: (name, id) => get(fast, byName(name), id),
+    fastGhost: id => fastOf(player(), id),
+    fastGhostOf: (name, id) => fastOf(byName(name), id),
     setFastGhost: (id, track) => put(fast, FAST_KEY, id, track),
     setSkin(id) { me().skin = id; save(); },
     get trail() { return me().trail; },

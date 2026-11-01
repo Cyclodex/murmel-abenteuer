@@ -41,8 +41,8 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/stickers.js` | Sticker-Album: pro Welt 🏆 🌟 💎 💀 (aus `src/levels/index.js` erzeugt), dazu Extras; Antippen im Album erklärt den Sticker |
 | `src/ghost.js` | Fahrt aufnehmen (alle 0.1 s), Position einer Aufnahme zu einer Zeit (Geistermurmel, Zuschauen), Zeitformat |
 | `src/cheer.js` | Jubel beim Freischalten (Emojis, Konfetti, Klang `jubel`) |
-| `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne, Bestzeiten, beste Fahrt mit Punkten, Murmel, Spur, Bonussterne und Sticker pro Spieler; Einstellungen für alle; Geister-Fahrten getrennt (`murmel-geist-v1`) |
-| `src/score.js` | Punkte einer Fahrt (pro Level höchstens 2050: Sterne-Anteil 1000, Zeit gegen die Richtzeit bis 750, ohne Absturz 300, je Absturz 100 weniger) und Rangliste nach Punkten (Stärke wird nur angezeigt) |
+| `src/progress.js` | Spielstand in localStorage: Spieler mit Name, Sterne, Bestzeiten, beste Fahrt mit Punkten, Murmel, Spur, Bonussterne und Sticker pro Spieler; Einstellungen für alle; Geister-Fahrten getrennt (`murmel-geist-v1`, schnellste Fahrten `murmel-geist-schnell-v1`) |
+| `src/score.js` | Punkte einer Fahrt (pro Level höchstens 2050: Sterne-Anteil 1000, Zeit gegen die Richtzeit bis 750, ohne Absturz 300, je Absturz 100 weniger) und Rangliste nach Punkten (Stärke wird nur angezeigt), Rangliste nach Bestzeit und Streckenrekorde (`fastest`) |
 | `src/levels/richtzeiten.js` | Richtzeit pro Level für die Punkte (Autopilot, Stärke normal, Standard-Murmel), erzeugt mit `node tests/richtzeiten.mjs [id ...]` |
 | `src/online.js` | Online-Rangliste über Supabase (nur `fetch`, 3 s Timeout, Fehler still): neue Rekorde mit Geist-Aufnahme senden (ohne Netz in localStorage `murmel-online-v1` vormerken, später nachsenden), Rangliste holen, Geist laden. Auf localhost aus (Tests: localStorage `murmel-online` = `an`) |
 | `supabase/schema.sql` | Tabelle und die drei Funktionen der Online-Rangliste, einmal im Supabase SQL-Editor ausführen |
@@ -51,19 +51,24 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 
 ## Online-Rangliste
 
-Eine weltweite Rangliste ohne Konten: pro Name und Level die Fahrt mit den meisten Punkten und ihre Aufnahme.
-Die Aufnahme der Fahrt mit den meisten Punkten ist auch der eigene Geist (gleich wie online, nicht die schnellste Fahrt).
+Eine weltweite Rangliste ohne Konten: pro Name und Level die Fahrt mit den meisten Punkten und ihre Aufnahme,
+dazu die Bestzeit (schnellste Fahrt ins Ziel) mit ihrer Aufnahme.
+Die Aufnahme der Fahrt mit den meisten Punkten ist der eigene Geist beim Levelstart; die der schnellsten Fahrt gibt es in der Rangliste „⏱ Schnellste“.
 Ohne Netz läuft alles lokal weiter, dann mit den Spielern auf dem Gerät.
 
 - **Rangliste** (Knopf ⭐ auf der Karte oder Antippen der Rangliste im Gewinn-Bildschirm): 🌍 alle Level zusammen, mit ◀️ ▶️ jedes offene Level.
-  Die besten 10 und der eigene Platz; wer eine Aufnahme hat: 👁 zuschauen (die Murmel fährt die Aufnahme nach), 👻 gegen sie fahren.
-- **Levelstart:** Hat ein anderer eine Aufnahme, wählen: 👻 eigener Geist, 👻 der beste andere, beide oder 🚫 keiner (die Wahl wird gemerkt).
-  Fremde Geister tragen ein Namensschild, bei zwei Geistern auch der eigene.
+  Umschalter 🏆 Punkte / ⏱ Schnellste (Bestzeiten; auf 🌍 die Streckenrekorde = in wie vielen Leveln jemand am schnellsten ist).
+  Die besten 10 und der eigene Platz; wer eine Aufnahme hat (bei Punkten die Fahrt mit den meisten Punkten, bei Schnellste die schnellste):
+  👻 → 📺 zuschauen (die Murmel fährt die Aufnahme nach) oder 🏁 gegen sie fahren.
+- **Levelstart:** Haben andere schon eine Fahrt im Level, zeigt der Startbildschirm die besten 3 nach Punkten und nach Zeit (dazu den eigenen Platz)
+  und die Geister als Schalter: „Dein Geist“ und „Bester Geist“ (bester anderer mit Aufnahme, nach Punkten), beide oder keiner (die Wahl wird gemerkt);
+  ▶️ Los sagt, gegen wen es geht. Fremde Geister tragen ein Namensschild, bei zwei Geistern auch der eigene.
 - **Gewinn-Bildschirm:** die besten 5 im Level und der eigene Platz, 👻 fährt gegen die Aufnahme des besten anderen.
 
 - **Datenschutz:** Namen und Fahrten sind für alle sichtbar und liegen bei Supabase (Region EU, Frankfurt). Nur Vornamen oder Spitznamen verwenden.
 - **Kein Schutz gegen Schummeln:** Jeder kann beliebige Namen und Punkte senden. Gleicher Name = gleicher Eintrag, auch auf einem anderen Gerät.
 - **Einrichtung:** Supabase-Projekt (Gratis-Plan), `supabase/schema.sql` im SQL-Editor ausführen, Projekt-URL und Publishable Key in `src/online.js`.
+  Bei Änderungen an `schema.sql` zuerst das Schema neu ausführen, dann veröffentlichen (ältere Spiel-Versionen laufen mit dem neuen Schema weiter).
 - **Pausieren:** Supabase pausiert Gratis-Projekte nach einer Woche ohne Anfragen. Die Action „Rangliste wach halten“ (`.github/workflows/rangliste-wach.yml`) ruft die Rangliste alle 3 Tage ab.
 
 ## Level bauen
