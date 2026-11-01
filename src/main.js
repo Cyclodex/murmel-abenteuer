@@ -14,7 +14,7 @@ import { createProgress } from './progress.js';
 import { angleDiff } from './math.js';
 import { figurVon } from './checkpoint-figuren.js';
 import { createRecorder, ghostAt, formatTime, DT } from './ghost.js';
-import { score, ranking } from './score.js';
+import { score, ranking, fastest } from './score.js';
 import { createOnline } from './online.js';
 
 const $ = id => document.getElementById(id);
@@ -338,7 +338,7 @@ function onWin() {
   const lv = LEVELS[levelIdx], before = progress.totalStars(), trailsBefore = TRAILS.filter(trailOpen);
   const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got);
   progress.finish(lv.id, game.st.stars, bonus);
-  const t = game.time, had = progress.bestTime(lv.id), fastest = progress.setTime(lv.id, t);
+  const t = game.time, had = progress.bestTime(lv.id), newBest = progress.setTime(lv.id, t);
   // Geister, die mitgefahren sind: schneller als alle = Sticker 👻
   const ghosts = race && race.level === lv.id ? race.list.map(g => g.track) : [progress.ghost(lv.id)].filter(Boolean);
   // Punkte der Fahrt (Zeit gerundet wie gespeichert, damit sie sich aus den gespeicherten Werten nachrechnen lassen)
@@ -347,14 +347,20 @@ function onWin() {
   const hadRun = progress.run(lv.id), record = !lv.pruefstand && progress.setRun(lv.id, run); // Prüfstand: kein Rekord, nicht online
   // Neuer Rekord: die Fahrt wird der eigene Geist (auch in einer laufenden Wettfahrt) und geht mit Aufnahme in die
   // Online-Rangliste, danach Rangliste neu zeigen
+  // Neue Bestzeit: die Fahrt wird zusätzlich der schnellste Geist (Rangliste „Schnellste“: zuschauen, gegen ihn fahren).
+  // Ist es dieselbe Fahrt, schickt online.submit die Aufnahme nur einmal.
+  const fastRun = newBest && !lv.pruefstand, track = record || fastRun ? rec.track(t, currentSkin().id) : null;
   if (record) {
-    const track = rec.track(t, currentSkin().id);
     progress.setGhost(lv.id, track);
     if (race) for (const g of race.list) if (g.own) g.track = track;
-    online.submit(progress.player().name, lv.id, run, track).then(ok => { if (ok && lv === LEVELS[levelIdx]) showWinRank(); });
+  }
+  if (fastRun) progress.setFastGhost(lv.id, track);
+  if (!lv.pruefstand && (record || newBest) && progress.run(lv.id)) {
+    online.submit(progress.player().name, lv.id, progress.run(lv.id), record ? track : null, progress.bestTime(lv.id), fastRun && !record ? track : null)
+      .then(ok => { if (ok && lv === LEVELS[levelIdx]) showWinRank(); });
   }
   $('winScore').textContent = `🏆 ${fmtScore(run.score)}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : hadRun ? ` · 🏆 ${fmtScore(hadRun.score)}` : '');
-  $('winTime').textContent = `⏱ ${formatTime(t)}` + (fastest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
+  $('winTime').textContent = `⏱ ${formatTime(t)}` + (newBest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
   const after = progress.totalStars();
   const stickers = syncStickers({ dreckig: game.dirtPeak >= 1, sauber: game.washed, geist: ghosts.length > 0 && ghosts.every(g => t < g.t) });
   const fresh = SKINS.filter(s => skinNeed(s) > before && skinNeed(s) <= after);
@@ -397,13 +403,20 @@ $('winRank').onclick = () => { audio.sfx('tap'); showRanks(LEVELS[levelIdx].id, 
 const same = (a, b) => a.toLowerCase() === b.toLowerCase();
 const place = i => MEDALS[i] || `${i + 1}.`;
 const okTrack = tr => (tr && Array.isArray(tr.p) && tr.p.length >= 3 ? tr : null);
-// Aufnahme zu einem Namen: zuerst ein Spieler auf dem Gerät, sonst online (hasGhost weiss nur, ob es online eine gibt)
-const localGhost = (name, id) => okTrack(progress.ghostOf(name, id));
-const hasGhost = (name, id) => !!localGhost(name, id) || online.rows().some(x => x.ghost && x.level === id && same(x.name, name));
-const loadGhost = async (name, id) => localGhost(name, id) || await online.ghost(name, id);
-// Rangliste als Tabelle: Kopfzeile 🏆 (und 👻, wenn es Aufnahmen gibt), Platz, Name mit Stärke, Punkte rechtsbündig,
-// eigene Zeile hervorgehoben. rows[j] gehört zu list[j]. Namen nur als Text einsetzen, nie als HTML.
-function rankTable(rank, list, me, ghosts = false) {
+// Aufnahme zu einem Namen: zuerst ein Spieler auf dem Gerät, sonst online (hasGhost weiss nur, ob es online eine gibt).
+// kind: 'punkte' = Fahrt mit den meisten Punkten (Standard, auch beim Levelstart), 'zeit' = schnellste Fahrt
+const localGhost = (name, id, kind = 'punkte') => okTrack(kind === 'zeit' ? progress.fastGhostOf(name, id) : progress.ghostOf(name, id));
+const hasGhost = (name, id, kind = 'punkte') => !!localGhost(name, id, kind) ||
+  online.rows().some(x => (kind === 'zeit' ? x.fastGhost : x.ghost) && x.level === id && same(x.name, name));
+const loadGhost = async (name, id, kind = 'punkte') => localGhost(name, id, kind) || await online.ghost(name, id, kind);
+// Rangliste als Tabelle: Kopfzeile head (und 👻, wenn es Aufnahmen gibt), Platz, Name mit Stärke, Wert (val: Punkte,
+// Zeit oder Rekorde) rechtsbündig, eigene Zeile hervorgehoben. rows[j] gehört zu list[j]. Namen nur als Text einsetzen, nie als HTML.
+const MODES = {
+  punkte: { head: '🏆', val: r => fmtScore(r.score), power: true },
+  zeit: { head: '⏱', val: r => formatTime(r.time), power: false },
+  rekorde: { head: '🏁', val: r => String(r.records), power: false }
+};
+function rankTable(rank, list, me, ghosts = false, mode = MODES.punkte) {
   const tab = document.createElement('div'); tab.className = 'rtab';
   const line = (cls, cells) => {
     const row = document.createElement('div'); row.className = cls;
@@ -411,9 +424,9 @@ function rankTable(rank, list, me, ghosts = false) {
     tab.appendChild(row); return row;
   };
   const cols = (pl, name, pts, gh) => [['rpl', pl], ['rname', name], ['rscore', pts], ...(ghosts ? [['rghost', gh]] : [])];
-  line('rhead', cols('', '', '🏆', '👻'));
+  line('rhead', cols('', '', mode.head, '👻'));
   const rows = list.map(r => line('rrow' + (same(r.name, me) ? ' me' : ''),
-    cols(place(rank.indexOf(r)), [r.name, powerEmoji(r)].filter(Boolean).join(' '), fmtScore(r.score), '')));
+    cols(place(rank.indexOf(r)), [r.name, mode.power && powerEmoji(r)].filter(Boolean).join(' '), mode.val(r), '')));
   return { tab, rows };
 }
 // Bester andere Spieler mit Aufnahme in der Level-Rangliste: { r, i } (i = Platz) oder null
@@ -423,43 +436,84 @@ function bestOther(id) {
   return i < 0 ? null : { r: rank[i], i };
 }
 
-// Level antippen: Hat ein anderer eine Aufnahme, wählen gegen wen: eigener Geist, der beste andere, beide oder keiner.
-// Sonst geht es gleich los (mit dem eigenen Geist, falls vorhanden).
+// Level antippen: Haben andere schon eine Fahrt in diesem Level, kommt zuerst der Startbildschirm mit den besten 3
+// (nach Punkten und nach Zeit, dazu der eigene Platz) und den Geistern zum Ein- und Ausschalten: dein Geist (eigene beste
+// Fahrt) und der beste Geist (bester anderer Spieler mit Aufnahme). ▶️ Los startet. Sonst geht es gleich los
+// (mit dem eigenen Geist, falls vorhanden).
 function chooseLevel(i) {
   const lv = LEVELS[i], best = bestOther(lv.id), own = okTrack(progress.ghost(lv.id)), me = progress.player().name;
-  if (!best) { startLevel(i); return; }
+  const rows = allRows(), pts = ranking(rows, lv.id), fast = fastest(rows, lv.id);
+  if (!best && !pts.some(r => !same(r.name, me))) { startLevel(i); return; }
   $('ghostTitle').textContent = `${lv.emoji} ${lv.name}`;
-  const box = $('ghostPick'); box.textContent = '';
+  $('ghostTop').replaceChildren(topList('🏆 Punkte', pts, me, MODES.punkte), topList('⏱ Schnellste', fast, me, MODES.zeit));
+  // Gemerkte Wahl ('ich', 'best', 'beide', 'kein'); ohne Wahl der eigene Geist, ohne eigenen der beste
+  const g = progress.data.geist;
+  const on = { ich: !!own && (g ? g === 'ich' || g === 'beide' : true), best: !!best && (g ? g === 'best' || g === 'beide' : !own) };
+  if (!on.ich && !on.best && g !== 'kein') { on.ich = !!own; on.best = !own && !!best; }
   const opts = [
-    own && { id: 'ich', text: `👻 ${me}`, label: 'Gegen deinen Geist' },
-    { id: 'best', text: `👻 ${place(best.i)} ${best.r.name}`, label: `Gegen ${best.r.name}` },
-    own && { id: 'beide', text: '👻 👻', label: 'Gegen beide' },
-    { id: 'kein', text: '🚫', label: 'Ohne Geist' }
+    own && { id: 'ich', title: 'Dein Geist', who: `${me} · ⏱ ${formatTime(own.t)}` },
+    best && { id: 'best', title: 'Bester Geist', who: `${place(best.i)} ${best.r.name}` + (best.r.time ? ` · ⏱ ${formatTime(best.r.time)}` : '') }
   ].filter(Boolean);
-  const pick = opts.some(o => o.id === progress.data.geist) ? progress.data.geist : opts[0].id;
+  const box = $('ghostPick'); box.textContent = '';
+  const render = () => {
+    for (const b of box.querySelectorAll('.gopt')) b.setAttribute('aria-pressed', String(on[b.dataset.geist]));
+    const go = on.ich && on.best ? 'gegen beide Geister' : on.ich ? 'gegen deinen Geist' : on.best ? `gegen ${best.r.name}` : 'ohne Geist';
+    $('ghostGo').replaceChildren('▶️ Los!', Object.assign(document.createElement('small'), { textContent: go }));
+  };
+  if (opts.length) {
+    const head = document.createElement('div'); head.className = 'ghead'; head.textContent = '👻 Wer fährt mit?';
+    box.appendChild(head);
+  }
   for (const o of opts) {
     const b = document.createElement('button');
-    b.className = 'big' + (o.id === pick ? ' sel' : ''); b.dataset.geist = o.id; b.textContent = o.text;
-    b.setAttribute('aria-label', o.label);
-    b.onclick = async () => {
-      audio.sfx('tap'); progress.setGeist(o.id);
-      box.querySelectorAll('button').forEach(x => { x.disabled = true; });
-      const list = o.id === 'ich' || o.id === 'beide' ? [{ name: me, track: own, own: true }] : [];
-      const other = o.id === 'best' || o.id === 'beide' ? await loadGhost(best.r.name, lv.id) : null;
-      if (other) list.push({ name: best.r.name, track: other });
-      if ($('ghostOv').classList.contains('hidden')) return; // inzwischen zur Karte
-      startLevel(i, list);
-      if ((o.id === 'best' || o.id === 'beide') && !other) toast('📡 ❌');
+    b.className = 'gopt'; b.dataset.geist = o.id;
+    const chk = document.createElement('span'); chk.className = 'gchk'; chk.setAttribute('aria-hidden', 'true');
+    const txt = document.createElement('span'); txt.className = 'gtxt';
+    txt.append(Object.assign(document.createElement('b'), { textContent: o.title }), Object.assign(document.createElement('small'), { textContent: o.who }));
+    const emo = document.createElement('span'); emo.className = 'gemo'; emo.textContent = '👻'; emo.setAttribute('aria-hidden', 'true');
+    b.append(chk, txt, emo);
+    b.onclick = () => {
+      audio.sfx('tap'); on[o.id] = !on[o.id]; render();
+      progress.setGeist(on.ich && on.best ? 'beide' : on.ich ? 'ich' : on.best ? 'best' : 'kein');
     };
     box.appendChild(b);
   }
+  show('ghostPick', opts.length > 0);
+  render();
+  $('ghostGo').disabled = false;
+  $('ghostGo').onclick = async () => {
+    audio.sfx('tap'); $('ghostGo').disabled = true;
+    const list = on.ich ? [{ name: me, track: own, own: true }] : [];
+    const other = on.best ? await loadGhost(best.r.name, lv.id) : null;
+    if (other) list.push({ name: best.r.name, track: other });
+    if ($('ghostOv').classList.contains('hidden')) return; // inzwischen zur Karte
+    startLevel(i, list);
+    if (on.best && !other) toast('📡 ❌');
+  };
   ['mapOv', 'winOv', 'rankOv'].forEach(id => show(id, false));
   show('ghostOv');
+}
+// Die besten 3 einer Rangliste als kleine Spalte für den Startbildschirm, dazu der eigene Platz, falls weiter hinten
+function topList(title, rank, me, mode) {
+  const col = document.createElement('div'); col.className = 'tcol';
+  const head = document.createElement('div'); head.className = 'thead'; head.textContent = title;
+  col.appendChild(head);
+  const k = rank.findIndex(r => same(r.name, me));
+  for (const r of [...rank.slice(0, 3), ...(k >= 3 ? [rank[k]] : [])]) {
+    const row = document.createElement('div'); row.className = 'trow' + (same(r.name, me) ? ' me' : '');
+    for (const [c, t] of [['rpl', place(rank.indexOf(r))], ['rname', r.name], ['tval', mode.val(r)]]) {
+      const x = document.createElement('span'); x.className = c; x.textContent = t; row.appendChild(x);
+    }
+    col.appendChild(row);
+  }
+  if (!rank.length) col.appendChild(Object.assign(document.createElement('div'), { className: 'trow', textContent: '🤷' }));
+  return col;
 }
 $('ghostBack').onclick = () => { audio.sfx('tap'); showMap(); };
 
 // ---------- Rangliste: 🌍 alle Level zusammen oder ein Level; 👻 bei einer Aufnahme: zuschauen 📺 oder gegen sie fahren 🏁 ----------
-let rankPage = 0, rankFromWin = false;
+// Modus: 'punkte' (meiste Punkte) oder 'zeit' (schnellste; auf 🌍 die meisten Streckenrekorde)
+let rankPage = 0, rankFromWin = false, rankMode = 'punkte';
 const rankPages = () => [null, ...LEVELS.filter((lv, i) => !lv.pruefstand && isOpen(i))];
 // levelId = diese Seite zeigen (null = 🌍); fromWin = vom Gewinn-Bildschirm aus (✔️ geht dorthin zurück, sonst zur Karte)
 function showRanks(levelId = null, fromWin = false) {
@@ -474,29 +528,35 @@ function showRanks(levelId = null, fromWin = false) {
 function renderRanks() {
   const pages = rankPages(), lv = pages[rankPage], id = lv ? lv.id : null, me = progress.player().name;
   $('rankTitle').textContent = lv ? `${lv.emoji} ${lv.name}` : '🌍';
-  // die besten 10 und der eigene Platz
-  const rank = ranking(allRows(), id), k = rank.findIndex(r => same(r.name, me));
+  for (const b of document.querySelectorAll('#rankMode button')) b.setAttribute('aria-pressed', String(b.dataset.mode === rankMode));
+  const byTime = rankMode === 'zeit', mode = byTime ? (id ? MODES.zeit : MODES.rekorde) : MODES.punkte;
+  $('rankHint').textContent = byTime && !id ? '🏁 In so vielen Leveln die schnellste Zeit' : '';
+  show('rankHint', byTime && !id);
+  // die besten 10 und der eigene Platz; 👻-Spalte in einem Level: bei Punkten die Fahrt mit den meisten Punkten,
+  // bei Schnellste die schnellste Fahrt
+  const rank = byTime ? fastest(allRows(), id) : ranking(allRows(), id), k = rank.findIndex(r => same(r.name, me));
   const list = [...rank.slice(0, 10), ...(k >= 10 ? [rank[k]] : [])];
-  const { tab, rows } = rankTable(rank, list, me, !!id);
+  const { tab, rows } = rankTable(rank, list, me, !!id, mode);
   $('rankList').replaceChildren(...(rank.length ? [tab] : []));
   // 👻 nur bei Aufnahmen: öffnet die Auswahl zuschauen / gegen den Geist fahren
   if (id) list.forEach((r, j) => {
-    if (!hasGhost(r.name, id)) return;
+    if (!hasGhost(r.name, id, rankMode)) return;
     const b = document.createElement('button'); b.textContent = '👻'; b.setAttribute('aria-label', `Aufnahme von ${r.name}`);
-    b.onclick = () => { audio.sfx('tap'); pickGhost(lv, r); };
+    b.onclick = () => { audio.sfx('tap'); pickGhost(lv, r, rankMode); };
     rows[j].querySelector('.rghost').appendChild(b);
   });
   show('rankEmpty', !rank.length);
 }
-// Auswahl zur Aufnahme eines Spielers: 📺 zuschauen, 🏁 gegen den Geist fahren (nicht gegen sich selbst), ✖️ zurück
-function pickGhost(lv, r) {
+// Auswahl zur Aufnahme eines Spielers (kind: 'punkte' oder 'zeit', siehe loadGhost): 📺 zuschauen, 🏁 gegen den Geist
+// fahren (nicht gegen sich selbst), ✖️ zurück
+function pickGhost(lv, r, kind = 'punkte') {
   const own = same(r.name, progress.player().name);
-  $('rankGhostTitle').textContent = `👻 ${r.name} · 🏆 ${fmtScore(r.score)}`;
+  $('rankGhostTitle').textContent = `👻 ${r.name} · ` + (kind === 'zeit' ? `⏱ ${formatTime(r.time)}` : `🏆 ${fmtScore(r.score)}`);
   $('rankRace').textContent = `🏁 Gegen ${r.name} fahren`;
   show('rankRace', !own);
   const go = fn => async () => {
     audio.sfx('tap');
-    const track = await loadGhost(r.name, lv.id);
+    const track = await loadGhost(r.name, lv.id, kind);
     if ($('rankGhostOv').classList.contains('hidden')) return; // inzwischen geschlossen
     show('rankGhostOv', false);
     if (!track) { toast('📡 ❌'); return; }
@@ -508,6 +568,9 @@ function pickGhost(lv, r) {
 }
 $('rankGhostBack').onclick = () => { audio.sfx('tap'); show('rankGhostOv', false); };
 const flip = d => { audio.sfx('tap'); const n = rankPages().length; rankPage = (rankPage + d + n) % n; renderRanks(); };
+for (const b of document.querySelectorAll('#rankMode button')) {
+  b.onclick = () => { if (rankMode === b.dataset.mode) return; audio.sfx('tap'); rankMode = b.dataset.mode; renderRanks(); };
+}
 $('rankPrev').onclick = () => flip(-1);
 $('rankNext').onclick = () => flip(1);
 $('rankBack').onclick = () => { audio.sfx('tap'); if (rankFromWin) { show('rankOv', false); show('winOv'); } else showMap(); };

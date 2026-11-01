@@ -22,11 +22,18 @@ async function newPlayer(page, name) {
   await expect(page.locator('#mapOv')).toBeVisible();
 }
 
-// Level auf der Karte antippen; hat ein anderer Spieler eine Aufnahme, fragt das Spiel nach den Geistern: ohne Geist fahren
+// Level auf der Karte antippen; haben andere Spieler schon eine Fahrt, kommt der Startbildschirm: ohne Geist fahren
 async function openLevel(page, id) {
   await page.click(`.lvl[data-level="${id}"]`);
-  if (await page.locator('#ghostOv').isVisible()) await page.click('#ghostPick [data-geist="kein"]');
+  if (await page.locator('#ghostOv').isVisible()) await startWith(page, []);
   await expect(page.locator('#hud')).toBeVisible();
+}
+// Startbildschirm: genau diese Geister einschalten ('ich' = dein Geist, 'best' = bester Geist), dann ▶️ Los
+async function startWith(page, ids) {
+  for (const b of await page.locator('#ghostPick .gopt').all()) {
+    if ((await b.getAttribute('aria-pressed') === 'true') !== ids.includes(await b.getAttribute('data-geist'))) await b.click();
+  }
+  await page.click('#ghostGo');
 }
 
 // Start -> Joystick -> Spieler -> Karte -> Level wählen
@@ -1433,13 +1440,16 @@ async function fakeSupabase(page, rows = [], ghosts = {}) {
     expect(req.headers().apikey).toMatch(/^sb_publishable_/);
     if (server.hang) return; // keine Antwort: online.js bricht nach 3 s ab
     if (server.down) return route.fulfill({ status: 503, body: '' });
+    // server.old: Server mit altem schema.sql, submit_run kennt p_best noch nicht
+    if (server.old && fn === 'submit_run' && 'p_best' in body) return route.fulfill({ status: 404, body: '' });
     server.calls[fn].push(body);
     const json = data => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
     if (fn === 'get_ranking') return json(server.rows);
-    if (fn === 'get_ghost') return json(ghosts[body.p_name + '/' + body.p_level] ?? null);
+    if (fn === 'get_ghost') return json(ghosts[body.p_name + '/' + body.p_level + (body.p_kind === 'zeit' ? '/zeit' : '')] ?? null);
     const b = body;
     server.rows = server.rows.filter(r => !(r.name.toLowerCase() === b.p_name.toLowerCase() && r.level === b.p_level));
-    server.rows.push({ name: b.p_name, level: b.p_level, stars: b.p_stars, total: b.p_total, seconds: b.p_seconds, falls: b.p_falls, power: b.p_power, score: b.p_score, ghost: !!b.p_ghost });
+    server.rows.push({ name: b.p_name, level: b.p_level, stars: b.p_stars, total: b.p_total, seconds: b.p_seconds, falls: b.p_falls, power: b.p_power, score: b.p_score, ghost: !!b.p_ghost,
+      best_seconds: b.p_best, fast_ghost: !!(b.p_fast_ghost || (b.p_ghost && b.p_best >= b.p_seconds)) });
     return json(true);
   });
   return server;
@@ -1451,17 +1461,24 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geis
   // ausflug: Max 1000 + 750 + 200 = 1950, Zoe 800 + 750 + 300 = 1850 (mit Aufnahme); sz1: Max 1000 + 750 + 300 = 2050
   const track = { t: 3, skin: 'fussball', p: [0, 100, 0, 0, 100, -500, 0, 100, -1000] }; // Zentimeter
   const server = await fakeSupabase(page,
-    [online('Max', 'ausflug', 5, 5, 1, 1), online('Zoe', 'ausflug', 4, 5, 1, 0, true), online('Max', 'sz1', 6, 6, 1, 0)],
-    { 'Zoe/ausflug': track });
+    [{ ...online('Max', 'ausflug', 5, 5, 1, 1), best_seconds: 0.1 }, { ...online('Zoe', 'ausflug', 4, 5, 1, 0, true), fast_ghost: true },
+      online('Max', 'sz1', 6, 6, 1, 0)],
+    { 'Zoe/ausflug': track, 'Zoe/ausflug/zeit': { ...track, t: 1 } });
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
   await page.click('#startJoy');
   await newPlayer(page, 'Test');
-  // Rangliste beim Öffnen der Karte geholt. Zoe hat eine Aufnahme, eine eigene gibt es noch nicht: Zoe oder ohne Geist
+  // Rangliste beim Öffnen der Karte geholt. Startbildschirm: die besten nach Punkten und nach Zeit (Max mit Bestzeit 0.1,
+  // schneller als seine Fahrt mit den meisten Punkten); Zoe hat eine Aufnahme, eine eigene gibt es noch nicht: nur „Bester Geist“, an
   await expect.poll(() => page.evaluate(() => window.murmel.online.rows().length)).toBe(3);
   await page.click('.lvl[data-level="ausflug"]');
-  await expect(page.locator('#ghostPick button')).toHaveText(['👻 🥈 Zoe', '🚫']);
-  await page.click('#ghostPick [data-geist="kein"]');
+  await expect(page.locator('#ghostTop .tcol').nth(0).locator('.rname')).toHaveText(['Max', 'Zoe']);
+  await expect(page.locator('#ghostTop .tcol').nth(1).locator('.tval')).toHaveText(['0.1', '1.0']);
+  await expect(page.locator('#ghostPick .gopt')).toHaveCount(1);
+  await expect(page.locator('#ghostPick [data-geist="best"] small')).toHaveText('🥈 Zoe · ⏱ 1.0');
+  await expect(page.locator('#ghostPick [data-geist="best"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#ghostGo small')).toHaveText('gegen Zoe');
+  await startWith(page, []);
   await expect(page.locator('#hud')).toBeVisible();
   expect(await page.evaluate(() => window.murmel.view.ghost)).toBeNull();
   await page.waitForFunction(() => window.murmel.game.time > 0.3); // Aufnahme mit ein paar Punkten
@@ -1476,6 +1493,10 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geis
   expect(sent.p_ghost.p.length % 3).toBe(0);
   expect(sent.p_ghost.p.length).toBeGreaterThan(0);
   expect(await page.evaluate(() => window.murmel.progress.ghost('ausflug').p)).toEqual(sent.p_ghost.p);
+  // erste Fahrt ist auch die schnellste: dieselbe Aufnahme ist der schnellste Geist, online nur einmal gesendet
+  expect(await page.evaluate(() => window.murmel.progress.fastGhost('ausflug').p)).toEqual(sent.p_ghost.p);
+  expect(sent.p_best).toBe(sent.p_seconds);
+  expect(sent.p_fast_ghost).toBeNull();
   // Level-Rangliste mit den Online-Fahrten (Punkte aus den Rohwerten neu gerechnet), Geist des besten anderen mit Aufnahme
   await expect(page.locator('#winRank .rrow .rname')).toHaveText(['Test 🐇', 'Max 🐇', 'Zoe 🐇']);
   await expect(page.locator('#winRank .rrow .rscore')).toHaveText(['2’050', '1’950', '1’850']);
@@ -1529,12 +1550,39 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geis
   await expect(page.locator('#rankOv')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('#rankTitle')).toHaveText('🌳 Erster Ausflug');
   expect(await page.evaluate(() => window.murmel.watching)).toBeNull();
+  // ⏱ Schnellste: Bestzeiten, 👻 = Aufnahme der schnellsten Fahrt; auf 🌍 die Streckenrekorde (Max ist in beiden Leveln am schnellsten)
+  await page.click('#rankMode [data-mode="zeit"]');
+  await expect(page.locator('#rankMode [aria-pressed="true"]')).toHaveText('⏱ Schnellste');
+  await expect(page.locator('#rankList .rhead')).toHaveText('⏱👻');
+  await expect(page.locator('#rankList .rrow .rname').first()).toHaveText('Max');
+  await expect(page.locator('#rankList .rrow .rscore').first()).toHaveText('0.1');
+  await expect(page.locator('#rankList .rrow .rname')).toHaveCount(3);
+  await expect(page.locator('#rankList .rrow .rghost').first()).toHaveText(''); // Max: keine Aufnahme
+  await expect(page.locator('#rankList [aria-label="Aufnahme von Test"]')).toBeVisible();
+  // Zoes schnellste Fahrt: gegen sie fahren holt die Aufnahme der schnellsten Fahrt
+  await page.click('#rankList [aria-label="Aufnahme von Zoe"]');
+  await expect(page.locator('#rankGhostTitle')).toHaveText('👻 Zoe · ⏱ 1.0');
+  await page.click('#rankRace');
+  await expect(page.locator('#hud')).toBeVisible();
+  expect(server.calls.get_ghost.at(-1)).toEqual({ p_name: 'Zoe', p_level: 'ausflug', p_kind: 'zeit' });
+  expect(await page.evaluate(() => window.murmel.view.ghosts.length)).toBe(1);
+  await page.click('#btnHome');
+  await page.click('#mapStars');
+  await page.click('#rankMode [data-mode="zeit"]');
+  await expect(page.locator('#rankTitle')).toHaveText('🌍');
+  await expect(page.locator('#rankHint')).toBeVisible();
+  await expect(page.locator('#rankList .rhead')).toHaveText('🏁');
+  await expect(page.locator('#rankList .rrow .rname')).toHaveText(['Max']);
+  await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['2']);
+  await page.click('#rankMode [data-mode="punkte"]');
+  await expect(page.locator('#rankHint')).toBeHidden();
+  await expect(page.locator('#rankList .rrow .rscore')).toHaveText(['4’000', '2’050', '1’850']);
   await page.click('#rankBack');
   await expect(page.locator('#mapOv')).toBeVisible();
   expect(errors).toEqual([]);
 });
 
-test('Geister beim Levelstart: eigener, bester, beide oder keiner, mit Namensschild', async ({ page }) => {
+test('Startbildschirm: die besten 3, Geister eigener, bester, beide oder keiner, mit Namensschild', async ({ page }) => {
   const errors = watchErrors(page);
   const zoe = { t: 3, skin: 'fussball', p: [0, 100, 0, 0, 100, -500, 0, 100, -1000] };
   await fakeSupabase(page, [online('Zoe', 'ausflug', 4, 5, 1, 0, true)], { 'Zoe/ausflug': zoe });
@@ -1550,12 +1598,23 @@ test('Geister beim Levelstart: eigener, bester, beide oder keiner, mit Namenssch
   });
   await expect.poll(() => page.evaluate(() => window.murmel.online.rows().length)).toBe(1);
   const ghosts = () => page.evaluate(() => ({ n: window.murmel.view.ghosts.length, tags: window.murmel.view.scene.children.filter(o => o.isSprite).length }));
-  // beide: zwei Geister, beide mit Namen
+  // Startbildschirm: die besten 3 nach Punkten und nach Zeit, eigene Zeile markiert
   await page.click('.lvl[data-level="ausflug"]');
   await expect(page.locator('#ghostTitle')).toHaveText('🌳 Erster Ausflug');
-  await expect(page.locator('#ghostPick button')).toHaveText(['👻 Test', '👻 🥇 Zoe', '👻 👻', '🚫']);
-  await expect(page.locator('#ghostPick .sel')).toHaveText('👻 Test');
-  await page.click('#ghostPick [data-geist="beide"]');
+  await expect(page.locator('#ghostTop .thead')).toHaveText(['🏆 Punkte', '⏱ Schnellste']);
+  await expect(page.locator('#ghostTop .tcol').nth(0).locator('.rname')).toHaveText(['Zoe', 'Test']);
+  await expect(page.locator('#ghostTop .tcol').nth(0).locator('.tval')).toHaveText(['1’850', '999']);
+  await expect(page.locator('#ghostTop .tcol').nth(1).locator('.tval')).toHaveText(['1.0', '20.0']);
+  await expect(page.locator('#ghostTop .trow.me .rname')).toHaveText(['Test', 'Test']);
+  // zwei Geister zum Ein- und Ausschalten; ohne gemerkte Wahl ist der eigene an
+  await expect(page.locator('#ghostPick .gopt b')).toHaveText(['Dein Geist', 'Bester Geist']);
+  await expect(page.locator('#ghostPick .gopt small')).toHaveText(['Test · ⏱ 2.0', '🥇 Zoe · ⏱ 1.0']);
+  await expect(page.locator('#ghostPick [aria-pressed="true"]')).toHaveAttribute('data-geist', 'ich');
+  await expect(page.locator('#ghostGo small')).toHaveText('gegen deinen Geist');
+  // beide: zwei Geister, beide mit Namen
+  await page.click('#ghostPick [data-geist="best"]');
+  await expect(page.locator('#ghostGo small')).toHaveText('gegen beide Geister');
+  await page.click('#ghostGo');
   await expect(page.locator('#hud')).toBeVisible();
   expect(await ghosts()).toEqual({ n: 2, tags: 2 });
   await page.click('#btnReset'); // Nochmal: dieselben Geister
@@ -1563,13 +1622,13 @@ test('Geister beim Levelstart: eigener, bester, beide oder keiner, mit Namenssch
   // Wahl wird gemerkt; nur der eigene: ohne Namen
   await page.click('#btnHome');
   await page.click('.lvl[data-level="ausflug"]');
-  await expect(page.locator('#ghostPick .sel')).toHaveText('👻 👻');
-  await page.click('#ghostPick [data-geist="ich"]');
+  await expect(page.locator('#ghostPick [aria-pressed="true"]')).toHaveCount(2);
+  await startWith(page, ['ich']);
   expect(await ghosts()).toEqual({ n: 1, tags: 0 });
   // nur Zoe: mit Namen
   await page.click('#btnHome');
   await page.click('.lvl[data-level="ausflug"]');
-  await page.click('#ghostPick [data-geist="best"]');
+  await startWith(page, ['best']);
   await expect(page.locator('#hud')).toBeVisible(); // Aufnahme wird online geholt
   expect(await ghosts()).toEqual({ n: 1, tags: 1 });
   await page.waitForFunction(() => window.murmel.game.time > 0.5);
@@ -1577,9 +1636,47 @@ test('Geister beim Levelstart: eigener, bester, beide oder keiner, mit Namenssch
   // keiner
   await page.click('#btnHome');
   await page.click('.lvl[data-level="ausflug"]');
-  await page.click('#ghostPick [data-geist="kein"]');
+  await startWith(page, []);
+  await expect(page.locator('#hud')).toBeVisible();
   expect(await ghosts()).toEqual({ n: 0, tags: 0 });
   expect(errors).toEqual([]);
+});
+
+test('Umstellung auf Bestzeiten: alte Rekorde nachsenden, auch nach altem Server; Geist der schnellsten Fahrt vom Gerät', async ({ page }) => {
+  const errors = watchErrors(page);
+  // Spielstand von vorher (Rangliste gab es schon): ausflug mit Aufnahme, gleich schnell wie die Bestzeit; sz1 einmal schneller gefahren
+  await page.addInitScript(() => {
+    if (localStorage.getItem('murmel-abenteuer-v2')) return;
+    const run = (time, score) => ({ stars: 5, total: 5, time, falls: 0, power: 'normal', score });
+    const track = t => ({ t, skin: 'standard', p: [0, 100, 0, 0, 100, -100] });
+    localStorage.setItem('murmel-abenteuer-v2', JSON.stringify({ current: 'p1', players: [
+      { id: 'p1', name: 'Alt', runs: { ausflug: run(20, 1900), sz1: run(30, 1800) }, times: { ausflug: 20, sz1: 25 } }] }));
+    localStorage.setItem('murmel-geist-v1', JSON.stringify({ p1: { ausflug: track(20), sz1: track(30) } }));
+    localStorage.setItem('murmel-online-v1', JSON.stringify({ seeded: true, queue: {} }));
+  });
+  const server = await fakeSupabase(page);
+  server.old = true;
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  // schnellster Geist: in ausflug ist die Fahrt mit den meisten Punkten auch die schnellste, in sz1 nicht
+  expect(await page.evaluate(() => [window.murmel.progress.fastGhost('ausflug').t, window.murmel.progress.fastGhost('sz1')])).toEqual([20, null]);
+  // alter Server: die Fahrten gehen ohne Bestzeit raus, beim nächsten Start wird nochmal nachgetragen
+  expect(await page.evaluate(() => window.murmel.online.sync())).toBe(true);
+  expect(server.calls.submit_run.map(c => [c.p_level, c.p_best])).toEqual([['ausflug', undefined], ['sz1', undefined]]);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-online-v1')).seededBest)).toBe(false);
+  // Server mit neuem schema.sql: beim nächsten Start gehen die Bestzeiten raus, danach nicht mehr
+  server.old = false;
+  await page.reload();
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  expect(await page.evaluate(() => window.murmel.online.sync())).toBe(true);
+  expect(server.calls.submit_run.slice(2).map(c => [c.p_level, c.p_best])).toEqual([['ausflug', 20], ['sz1', 25]]);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-online-v1')).seededBest)).toBe(true);
+  await page.reload();
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  expect(await page.evaluate(() => window.murmel.online.sync())).toBe(true);
+  expect(server.calls.submit_run).toHaveLength(4);
+  // Anfragen an den Server: 404 vom alten Server, beim Neuladen abgebrochene Anfragen (wie im Test „ohne Server“); sonst keine Fehler
+  expect(errors.filter(e => !e.includes('supabase.co') && !e.includes('404'))).toEqual([]);
 });
 
 test('Online-Rangliste ohne Server: Spiel läuft, Rekord wartet und geht beim nächsten Start raus', async ({ page }) => {
@@ -1610,18 +1707,19 @@ test('Online-Rangliste ohne Server: Spiel läuft, Rekord wartet und geht beim n�
 test('Punkte: Sterne, Zeit gegen Richtzeit, Abstürze; Rangliste aus Zeilen', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {
-    const { score, ranking } = await import('/src/score.js');
+    const { score, ranking, fastest } = await import('/src/score.js');
     const { RICHTZEIT } = await import('/src/levels/richtzeiten.js');
     const { LEVELS } = await import('/src/levels/index.js');
     const run = (stars, time, falls, level = 'sz1') => score({ level, stars, total: 6, time, falls });
     const rows = [
-      { name: 'Anna', level: 'sz1', score: 100, power: 'normal' }, { name: 'anna', level: 'sz1', score: 300, power: 'extrem' },
-      { name: 'Anna', level: 'k1', score: 50, power: 'normal' }, { name: 'Ben', level: 'sz1', score: 200, power: 'sanft' }
+      { name: 'Anna', level: 'sz1', score: 100, power: 'normal', best: 12 }, { name: 'anna', level: 'sz1', score: 300, power: 'extrem', best: 15 },
+      { name: 'Anna', level: 'k1', score: 50, power: 'normal', best: 30 }, { name: 'Ben', level: 'sz1', score: 200, power: 'sanft', best: 12 },
+      { name: 'Ben', level: 'k1', score: 10, power: 'normal', best: 25 }
     ];
     return {
       par: RICHTZEIT.sz1, missing: LEVELS.filter(l => !(RICHTZEIT[l.id] > 0)).map(l => l.id),
       pts: [run(6, 25, 1), run(6, 40, 0), run(4, 20, 0), run(6, 5, 0), run(6, 0, 0), run(0, 43.8, 5), run(3, 10, 0, 'unbekannt')],
-      total: ranking(rows), sz1: ranking(rows, 'sz1')
+      total: ranking(rows), sz1: ranking(rows, 'sz1'), fastSz1: fastest(rows, 'sz1'), records: fastest(rows)
     };
   });
   expect(r.missing).toEqual([]); // jedes Level hat eine Richtzeit (node tests/richtzeiten.mjs)
@@ -1629,8 +1727,11 @@ test('Punkte: Sterne, Zeit gegen Richtzeit, Abstürze; Rangliste aus Zeilen', as
   // 1000 + 438 + 200 | 1000 + 273.75 + 300 | 666.7 + 547.5 + 300 | 2050 = Maximum | Zeit 0 | 250 + 0 | ohne Richtzeit kein Zeitbonus
   expect(r.pts).toEqual([1638, 1574, 1514, 2050, 2050, 250, 800]);
   // pro Name (ohne Gross/Klein) und Level die beste Zeile; Stärke nur in der Level-Rangliste
-  expect(r.total).toEqual([{ name: 'anna', score: 350 }, { name: 'Ben', score: 200 }]);
+  expect(r.total).toEqual([{ name: 'anna', score: 350 }, { name: 'Ben', score: 210 }]);
   expect(r.sz1).toEqual([{ name: 'anna', score: 300, power: 'extrem' }, { name: 'Ben', score: 200, power: 'sanft' }]);
+  // Schnellste: pro Name die Bestzeit (gleich schnell: nach Name); 🌍 Streckenrekorde, gleich schnell zählt für beide
+  expect(r.fastSz1).toEqual([{ name: 'Anna', time: 12 }, { name: 'Ben', time: 12 }]);
+  expect(r.records).toEqual([{ name: 'Ben', records: 2 }, { name: 'Anna', records: 1 }]);
 });
 
 test('Zeit messen: Aufnahme, Geistermurmel und Zeitformat', async ({ page }) => {
@@ -1675,6 +1776,7 @@ test('Bestzeit: Zeit im HUD, Geistermurmel fährt mit, Sticker 👻 wenn schnell
   expect(t2).toBeLessThan(t1);
   expect((await saved(page)).stickers['x:geist']).toBe(true);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-geist-v1'))[JSON.parse(localStorage.getItem('murmel-abenteuer-v2')).current].ausflug.t)).toBe(t2);
+  expect(await page.evaluate(() => window.murmel.progress.fastGhost('ausflug').t)).toBe(t2); // auch der schnellste Geist
   expect(errors).toEqual([]);
 });
 
