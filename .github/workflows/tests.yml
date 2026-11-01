@@ -31,7 +31,8 @@ jobs:
   test:
     needs: neu
     if: needs.neu.outputs.run == 'true'
-    runs-on: ubuntu-latest
+    # Ubuntu 24.04 fest: auf ubuntu-latest (26.04) installiert Playwright 1.56 kein Chromium
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: false
