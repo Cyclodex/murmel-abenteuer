@@ -222,7 +222,8 @@ test('Mehrere Spieler: eigener Spielstand, Rangliste nach Punkten', async ({ pag
   await expect(page.locator('#btnPlayer')).toHaveText('👤 Anna');
   // 3 von 5 Sternen, sofort im Ziel (Zeitbonus voll), 1 Absturz: 600 + 750 + 200
   await win('ausflug', 3, [0, 5, -69], 1);
-  await expect(page.locator('#winScore')).toHaveText('🏆 1’550 · 💥1');
+  await expect(page.locator('#winScore .wv')).toHaveText('🏆 1’550');
+  await expect(page.locator('#winScore small')).toHaveText('Punkte · 💥 1 Absturz');
   await expect(page.locator('#winRank')).toBeHidden();  // nur ein Spieler
   await page.click('#mapBtn');
   // zweiter Spieler startet bei null
@@ -232,7 +233,7 @@ test('Mehrere Spieler: eigener Spielstand, Rangliste nach Punkten', async ({ pag
   await expect(page.locator('#mapStars')).toHaveText('⭐ 0');
   await expect(page.locator('.lvl[data-level="ausflug"]')).not.toHaveClass(/done/);
   await win('ausflug', 5, [0, 5, -69]);
-  await expect(page.locator('#winScore')).toHaveText('🏆 2’050');
+  await expect(page.locator('#winScore .wv')).toHaveText('🏆 2’050');
   await expect(page.locator('#winRank .rrow .rname')).toHaveText(['<b>Ben</b> 🐇', 'Anna 🐇']); // Name als Text, nicht als HTML
   await expect(page.locator('#winRank .rrow .rscore')).toHaveText(['2’050', '1’550']);
   await expect(page.locator('#winRank .rrow.me .rpl')).toHaveText('🥇');
@@ -1514,7 +1515,7 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geis
   // Level-Rangliste mit den Online-Fahrten (Punkte aus den Rohwerten neu gerechnet), Geist des besten anderen mit Aufnahme
   await expect(page.locator('#winRank .rrow .rname')).toHaveText(['Test 🐇', 'Max 🐇', 'Zoe 🐇']);
   await expect(page.locator('#winRank .rrow .rscore')).toHaveText(['2’050', '1’950', '1’850']);
-  await expect(page.locator('#winGhost')).toHaveText('👻 🥉 Zoe');
+  await expect(page.locator('#winGhost .wv')).toHaveText('👻 Gegen 🥉 Zoe fahren');
   await page.click('#cheerOv').catch(() => {});
   await page.click('#winGhost');
   await expect(page.locator('#winOv')).toBeHidden();
@@ -1705,7 +1706,7 @@ test('Online-Rangliste ohne Server: Spiel läuft, Rekord wartet und geht beim n�
   await play(page, 'ausflug');
   await page.evaluate(() => { const g = window.murmel.game; g.st.stars = 3; g.spawn([0, 5, -69]); });
   await expect(page.locator('#winOv')).toBeVisible();
-  await expect(page.locator('#winScore')).toHaveText('🏆 1’650');
+  await expect(page.locator('#winScore .wv')).toHaveText('🏆 1’650');
   await expect(page.locator('#winGhost')).toBeHidden();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('murmel-online-v1')).queue['test\nausflug'].run.score)).toBe(1650);
   // Server antwortet gar nicht: nach dem Timeout geht es ohne Fehler weiter, der Rekord wartet weiter
@@ -1881,7 +1882,7 @@ test('Bestzeit: Zeit im HUD, Geistermurmel fährt mit, Sticker 👻 wenn schnell
   await expect(page.locator('#winOv')).toBeVisible({ timeout: 50_000 });
   const t1 = await page.evaluate(() => window.murmel.progress.bestTime('ausflug'));
   expect(t1).toBeGreaterThan(5);
-  await expect(page.locator('#winTime')).toHaveText(/^⏱ \d+\.\d$/);
+  await expect(page.locator('#winTime .wv')).toHaveText(/^⏱ \d+\.\d$/);
   expect((await saved(page)).stickers['x:geist']).toBeUndefined();
   await page.click('#cheerOv').catch(() => {});
   // nochmal: der Geist fährt die Bestzeit mit
@@ -1892,7 +1893,7 @@ test('Bestzeit: Zeit im HUD, Geistermurmel fährt mit, Sticker 👻 wenn schnell
   expect(g.opacity).toBeLessThan(1);
   // schneller ins Ziel: neue Bestzeit, Geist-Sticker
   await winLevel(page, 5);
-  await expect(page.locator('#winTime')).toContainText('🏁 Bestzeit!');
+  await expect(page.locator('#winTime small')).toContainText('🏁 Neue Bestzeit!');
   const t2 = await page.evaluate(() => window.murmel.progress.bestTime('ausflug'));
   expect(t2).toBeLessThan(t1);
   expect((await saved(page)).stickers['x:geist']).toBe(true);
