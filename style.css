@@ -285,3 +285,17 @@ backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
   #startOv .wahl .go{width:38px;height:38px}
 }
 @media (max-width:360px){#startOv .wahl{gap:8px}#startOv .wahl .ico{font-size:36px}#startOv .wahl small{font-size:14px}#startOv .wahl .go{width:38px;height:38px}}
+/* App aufs Handy (src/install.js): Karte über der Weltkarte mit Symbol, kurzer Erklärung und Installieren / Später.
+   „Spielstand holen“ (#restoreOv) liegt darüber, wenn beide zugleich kommen */
+#appOv{background:rgba(0,0,0,.55);z-index:5}
+#restoreOv{z-index:6}
+#appOv .sheet{background:var(--panel);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:24px;padding:18px 16px 16px;width:min(100%,340px);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:10px}
+#appOv img{width:76px;height:76px;border-radius:18px;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+#appTitle{font-size:24px;font-weight:800;line-height:1.15}
+#appText{font-size:18px;line-height:1.25}
+#appIos{margin:0;padding:10px 14px 10px 36px;width:100%;box-sizing:border-box;text-align:left;font-size:18px;line-height:1.5;background:rgba(128,128,128,.15);border-radius:16px}
+#appIos b{white-space:nowrap}
+#appIos small{font-size:15px;opacity:.75;white-space:nowrap}
+#appIos .share{width:22px;height:22px;vertical-align:-4px;color:#2F6FEB}
+#appOv button{width:100%;height:56px;font-size:22px;font-weight:700;background:rgba(128,128,128,.2);box-shadow:none}
+#appOv button.go{background:var(--go);color:#fff}

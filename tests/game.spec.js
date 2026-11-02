@@ -2023,3 +2023,89 @@ test('Veröffentlichen: stempel.mjs versieht alle eigenen Dateien mit der Versio
     expect(JSON.parse(readFileSync(join(dir, 'version.json'), 'utf8'))).toEqual({ version: 'abc123', zeit, nummer: '0.3' });
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+// App aufs Handy (src/install.js): Chrome meldet mit beforeinstallprompt, dass es installieren kann (hier nachgestellt)
+const fakeInstallPrompt = (page, outcome = 'dismissed') => page.evaluate(outcome => {
+  const e = new Event('beforeinstallprompt', { cancelable: true });
+  e.prompt = () => { window.__prompted = (window.__prompted || 0) + 1; };
+  e.userChoice = Promise.resolve({ outcome });
+  window.dispatchEvent(e);
+}, outcome);
+
+test('App aufs Handy: Popup auf der Karte, Installieren zeigt den Dialog des Browsers, danach nur noch über ⚙️', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  await page.click('#startJoy');
+  await newPlayer(page, 'Test');
+  // ohne Angebot des Browsers: kein Popup, kein Knopf
+  await expect(page.locator('#appOv')).toBeHidden();
+  await page.click('#btnSettings');
+  await expect(page.locator('#appRow')).toBeHidden();
+  await page.click('#btnSettings');
+  await fakeInstallPrompt(page);
+  await expect(page.locator('#appOv')).toBeVisible();
+  await expect(page.locator('#appYes')).toBeVisible();
+  await expect(page.locator('#appIos')).toBeHidden();
+  await page.click('#appLater');
+  await expect(page.locator('#appOv')).toBeHidden();
+  // gleich wieder auf der Karte: nicht nochmal von selbst, aber im ⚙️
+  await page.click('#btnSkins');
+  await page.click('#skinBack');
+  await expect(page.locator('#mapOv')).toBeVisible();
+  await expect(page.locator('#appOv')).toBeHidden();
+  await page.click('#btnSettings');
+  await page.click('#btnApp');
+  await expect(page.locator('#appOv')).toBeVisible();
+  await page.click('#appYes');
+  await expect(page.locator('#appOv')).toBeHidden();
+  expect(await page.evaluate(() => window.__prompted)).toBe(1);
+  // abgelehnt: der Browser bietet es später wieder an; installiert: Knopf weg
+  await fakeInstallPrompt(page);
+  await expect(page.locator('#appOv')).toBeHidden();
+  await page.click('#btnSettings');
+  await expect(page.locator('#appRow')).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event('appinstalled')));
+  await expect(page.locator('#appRow')).toBeHidden();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-app')))).toMatchObject({ n: 1, ok: true });
+  expect(errors).toEqual([]);
+});
+
+test.describe('App aufs Handy auf dem iPhone', () => {
+  test.use({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
+  test('Popup erklärt Teilen → Zum Home-Bildschirm, der Spielstand zieht per Cookie in die App um, dort kein Popup', async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto('/');
+    await page.waitForFunction(() => window.murmel && window.murmel.game);
+    await page.click('#startJoy');
+    await newPlayer(page, 'Test');
+    await expect(page.locator('#appOv')).toBeVisible();
+    await expect(page.locator('#appIos')).toBeVisible();
+    await expect(page.locator('#appYes')).toBeHidden();
+    await page.click('#appLater');
+    await expect(page.locator('#appOv')).toBeHidden();
+    await page.click('#btnSettings');
+    await expect(page.locator('#appRow')).toBeVisible();
+    // in Safari: Spielstand mit 3 Sternen liegt gepackt im Cookie bereit (umzug.js)
+    await page.evaluate(() => { window.murmel.progress.finish('ausflug', 3); window.murmel.showMap(); });
+    await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
+    await expect.poll(() => page.evaluate(() => document.cookie)).toContain('murmel-umzug=');
+    // vom Home-Bildschirm geöffnet (navigator.standalone): eigener, leerer Speicher wie unter iOS, nur das Cookie ist da
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'standalone', { value: true });
+      if (!sessionStorage.getItem('app')) { sessionStorage.setItem('app', '1'); localStorage.clear(); }
+    });
+    await page.reload();
+    await page.waitForFunction(() => window.murmel && window.murmel.game);
+    await page.click('#startJoy');
+    await expect(page.locator('#mapOv')).toBeVisible(); // Spieler schon da: direkt auf die Karte
+    await expect(page.locator('#btnPlayer')).toHaveText('👤 Test');
+    await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
+    expect(await page.evaluate(() => document.cookie)).not.toContain('murmel-umzug=');
+    // als App: weder Popup noch Knopf
+    await expect(page.locator('#appOv')).toBeHidden();
+    await page.click('#btnSettings');
+    await expect(page.locator('#appRow')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+});

@@ -17,6 +17,8 @@ import { createRecorder, ghostAt, formatTime, DT } from './ghost.js';
 import { score, ranking, fastest } from './score.js';
 import { createOnline } from './online.js';
 import { createUpdate } from './update.js';
+import { createInstall } from './install.js';
+import { pack, unpack } from './umzug.js';
 
 const $ = id => document.getElementById(id);
 const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
@@ -27,6 +29,9 @@ function toast(t) {
   clearTimeout(toastT); toastT = setTimeout(() => el.classList.add('hidden'), 2200);
 }
 
+// iPhone/iPad: beim ersten Start als App den Spielstand aus Safari übernehmen (umzug.js), bevor progress.js ihn liest
+const umzug = unpack();
+if (umzug) await umzug;
 const progress = createProgress();
 const audio = createAudio();
 audio.setMode(progress.data.sound);
@@ -53,7 +58,7 @@ const update = createUpdate();
 for (const id of ['version', 'startVersion']) { $(id).textContent = update.label; $(id).title = update.version; }
 function checkUpdate() {
   update.check().then(neu => {
-    if (!neu || $('mapOv').classList.contains('hidden') || !$('updateOv').classList.contains('hidden')) return;
+    if (!neu || $('mapOv').classList.contains('hidden') || ['updateOv', 'appOv', 'restoreOv'].some(id => !$(id).classList.contains('hidden'))) return;
     $('updateInfo').textContent = neu.label;
     $('updateGo').onclick = () => { audio.sfx('tap'); update.reload(neu.version); };
     $('updateLater').onclick = () => { audio.sfx('tap'); update.later(neu.version); show('updateOv', false); };
@@ -61,6 +66,31 @@ function checkUpdate() {
   });
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+
+// ---------- App aufs Handy ----------
+// Popup auf der Karte (src/install.js): Android zeigt den Dialog des Browsers, iPhone/iPad die Schritte Teilen → Home-Bildschirm.
+// Kommt von selbst nur auf der Karte (nie im Level oder in einem Menü), sonst über ⚙️ → 📲.
+const install = createInstall({ onChange: () => { syncApp(); offerApp(); } });
+function syncApp() {
+  show('appRow', install.can());
+  if (!install.can()) show('appOv', false);
+}
+function showApp(auto) {
+  show('appIos', install.ios); show('appYes', !install.ios);
+  $('appLater').textContent = install.ios ? '👍 OK' : 'Später';
+  if (auto) install.shown();
+  show('appOv');
+}
+function offerApp() {
+  if (install.offer() && !$('mapOv').classList.contains('hidden') && ['cheerOv', 'updateOv', 'restoreOv'].every(id => $(id).classList.contains('hidden'))) showApp(true);
+}
+$('appYes').onclick = async () => {
+  audio.sfx('tap'); show('appOv', false);
+  if (await install.prompt()) toast('📲 ✔️');
+  syncApp();
+};
+$('appLater').onclick = () => { audio.sfx('tap'); show('appOv', false); };
+$('btnApp').onclick = () => { audio.sfx('tap'); settings(false); showApp(false); };
 
 // Geister, die mitfahren: { level, list: [{ name, track, own }] }; null = die eigene beste Fahrt
 let race = null;
@@ -219,6 +249,8 @@ function showMap() {
   markNext();
   show('mapOv');
   showNext();
+  syncApp(); offerApp();
+  pack(); // iPhone/iPad in Safari: Spielstand fürs Hinzufügen zum Home-Bildschirm bereitlegen
   online.sync().then(ok => { if (ok) offerRestore(); }); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen
   checkUpdate();
 }
