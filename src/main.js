@@ -17,6 +17,8 @@ import { createRecorder, ghostAt, formatTime, DT } from './ghost.js';
 import { score, ranking, fastest } from './score.js';
 import { createOnline } from './online.js';
 import { createUpdate } from './update.js';
+import { createInstall } from './install.js';
+import { pack, unpack } from './umzug.js';
 
 const $ = id => document.getElementById(id);
 const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
@@ -27,6 +29,9 @@ function toast(t) {
   clearTimeout(toastT); toastT = setTimeout(() => el.classList.add('hidden'), 2200);
 }
 
+// iPhone/iPad: beim ersten Start als App den Spielstand aus Safari übernehmen (umzug.js), bevor progress.js ihn liest
+const umzug = unpack();
+if (umzug) await umzug;
 const progress = createProgress();
 const audio = createAudio();
 audio.setMode(progress.data.sound);
@@ -53,7 +58,7 @@ const update = createUpdate();
 for (const id of ['version', 'startVersion']) { $(id).textContent = update.label; $(id).title = update.version; }
 function checkUpdate() {
   update.check().then(neu => {
-    if (!neu || $('mapOv').classList.contains('hidden') || !$('updateOv').classList.contains('hidden')) return;
+    if (!neu || $('mapOv').classList.contains('hidden') || ['updateOv', 'appOv', 'restoreOv'].some(id => !$(id).classList.contains('hidden'))) return;
     $('updateInfo').textContent = neu.label;
     $('updateGo').onclick = () => { audio.sfx('tap'); update.reload(neu.version); };
     $('updateLater').onclick = () => { audio.sfx('tap'); update.later(neu.version); show('updateOv', false); };
@@ -61,6 +66,31 @@ function checkUpdate() {
   });
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+
+// ---------- App aufs Handy ----------
+// Popup auf der Karte (src/install.js): Android zeigt den Dialog des Browsers, iPhone/iPad die Schritte Teilen → Home-Bildschirm.
+// Kommt von selbst nur auf der Karte (nie im Level oder in einem Menü), sonst über ⚙️ → 📲.
+const install = createInstall({ onChange: () => { syncApp(); offerApp(); } });
+function syncApp() {
+  show('appRow', install.can());
+  if (!install.can()) show('appOv', false);
+}
+function showApp(auto) {
+  show('appIos', install.ios); show('appYes', !install.ios);
+  $('appLater').textContent = install.ios ? '👍 OK' : 'Später';
+  if (auto) install.shown();
+  show('appOv');
+}
+function offerApp() {
+  if (install.offer() && !$('mapOv').classList.contains('hidden') && ['cheerOv', 'updateOv', 'restoreOv'].every(id => $(id).classList.contains('hidden'))) showApp(true);
+}
+$('appYes').onclick = async () => {
+  audio.sfx('tap'); show('appOv', false);
+  if (await install.prompt()) toast('📲 ✔️');
+  syncApp();
+};
+$('appLater').onclick = () => { audio.sfx('tap'); show('appOv', false); };
+$('btnApp').onclick = () => { audio.sfx('tap'); settings(false); showApp(false); };
 
 // Geister, die mitfahren: { level, list: [{ name, track, own }] }; null = die eigene beste Fahrt
 let race = null;
@@ -219,9 +249,59 @@ function showMap() {
   markNext();
   show('mapOv');
   showNext();
-  online.sync(); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen
+  syncApp(); offerApp();
+  pack(); // iPhone/iPad in Safari: Spielstand fürs Hinzufügen zum Home-Bildschirm bereitlegen
+  online.sync().then(ok => { if (ok) offerRestore(); }); // Rekorde nachsenden, Rangliste für den Gewinn-Bildschirm holen
   checkUpdate();
 }
+
+// ---------- Spielstand von einem anderen Gerät ----------
+// Hat der Spieler online (gleicher Name) Level geschafft oder Sterne, die hier fehlen: fragen, ob er den Spielstand
+// übernehmen will (progress.restore), gleich beim Anlegen (fresh: den Namen gibt es schon online) oder auf der Karte.
+// Abgelehnt: erst wieder fragen, wenn online mehr Sterne dazukommen. Gibt true zurück, wenn gefragt wird.
+const ONLINE_LEVELS = new Set(LEVELS.filter(l => !l.pruefstand).map(l => l.id));
+let restoreFresh = false;
+function offerRestore(fresh = false) {
+  const p = progress.player();
+  if (!p || !$('restoreOv').classList.contains('hidden') || $(fresh ? 'playerOv' : 'mapOv').classList.contains('hidden')) return false;
+  const g = progress.restore(online.rows(), ONLINE_LEVELS, false);
+  if (!(g.levels || g.stars) || g.online <= progress.noRestore) return false;
+  restoreFresh = fresh;
+  $('restoreTitle').textContent = fresh ? `☁️ ${p.name} gibt es schon` : `☁️ ${p.name}`;
+  $('restoreInfo').textContent = [g.levels && `+${g.levels} Level`, g.stars && `+${g.stars} ⭐`, `🏆 ${fmtScore(g.score)}`].filter(Boolean).join(' · ');
+  $('restoreHint').textContent = fresh ? 'Bist du das? Dann hol deinen Spielstand auf dieses Gerät.'
+    : 'Spielst du schon auf einem anderen Gerät? Dann hol deinen Spielstand hierher.';
+  show('restoreOv');
+  return true;
+}
+// Eigene Aufnahmen der geholten Fahrten und Bestzeiten nachladen (im Hintergrund, eine nach der anderen);
+// wechselt inzwischen der Spieler, hört es auf. Ist die Fahrt oder Bestzeit inzwischen eine eigene (neuer Rekord
+// während des Ladens), bleibt deren Aufnahme.
+async function restoreGhosts(p, took) {
+  const rows = online.rows().filter(r => r.name.toLowerCase() === p.name.toLowerCase());
+  const has = (id, k) => rows.some(r => r.level === id && r[k]);
+  for (const [ids, kind, k, set] of [[took.runs, 'punkte', 'ghost', progress.setGhost], [took.times, 'zeit', 'fastGhost', progress.setFastGhost]]) {
+    for (const id of ids) {
+      if (!has(id, k)) continue;
+      const best = progress.bestTime(id), track = await online.ghost(p.name, id, kind);
+      if (progress.player() !== p) return;
+      if (track && (kind === 'zeit' ? progress.bestTime(id) === best : progress.run(id)?.online)) set(id, track);
+    }
+  }
+}
+$('restoreYes').onclick = () => {
+  audio.sfx('tap'); show('restoreOv', false);
+  const p = progress.player(), g = progress.restore(online.rows(), ONLINE_LEVELS);
+  restoreGhosts(p, g.took);
+  syncStickers(); // Welt-Sticker, Murmel und Spur aus den geholten Sternen
+  toast('✅ Spielstand geholt');
+  showMap();
+};
+$('restoreNo').onclick = () => {
+  audio.sfx('tap'); show('restoreOv', false);
+  progress.setNoRestore(progress.restore(online.rows(), ONLINE_LEVELS, false).online);
+  if (restoreFresh) showMap();
+};
 
 // Nächstes Level zum Spielen: das erste offene, noch nicht geschaffte (zuerst die normalen, dann die schweren)
 function markNext() {
@@ -269,11 +349,14 @@ function showPlayers() {
   });
   $('playerName').value = '';
   show('playerOv');
+  online.sync(); // Rangliste holen: gibt es einen neuen Namen schon online, gleich beim Anlegen fragen
 }
 $('playerForm').onsubmit = e => {
   e.preventDefault();
+  const n = progress.players().length;
   if (!progress.addPlayer($('playerName').value)) { $('playerName').focus(); return; }
-  $('playerName').blur(); audio.sfx('tap'); showMap();
+  $('playerName').blur(); audio.sfx('tap');
+  if (!(progress.players().length > n && offerRestore(true))) showMap();
 };
 
 // ---------- Murmel-Auswahl ----------
@@ -379,11 +462,17 @@ $('btnTreppe').onclick = () => { audio.sfx('tap'); show('mapOv', false); show('t
 $('treppeBack').onclick = () => { audio.sfx('tap'); showMap(); };
 addEventListener('resize', () => { if (view) view.resize(); treppe.resize(); });
 
+// Zeile im Gewinn-Fenster: grosser Wert, darunter klein in Worten, was er bedeutet
+function stat(id, value, note) {
+  $(id).replaceChildren(Object.assign(document.createElement('b'), { className: 'wv', textContent: value }),
+    Object.assign(document.createElement('small'), { textContent: note }));
+}
 function onWin() {
   running = false;
   const lv = LEVELS[levelIdx], before = progress.totalStars(), trailsBefore = TRAILS.filter(trailOpen);
-  const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got);
+  const bonus = game.els.some(e => e.type === 'stern' && e.bonus && e.got), hadStars = progress.best(lv.id);
   progress.finish(lv.id, game.st.stars, bonus);
+  const moreStars = progress.best(lv.id) > hadStars; // auch ohne Rekord online melden (für „Spielstand holen“)
   const t = game.time, had = progress.bestTime(lv.id), newBest = progress.setTime(lv.id, t);
   // Geister, die mitgefahren sind: schneller als alle = Sticker 👻
   const ghosts = race && race.level === lv.id ? race.list.map(g => g.track) : [progress.ghost(lv.id)].filter(Boolean);
@@ -401,19 +490,24 @@ function onWin() {
     if (race) for (const g of race.list) if (g.own) g.track = track;
   }
   if (fastRun) progress.setFastGhost(lv.id, track);
-  if (!lv.pruefstand && (record || newBest) && progress.run(lv.id)) {
-    online.submit(progress.player().name, lv.id, progress.run(lv.id), record ? track : null, progress.bestTime(lv.id), fastRun && !record ? track : null)
+  if (!lv.pruefstand && (record || newBest || moreStars) && progress.run(lv.id)) {
+    online.submit(progress.player().name, lv.id, progress.run(lv.id), record ? track : null, progress.bestTime(lv.id), fastRun && !record ? track : null,
+      progress.best(lv.id))
       .then(ok => { if (ok && lv === LEVELS[levelIdx]) showWinRank(); });
   }
-  $('winScore').textContent = `🏆 ${fmtScore(run.score)}` + (run.falls ? ` · 💥${run.falls}` : '') + (record ? (hadRun ? ' 🆕' : '') : hadRun ? ` · 🏆 ${fmtScore(hadRun.score)}` : '');
-  $('winTime').textContent = `⏱ ${formatTime(t)}` + (newBest ? (had ? ' 🏁 Bestzeit!' : '') : ` · 🏁 ${formatTime(had)}`);
+  const notes = [record ? (hadRun ? '🆕 Neuer Rekord!' : '') : hadRun ? `Dein Rekord ${fmtScore(hadRun.score)}` : '',
+    run.falls ? `💥 ${run.falls} ${run.falls === 1 ? 'Absturz' : 'Abstürze'}` : ''].filter(Boolean);
+  stat('winScore', `🏆 ${fmtScore(run.score)}`, ['Punkte', ...notes].join(' · '));
+  stat('winTime', `⏱ ${formatTime(t)}`, 'Zeit' + (newBest ? (had ? ' · 🏁 Neue Bestzeit!' : '') : ` · Deine Bestzeit ${formatTime(had)}`));
   const after = progress.totalStars();
   const stickers = syncStickers({ dreckig: game.dirtPeak >= 1, sauber: game.washed, geist: ghosts.length > 0 && ghosts.every(g => t < g.t) });
   const fresh = SKINS.filter(s => skinNeed(s) > before && skinNeed(s) <= after);
   const freshTrails = TRAILS.filter(t => trailOpen(t) && !trailsBefore.includes(t));
   const news = [...fresh, ...freshTrails];
-  $('winStars').textContent = starRow(game.st.stars, game.st.starTotal);
-  $('winUnlock').textContent = news.length ? '🔮 ' + news.map(s => s.emoji).join(' ') + ' 🆕' : '';
+  const have = Math.min(game.st.stars, game.st.starTotal), total = game.st.starTotal;
+  stat('winStars', starRow(game.st.stars, total), have === total ? `Alle ${total} Sterne gesammelt!` : `${have} von ${total} Sternen gesammelt`);
+  const newNames = [...fresh.map(s => `Murmel ${s.name}`), ...freshTrails.map(t => `Spur ${t.name}`)].join(', ');
+  if (news.length) stat('winUnlock', news.map(s => s.emoji).join(' '), `🆕 Neu: ${newNames} – auf der Karte unter 🔮 Murmel`);
   show('winUnlock', news.length > 0);
   const cheers = [...fresh.map(s => ({ emoji: s.emoji, text: s.name, kind: 'Neue Murmel' })), ...freshTrails.map(t => ({ emoji: t.emoji, text: t.name, kind: 'Neue Spur' })),
     ...stickers.map(st => ({ emoji: st.emoji, text: st.text, kind: 'Neuer Sticker' }))];
@@ -430,20 +524,21 @@ function onWin() {
 function showWinRank() {
   const id = LEVELS[levelIdx].id, rank = ranking(allRows(), id), me = progress.player().name.toLowerCase();
   const k = rank.findIndex(r => r.name.toLowerCase() === me);
-  $('winRank').replaceChildren(rankTable(rank, [...rank.slice(0, 5), ...(k >= 5 ? [rank[k]] : [])], me).tab);
+  $('winRank').replaceChildren(rankTable(rank, [...rank.slice(0, 5), ...(k >= 5 ? [rank[k]] : [])], me, false,
+    { ...MODES.punkte, head: 'Punkte' }, { title: '🏅 Rangliste', more: 'Antippen: ganze Rangliste ›' }).tab);
   show('winRank', rank.length > 1);
   const b = bestOther(id);
-  $('winGhost').textContent = b ? `👻 ${place(b.i)} ${b.r.name}` : '';
+  if (b) stat('winGhost', `👻 Gegen ${place(b.i)} ${b.r.name} fahren`, 'Die Aufnahme fährt als Geist neben dir');
   $('winGhost').dataset.name = b ? b.r.name : '';
   show('winGhost', !!b);
 }
 $('winGhost').onclick = async () => {
   audio.sfx('tap');
   const id = LEVELS[levelIdx].id, name = $('winGhost').dataset.name, track = name && await loadGhost(name, id);
-  if (!track) { toast('📡 ❌'); return; }
+  if (!track) { toast('📡 Keine Verbindung'); return; }
   race = { level: id, list: [{ name, track }] }; restart(); toast(`👻 ${name}`);
 };
-$('winRank').onclick = () => { audio.sfx('tap'); showRanks(LEVELS[levelIdx].id, false); };
+$('winRank').onclick = () => { audio.sfx('tap'); showRanks(LEVELS[levelIdx].id, true); };
 
 // ---------- Geister: eigene Aufnahmen und die der anderen (auf dem Gerät oder online) ----------
 const same = (a, b) => a.toLowerCase() === b.toLowerCase();
@@ -455,14 +550,15 @@ const localGhost = (name, id, kind = 'punkte') => okTrack(kind === 'zeit' ? prog
 const hasGhost = (name, id, kind = 'punkte') => !!localGhost(name, id, kind) ||
   online.rows().some(x => (kind === 'zeit' ? x.fastGhost : x.ghost) && x.level === id && same(x.name, name));
 const loadGhost = async (name, id, kind = 'punkte') => localGhost(name, id, kind) || await online.ghost(name, id, kind);
-// Rangliste als Tabelle: Kopfzeile head (und 👻, wenn es Aufnahmen gibt), Platz, Name mit Stärke, Wert (val: Punkte,
-// Zeit oder Rekorde) rechtsbündig, eigene Zeile hervorgehoben. rows[j] gehört zu list[j]. Namen nur als Text einsetzen, nie als HTML.
+// Rangliste als Tabelle: Kopfzeile title und head (und 👻, wenn es Aufnahmen gibt), Platz, Name mit Stärke, Wert (val: Punkte,
+// Zeit oder Rekorde) rechtsbündig, eigene Zeile hervorgehoben; darunter in Worten, was 🐢🐇🚀 und 👻 bedeuten, und more.
+// rows[j] gehört zu list[j]. Namen nur als Text einsetzen, nie als HTML.
 const MODES = {
   punkte: { head: '🏆', val: r => fmtScore(r.score), power: true },
   zeit: { head: '⏱', val: r => formatTime(r.time), power: false },
   rekorde: { head: '🏁', val: r => String(r.records), power: false }
 };
-function rankTable(rank, list, me, ghosts = false, mode = MODES.punkte) {
+function rankTable(rank, list, me, ghosts = false, mode = MODES.punkte, { title = '', more = '' } = {}) {
   const tab = document.createElement('div'); tab.className = 'rtab';
   const line = (cls, cells) => {
     const row = document.createElement('div'); row.className = cls;
@@ -470,9 +566,11 @@ function rankTable(rank, list, me, ghosts = false, mode = MODES.punkte) {
     tab.appendChild(row); return row;
   };
   const cols = (pl, name, pts, gh) => [['rpl', pl], ['rname', name], ['rscore', pts], ...(ghosts ? [['rghost', gh]] : [])];
-  line('rhead', cols('', '', mode.head, '👻'));
+  line('rhead', cols('', title, mode.head, '👻'));
   const rows = list.map(r => line('rrow' + (same(r.name, me) ? ' me' : ''),
     cols(place(rank.indexOf(r)), [r.name, mode.power && powerEmoji(r)].filter(Boolean).join(' '), mode.val(r), '')));
+  const foot = [mode.power && list.some(powerEmoji) && '🐢 🐇 🚀 = Tempo der Murmel', ghosts && '👻 = Fahrt anschauen oder dagegen fahren', more].filter(Boolean);
+  if (list.length && foot.length) line('rfoot', foot.map(t => ['', t]));
   return { tab, rows };
 }
 // Bester andere Spieler mit Aufnahme in der Level-Rangliste: { r, i } (i = Platz) oder null
@@ -534,7 +632,7 @@ function chooseLevel(i) {
     if (other) list.push({ name: best.r.name, track: other });
     if ($('ghostOv').classList.contains('hidden')) return; // inzwischen zur Karte
     startLevel(i, list);
-    if (on.best && !other) toast('📡 ❌');
+    if (on.best && !other) toast('📡 Keine Verbindung');
   };
   ['mapOv', 'winOv', 'rankOv'].forEach(id => show(id, false));
   show('ghostOv');
@@ -605,7 +703,7 @@ function pickGhost(lv, r, kind = 'punkte') {
     const track = await loadGhost(r.name, lv.id, kind);
     if ($('rankGhostOv').classList.contains('hidden')) return; // inzwischen geschlossen
     show('rankGhostOv', false);
-    if (!track) { toast('📡 ❌'); return; }
+    if (!track) { toast('📡 Keine Verbindung'); return; }
     fn(track);
   };
   $('rankWatch').onclick = go(track => watchRun(LEVELS.indexOf(lv), r.name, track));

@@ -7,6 +7,13 @@
 <meta name="version-nummer" content="">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Murmel-Abenteuer</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#9ED8F5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Murmel">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -64,6 +71,7 @@
     <div class="setrow"><span>Steuerung</span><button class="mbtn" id="mapControl" title="Steuerung wechseln: Kippen oder Joystick"><span>🕹️</span><small>Joystick</small></button></div>
     <div class="setrow"><span>Murmel-Tempo</span><button class="mbtn" id="btnPower" title="Tempo der Murmel"><span>🐇</span><small>Mittel</small></button></div>
     <div class="setrow"><span>Ton</span><button class="mbtn" id="btnSound" title="Ton und Musik"><span>🔊</span><small>Ton an</small></button></div>
+    <div class="setrow hidden" id="appRow"><span>App</span><button class="mbtn" id="btnApp" title="Als App auf den Home-Bildschirm"><span>📲</span><small>Aufs Handy</small></button></div>
   </div>
   <div class="row">
     <button class="mbtn" id="btnRank" title="Rangliste"><span>🏆 <b id="mapStars">⭐ 0</b></span><small>Rangliste</small></button>
@@ -74,17 +82,17 @@
   <div class="ver" id="version"></div>
 </div>
 <div class="overlay hidden" id="skinOv">
-  <h1>🔮</h1>
+  <h1>🔮 Murmel</h1>
   <div class="grid" id="skinGrid"></div>
-  <div class="pill">💫</div>
+  <div class="pill">💫 Spur</div>
   <div class="grid" id="trailGrid"></div>
-  <button class="big" id="skinBack" aria-label="Fertig">✔️</button>
+  <button class="big" id="skinBack">✔️<small>Fertig</small></button>
 </div>
 <div class="overlay hidden" id="albumOv">
   <h1 id="albumCount">🏅</h1>
   <div id="albumInfo" class="rank" aria-live="polite"></div>
   <div id="albumGrid"></div>
-  <button class="big" id="albumBack" aria-label="Fertig">✔️</button>
+  <button class="big" id="albumBack">✔️<small>Fertig</small></button>
 </div>
 <div class="overlay hidden" id="winOv">
   <h1>🏆 Geschafft!</h1>
@@ -95,9 +103,9 @@
   <button class="rank hidden" id="winRank" aria-label="Rangliste von diesem Level"></button>
   <button class="pill hidden" id="winGhost" aria-label="Gegen die Aufnahme des Besten fahren"></button>
   <div class="row">
-    <button class="big" id="againBtn" aria-label="Nochmal">🔄</button>
-    <button class="big" id="nextBtn" aria-label="Nächstes Level">▶️</button>
-    <button class="big" id="mapBtn" aria-label="Zur Karte">🏠</button>
+    <button class="big" id="againBtn">🔄<small>Nochmal</small></button>
+    <button class="big" id="nextBtn" aria-label="Nächstes Level">▶️<small>Weiter</small></button>
+    <button class="big" id="mapBtn" aria-label="Zur Karte">🏠<small>Karte</small></button>
   </div>
 </div>
 <div class="overlay hidden" id="ghostOv">
@@ -105,7 +113,7 @@
   <div id="ghostTop"></div>
   <div id="ghostPick"></div>
   <div class="row">
-    <button class="big" id="ghostBack" aria-label="Zur Karte">🏠</button>
+    <button class="big" id="ghostBack" aria-label="Zur Karte">🏠<small>Karte</small></button>
     <button class="big" id="ghostGo">▶️ Los!</button>
   </div>
 </div>
@@ -121,8 +129,8 @@
   </div>
   <div class="hidden" id="rankHint"></div>
   <div id="rankList"></div>
-  <div class="pill hidden" id="rankEmpty">🤷</div>
-  <button class="big" id="rankBack" aria-label="Fertig">✔️</button>
+  <div class="pill hidden" id="rankEmpty">🤷 Noch niemand</div>
+  <button class="big" id="rankBack">✔️<small>Fertig</small></button>
 </div>
 <div class="overlay hidden" id="rankGhostOv">
   <div class="sheet">
@@ -130,6 +138,28 @@
     <button id="rankWatch">📺 Zuschauen</button>
     <button class="go" id="rankRace"></button>
     <button id="rankGhostBack" aria-label="Schliessen">✖️</button>
+  </div>
+</div>
+<div class="overlay hidden" id="appOv" role="dialog" aria-modal="true" aria-labelledby="appTitle">
+  <div class="sheet">
+    <img src="icons/icon-192.png" alt="" width="76" height="76">
+    <div id="appTitle">📲 Murmel-Abenteuer als App</div>
+    <div id="appText">Dann findest du das Spiel immer auf dem Home-Bildschirm.</div>
+    <ol class="hidden" id="appIos">
+      <li>Tippe auf <b>Teilen</b> <svg class="share" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M8 10H6v11h12V10h-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> <small>(evtl. zuerst •••)</small></li>
+      <li>Wähle ➕ <b>Zum Home-Bildschirm</b></li>
+    </ol>
+    <button class="go" id="appYes">📲 Installieren</button>
+    <button id="appLater">Später</button>
+  </div>
+</div>
+<div class="overlay hidden" id="restoreOv">
+  <div class="sheet">
+    <div id="restoreTitle"></div>
+    <div id="restoreInfo"></div>
+    <div id="restoreHint"></div>
+    <button class="go" id="restoreYes">✅ Spielstand holen</button>
+    <button id="restoreNo">✖️ Nein, das bin ich nicht</button>
   </div>
 </div>
 <div class="hidden" id="cheerOv" aria-live="polite"><div class="rain"></div>

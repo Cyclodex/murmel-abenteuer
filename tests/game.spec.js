@@ -222,7 +222,8 @@ test('Mehrere Spieler: eigener Spielstand, Rangliste nach Punkten', async ({ pag
   await expect(page.locator('#btnPlayer')).toHaveText('👤 Anna');
   // 3 von 5 Sternen, sofort im Ziel (Zeitbonus voll), 1 Absturz: 600 + 750 + 200
   await win('ausflug', 3, [0, 5, -69], 1);
-  await expect(page.locator('#winScore')).toHaveText('🏆 1’550 · 💥1');
+  await expect(page.locator('#winScore .wv')).toHaveText('🏆 1’550');
+  await expect(page.locator('#winScore small')).toHaveText('Punkte · 💥 1 Absturz');
   await expect(page.locator('#winRank')).toBeHidden();  // nur ein Spieler
   await page.click('#mapBtn');
   // zweiter Spieler startet bei null
@@ -232,7 +233,7 @@ test('Mehrere Spieler: eigener Spielstand, Rangliste nach Punkten', async ({ pag
   await expect(page.locator('#mapStars')).toHaveText('⭐ 0');
   await expect(page.locator('.lvl[data-level="ausflug"]')).not.toHaveClass(/done/);
   await win('ausflug', 5, [0, 5, -69]);
-  await expect(page.locator('#winScore')).toHaveText('🏆 2’050');
+  await expect(page.locator('#winScore .wv')).toHaveText('🏆 2’050');
   await expect(page.locator('#winRank .rrow .rname')).toHaveText(['<b>Ben</b> 🐇', 'Anna 🐇']); // Name als Text, nicht als HTML
   await expect(page.locator('#winRank .rrow .rscore')).toHaveText(['2’050', '1’550']);
   await expect(page.locator('#winRank .rrow.me .rpl')).toHaveText('🥇');
@@ -1456,10 +1457,11 @@ async function fakeSupabase(page, rows = [], ghosts = {}) {
     const json = data => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
     if (fn === 'get_ranking') return json(server.rows);
     if (fn === 'get_ghost') return json(ghosts[body.p_name + '/' + body.p_level + (body.p_kind === 'zeit' ? '/zeit' : '')] ?? null);
-    const b = body;
-    server.rows = server.rows.filter(r => !(r.name.toLowerCase() === b.p_name.toLowerCase() && r.level === b.p_level));
+    const b = body, same = r => r.name.toLowerCase() === b.p_name.toLowerCase() && r.level === b.p_level, old = server.rows.find(same);
+    server.rows = server.rows.filter(r => !same(r));
     server.rows.push({ name: b.p_name, level: b.p_level, stars: b.p_stars, total: b.p_total, seconds: b.p_seconds, falls: b.p_falls, power: b.p_power, score: b.p_score, ghost: !!b.p_ghost,
-      best_seconds: b.p_best, fast_ghost: !!(b.p_fast_ghost || (b.p_ghost && b.p_best >= b.p_seconds)) });
+      best_seconds: b.p_best, fast_ghost: !!(b.p_fast_ghost || (b.p_ghost && b.p_best >= b.p_seconds)),
+      max_stars: Math.max(b.p_stars, b.p_max_stars || 0, old?.max_stars || 0) });
     return json(true);
   });
   return server;
@@ -1513,7 +1515,7 @@ test('Online-Rangliste: Rekord mit Aufnahme senden, Rangliste, gegen Online-Geis
   // Level-Rangliste mit den Online-Fahrten (Punkte aus den Rohwerten neu gerechnet), Geist des besten anderen mit Aufnahme
   await expect(page.locator('#winRank .rrow .rname')).toHaveText(['Test 🐇', 'Max 🐇', 'Zoe 🐇']);
   await expect(page.locator('#winRank .rrow .rscore')).toHaveText(['2’050', '1’950', '1’850']);
-  await expect(page.locator('#winGhost')).toHaveText('👻 🥉 Zoe');
+  await expect(page.locator('#winGhost .wv')).toHaveText('👻 Gegen 🥉 Zoe fahren');
   await page.click('#cheerOv').catch(() => {});
   await page.click('#winGhost');
   await expect(page.locator('#winOv')).toBeHidden();
@@ -1704,7 +1706,7 @@ test('Online-Rangliste ohne Server: Spiel läuft, Rekord wartet und geht beim n�
   await play(page, 'ausflug');
   await page.evaluate(() => { const g = window.murmel.game; g.st.stars = 3; g.spawn([0, 5, -69]); });
   await expect(page.locator('#winOv')).toBeVisible();
-  await expect(page.locator('#winScore')).toHaveText('🏆 1’650');
+  await expect(page.locator('#winScore .wv')).toHaveText('🏆 1’650');
   await expect(page.locator('#winGhost')).toBeHidden();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('murmel-online-v1')).queue['test\nausflug'].run.score)).toBe(1650);
   // Server antwortet gar nicht: nach dem Timeout geht es ohne Fehler weiter, der Rekord wartet weiter
@@ -1720,6 +1722,108 @@ test('Online-Rangliste ohne Server: Spiel läuft, Rekord wartet und geht beim n�
   await expect.poll(() => page.evaluate(() => window.murmel.online.pending())).toBe(0);
   // Anfragen an den Server schlagen fehl (503, beim Neuladen abgebrochen), sonst keine Fehler
   expect(errors.filter(e => !e.includes('supabase.co') && !e.includes('503'))).toEqual([]);
+});
+
+test('Online-Rangliste: Spielstand von einem anderen Gerät holen (gleicher Name), mit Nachfrage', async ({ page }) => {
+  const errors = watchErrors(page);
+  const ghosts = {}, server = await fakeSupabase(page, [], ghosts);
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  // Online: erste Welt mit allen Sternen (auch die schweren Level), dazu das erste Level der zweiten Welt: Fahrt mit den meisten
+  // Punkten mit einem Stern zu wenig, meiste Sterne (max_stars) zuerst auch; fremder Name und unbekanntes Level zählen nicht
+  const w = await page.evaluate(() => {
+    const n = l => l.parts.filter(p => p.type === 'stern').length, [a, b] = window.murmel.WORLDS;
+    return { id: a.id, full: [...a.levels, ...(a.hard || [])].map(l => ({ id: l.id, n: n(l) })), part: { id: b.levels[0].id, n: n(b.levels[0]) } };
+  });
+  // erstes Level mit Aufnahmen (meiste Punkte und schnellste): kommen beim Holen mit
+  const track = t => ({ t, skin: 'fussball', p: [0, 100, 0, 0, 100, -500, 0, 100, -1000] }), g0 = w.full[0].id;
+  ghosts['Fäbu/' + g0] = track(20); ghosts['Fäbu/' + g0 + '/zeit'] = track(15);
+  const rows = part => [...w.full.map(l => ({ ...online('fäbu', l.id, l.n, l.n, 20, 0, l.id === g0), best_seconds: 15, fast_ghost: l.id === g0 })),
+    { ...online('fäbu', w.part.id, w.part.n - 1, w.part.n, 30, 1), max_stars: part },
+    online('Max', w.part.id, w.part.n, w.part.n, 10, 0), online('Fäbu', 'gibtsnicht', 3, 3, 10, 0)];
+  server.rows = rows(w.part.n - 1);
+  const stars = w.full.reduce((a, l) => a + l.n, 0) + w.part.n - 1;
+  // Spieler-Auswahl holt die Rangliste; neuer Name, den es online schon gibt: Nachfrage gleich beim Anlegen, vor der Karte
+  await page.click('#startJoy');
+  await expect(page.locator('#playerOv')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.murmel.online.rows().length)).toBe(w.full.length + 3);
+  await page.fill('#playerName', 'Fäbu');
+  await page.click('#playerForm button');
+  await expect(page.locator('#restoreOv')).toBeVisible();
+  await expect(page.locator('#mapOv')).toBeHidden();
+  await expect(page.locator('#restoreTitle')).toHaveText('☁️ Fäbu gibt es schon');
+  await expect(page.locator('#restoreHint')).toHaveText('Bist du das? Dann hol deinen Spielstand auf dieses Gerät.');
+  await expect(page.locator('#restoreInfo')).toContainText(`+${w.full.length + 1} Level · +${stars} ⭐ · 🏆 `);
+  // Nein: nichts übernommen, weiter zur Karte, dort nicht nochmal gefragt
+  await page.click('#restoreNo');
+  await expect(page.locator('#restoreOv')).toBeHidden();
+  await expect(page.locator('#mapOv')).toBeVisible();
+  expect(await page.evaluate(() => window.murmel.progress.totalStars())).toBe(0);
+  await page.click('#btnPlayer'); await page.click('#playerList .player');
+  await page.evaluate(() => window.murmel.online.sync());
+  await expect(page.locator('#restoreOv')).toBeHidden();
+  // Online kommen Sterne dazu (auf dem anderen Gerät alle Sterne, aber weniger Punkte): wieder fragen, diesmal holen
+  server.rows = rows(w.part.n);
+  await page.click('#btnPlayer'); await page.click('#playerList .player');
+  await expect(page.locator('#restoreOv')).toBeVisible();
+  await expect(page.locator('#restoreTitle')).toHaveText('☁️ Fäbu');
+  await page.click('#restoreYes');
+  await expect(page.locator('#restoreOv')).toBeHidden();
+  const r = await page.evaluate(({ w }) => {
+    const p = window.murmel.progress, ids = [...w.full.map(l => l.id), w.part.id];
+    return {
+      done: ids.every(p.isDone), stars: p.totalStars(), bonus: ids.every(p.hasBonus), times: ids.map(p.bestTime),
+      run: p.run(w.part.id), sticker: [`welt:${w.id}`, `sterne-alle:${w.id}`].every(p.hasSticker), other: p.isDone('gibtsnicht')
+    };
+  }, { w });
+  expect(r).toMatchObject({ done: true, stars: stars + 1, bonus: true, sticker: true, other: false });
+  expect(r.times).toEqual([...w.full.map(() => 15), 30]);
+  expect(r.run).toMatchObject({ stars: w.part.n - 1, total: w.part.n, time: 30, falls: 1, power: 'normal', online: true });
+  // eigene Aufnahmen nachgeladen: eigener Geist und schnellster Geist (nur wo es online welche gibt)
+  await expect.poll(() => page.evaluate(id => [window.murmel.progress.ghost(id)?.t, window.murmel.progress.fastGhost(id)?.t], g0)).toEqual([20, 15]);
+  expect(server.calls.get_ghost).toEqual([{ p_name: 'Fäbu', p_level: g0 }, { p_name: 'Fäbu', p_level: g0, p_kind: 'zeit' }]);
+  // Punkte in der Spielerliste, geholte Fahrten gehen nicht nochmal an den Server, keine weitere Nachfrage
+  await page.evaluate(() => window.murmel.online.sync());
+  await expect(page.locator('#restoreOv')).toBeHidden();
+  expect(server.calls.submit_run).toEqual([]);
+  await page.click('#btnPlayer');
+  await expect(page.locator('#playerList .player')).not.toHaveText(/🏆0 /);
+  expect(errors).toEqual([]);
+});
+
+test('Online-Rangliste: mehr Sterne ohne Rekord gehen trotzdem raus (meiste Sterne)', async ({ page }) => {
+  const errors = watchErrors(page);
+  const server = await fakeSupabase(page);
+  await play(page, 'ausflug');
+  // 3 von 5 Sternen, schnell: Rekord
+  await page.waitForFunction(() => window.murmel.game.time > 0.3);
+  await page.evaluate(() => { const g = window.murmel.game; g.st.stars = 3; g.spawn([0, 5, -69]); });
+  await expect(page.locator('#winOv')).toBeVisible();
+  await expect.poll(() => server.calls.submit_run.length).toBe(1);
+  expect(server.calls.submit_run[0]).toMatchObject({ p_stars: 3, p_max_stars: 3 });
+  // 4 Sterne, aber langsamer und viele Abstürze: weniger Punkte, keine Bestzeit; die Fahrt mit den meisten Punkten
+  // geht nochmal raus, mit den meisten Sternen
+  if (await page.locator('#cheerOv').isVisible()) await page.click('#cheerOv'); // ohne neuen Sticker kein Jubel
+  await page.click('#againBtn');
+  if (await page.locator('#ghostOv').isVisible()) await startWith(page, []);
+  await expect(page.locator('#hud')).toBeVisible();
+  await page.waitForFunction(() => window.murmel.game.time > 1);
+  await page.evaluate(() => { const g = window.murmel.game; g.st.stars = 4; g.st.falls = 20; g.spawn([0, 5, -69]); });
+  await expect(page.locator('#winOv')).toBeVisible();
+  await expect.poll(() => server.calls.submit_run.length).toBe(2);
+  expect(server.calls.submit_run[1]).toMatchObject({ p_stars: 3, p_max_stars: 4, p_ghost: null });
+  expect(server.rows[0]).toMatchObject({ stars: 3, max_stars: 4 });
+  // gleich viele Sterne nochmal, ohne Rekord: nichts zu senden
+  if (await page.locator('#cheerOv').isVisible()) await page.click('#cheerOv'); // ohne neuen Sticker kein Jubel
+  await page.click('#againBtn');
+  if (await page.locator('#ghostOv').isVisible()) await startWith(page, []);
+  await expect(page.locator('#hud')).toBeVisible();
+  await page.waitForFunction(() => window.murmel.game.time > 1.5);
+  await page.evaluate(() => { const g = window.murmel.game; g.st.stars = 4; g.st.falls = 20; g.spawn([0, 5, -69]); });
+  await expect(page.locator('#winOv')).toBeVisible();
+  expect(await page.evaluate(() => window.murmel.online.sync())).toBe(true);
+  expect(server.calls.submit_run).toHaveLength(2);
+  expect(errors).toEqual([]);
 });
 
 test('Punkte: Sterne, Zeit gegen Richtzeit, Abstürze; Rangliste aus Zeilen', async ({ page }) => {
@@ -1778,7 +1882,7 @@ test('Bestzeit: Zeit im HUD, Geistermurmel fährt mit, Sticker 👻 wenn schnell
   await expect(page.locator('#winOv')).toBeVisible({ timeout: 50_000 });
   const t1 = await page.evaluate(() => window.murmel.progress.bestTime('ausflug'));
   expect(t1).toBeGreaterThan(5);
-  await expect(page.locator('#winTime')).toHaveText(/^⏱ \d+\.\d$/);
+  await expect(page.locator('#winTime .wv')).toHaveText(/^⏱ \d+\.\d$/);
   expect((await saved(page)).stickers['x:geist']).toBeUndefined();
   await page.click('#cheerOv').catch(() => {});
   // nochmal: der Geist fährt die Bestzeit mit
@@ -1789,7 +1893,7 @@ test('Bestzeit: Zeit im HUD, Geistermurmel fährt mit, Sticker 👻 wenn schnell
   expect(g.opacity).toBeLessThan(1);
   // schneller ins Ziel: neue Bestzeit, Geist-Sticker
   await winLevel(page, 5);
-  await expect(page.locator('#winTime')).toContainText('🏁 Bestzeit!');
+  await expect(page.locator('#winTime small')).toContainText('🏁 Neue Bestzeit!');
   const t2 = await page.evaluate(() => window.murmel.progress.bestTime('ausflug'));
   expect(t2).toBeLessThan(t1);
   expect((await saved(page)).stickers['x:geist']).toBe(true);
@@ -1918,4 +2022,90 @@ test('Veröffentlichen: stempel.mjs versieht alle eigenen Dateien mit der Versio
     expect(readFileSync(join(dir, 'src/main.js'), 'utf8')).toContain("import('../tests/autopilot.js?v=abc123')");
     expect(JSON.parse(readFileSync(join(dir, 'version.json'), 'utf8'))).toEqual({ version: 'abc123', zeit, nummer: '0.3' });
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// App aufs Handy (src/install.js): Chrome meldet mit beforeinstallprompt, dass es installieren kann (hier nachgestellt)
+const fakeInstallPrompt = (page, outcome = 'dismissed') => page.evaluate(outcome => {
+  const e = new Event('beforeinstallprompt', { cancelable: true });
+  e.prompt = () => { window.__prompted = (window.__prompted || 0) + 1; };
+  e.userChoice = Promise.resolve({ outcome });
+  window.dispatchEvent(e);
+}, outcome);
+
+test('App aufs Handy: Popup auf der Karte, Installieren zeigt den Dialog des Browsers, danach nur noch über ⚙️', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.waitForFunction(() => window.murmel && window.murmel.game);
+  await page.click('#startJoy');
+  await newPlayer(page, 'Test');
+  // ohne Angebot des Browsers: kein Popup, kein Knopf
+  await expect(page.locator('#appOv')).toBeHidden();
+  await page.click('#btnSettings');
+  await expect(page.locator('#appRow')).toBeHidden();
+  await page.click('#btnSettings');
+  await fakeInstallPrompt(page);
+  await expect(page.locator('#appOv')).toBeVisible();
+  await expect(page.locator('#appYes')).toBeVisible();
+  await expect(page.locator('#appIos')).toBeHidden();
+  await page.click('#appLater');
+  await expect(page.locator('#appOv')).toBeHidden();
+  // gleich wieder auf der Karte: nicht nochmal von selbst, aber im ⚙️
+  await page.click('#btnSkins');
+  await page.click('#skinBack');
+  await expect(page.locator('#mapOv')).toBeVisible();
+  await expect(page.locator('#appOv')).toBeHidden();
+  await page.click('#btnSettings');
+  await page.click('#btnApp');
+  await expect(page.locator('#appOv')).toBeVisible();
+  await page.click('#appYes');
+  await expect(page.locator('#appOv')).toBeHidden();
+  expect(await page.evaluate(() => window.__prompted)).toBe(1);
+  // abgelehnt: der Browser bietet es später wieder an; installiert: Knopf weg
+  await fakeInstallPrompt(page);
+  await expect(page.locator('#appOv')).toBeHidden();
+  await page.click('#btnSettings');
+  await expect(page.locator('#appRow')).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event('appinstalled')));
+  await expect(page.locator('#appRow')).toBeHidden();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-app')))).toMatchObject({ n: 1, ok: true });
+  expect(errors).toEqual([]);
+});
+
+test.describe('App aufs Handy auf dem iPhone', () => {
+  test.use({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
+  test('Popup erklärt Teilen → Zum Home-Bildschirm, der Spielstand zieht per Cookie in die App um, dort kein Popup', async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto('/');
+    await page.waitForFunction(() => window.murmel && window.murmel.game);
+    await page.click('#startJoy');
+    await newPlayer(page, 'Test');
+    await expect(page.locator('#appOv')).toBeVisible();
+    await expect(page.locator('#appIos')).toBeVisible();
+    await expect(page.locator('#appYes')).toBeHidden();
+    await page.click('#appLater');
+    await expect(page.locator('#appOv')).toBeHidden();
+    await page.click('#btnSettings');
+    await expect(page.locator('#appRow')).toBeVisible();
+    // in Safari: Spielstand mit 3 Sternen liegt gepackt im Cookie bereit (umzug.js)
+    await page.evaluate(() => { window.murmel.progress.finish('ausflug', 3); window.murmel.showMap(); });
+    await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
+    await expect.poll(() => page.evaluate(() => document.cookie)).toContain('murmel-umzug=');
+    // vom Home-Bildschirm geöffnet (navigator.standalone): eigener, leerer Speicher wie unter iOS, nur das Cookie ist da
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'standalone', { value: true });
+      if (!sessionStorage.getItem('app')) { sessionStorage.setItem('app', '1'); localStorage.clear(); }
+    });
+    await page.reload();
+    await page.waitForFunction(() => window.murmel && window.murmel.game);
+    await page.click('#startJoy');
+    await expect(page.locator('#mapOv')).toBeVisible(); // Spieler schon da: direkt auf die Karte
+    await expect(page.locator('#btnPlayer')).toHaveText('👤 Test');
+    await expect(page.locator('#mapStars')).toHaveText('⭐ 3');
+    expect(await page.evaluate(() => document.cookie)).not.toContain('murmel-umzug=');
+    // als App: weder Popup noch Knopf
+    await expect(page.locator('#appOv')).toBeHidden();
+    await page.click('#btnSettings');
+    await expect(page.locator('#appRow')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
 });
