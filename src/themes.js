@@ -211,7 +211,9 @@ export const THEMES = {
         'buch-rot': 0xC0504D, 'buch-blau': 0x4F81BD, 'buch-gruen': 0x6BA368, 'stift-gelb': 0xF2C14E, 'stift-rot': 0xD9534F,
         'stift-blau': 0x5B8DEF, maeppchen: 0x7E57C2, becher: 0x90A4AE, radierer: 0xF48FB1,
         decke: 0x7FA7D6, kissen: 0xF7F3EA, kuscheltier: 0xA1774F, hase: 0xE8DCCF, bilderbuch: 0xE57373, rennbahn: 0x5C6BC0,
-        bauklotz: 0xF2C14E, nachttisch: 0xD6BC94, wecker: 0xD9534F, wand: 0xEDE6DA
+        bauklotz: 0xF2C14E, nachttisch: 0xD6BC94, wecker: 0xD9534F, wand: 0xEDE6DA,
+        stein: 0xE8E8E8, vorhang: 0xE3C67B, topf: 0xC1683C, pflanze: 0x5E9E4A, kaktus: 0x3E7D3A, figur: 0x42A5F5,
+        muschel: 0xF3DCC8, griff: 0xBDBDBD
       }[look];
       return L === undefined ? null : t.lambert(L);
     }

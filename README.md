@@ -21,7 +21,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/levels/*.js` | Level als Daten (ein Objekt pro Level), Welten und Reihenfolge in `src/levels/index.js` (`need` = Welt erst ab so vielen Sternen offen, z. B. Profi-Welt Vulkan), Kategorien der Karte in `KATEGORIEN` (Umschalter 🎢 Bahnen / 🏠 Echte Orte, Welt mit `kategorie: 'orte'`, sonst Bahnen; Plan in `docs/plan-echte-orte.md`). Echte Orte sind noch in Arbeit und nur nach Freischalten sichtbar: Spiel mit `?orte=<Schlüssel>` öffnen (`src/freischalten.js`, im Code steht nur der SHA-256), `?orte=aus` schaltet ab |
 | `src/levels/schwer/*.js` | Schwere Versionen (💀) je Welt: Level mit `schwer: '<id des normalen Levels>'`, offen sobald das normale geschafft ist |
 | `src/levels/pruefstand/*.js` | Prüfstand: ein kurzes Level pro Bauteil (Anlauf, Bauteil, Ziel), muss mit jeder Murmel schaffbar sein. Nicht auf der Karte, im Spiel mit `?pruefstand` als eigene Welt; Routen in `tests/routes/pruefstand/` |
-| `src/orte/` | Echte Orte (Kategorie 🏠, nur freigeschaltet): Räume in cm (`kinderzimmer.js`), `bau.js` baut den Raum als Kulisse um ein Level (Wände und Decke nur von innen sichtbar, Fenster mit Garten, Tür, Möbel als grauer Rohbau). Level mit `ort` und `bereich: {at (cm), yaw, strecke}`, 1 Einheit = 1.6 cm; Level in `src/levels/zuhause/`, Routen in `tests/routes/zuhause.js` |
+| `src/orte/` | Echte Orte (Kategorie 🏠, nur freigeschaltet): Räume in cm (`kinderzimmer.js`), `bau.js` baut den Raum als Kulisse um ein Level (Wände und Decke nur von innen sichtbar, Fenster mit Garten, Tür, Möbel als grauer Rohbau). Level mit `ort` und `bereich: {at (cm), yaw, strecke}`, 1 Einheit = 1.6 cm; Level in `src/levels/zuhause/`, Routen in `tests/routes/zuhause.js`. Kamera: Fahrflächen mit `richtung` (Klotz), auf Flächen ohne Richtung dreht der Blick langsam zur Rollrichtung (`FOLGE_V`, `FOLGE_W` in `game.js`) |
 | `src/elements.js` | Grund-Bauteile: Klötze, Logik und Grafik je Typ |
 | `src/elements-extra.js` | Weitere Bauteile (Röhre, Band, Wind, Balken, Magnet, Kanone, Domino, Spirale) |
 | `src/elements-fallen.js` | Fallen für schwere Level (Feld mit Löchern, Falltür, Schieber, Hammer, Treppe, Fluss, Felsen) |
@@ -112,7 +112,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `kurve` | `at` (Start, Mitte), `yaw` (Startrichtung), `turn` (+ rechts / - links), `radius`, `width`, `walls` |
 | `looping` | `at` (Einfahrt unten), `yaw`, `radius`, `width`, `shift` (Ausfahrt seitlich versetzt, beginnt und endet weich). Braucht `turbo` davor. Im Looping wirkt Kippen nicht |
 | `wand` | `from`, `to` (Unterkante), `height`, `look` |
-| `klotz` | `at` (Mitte), `size: [b, h, t]`, `yaw`, `look` (`'lego-rot'`, `'klotz-blau'`, `'abc'` + `text`), `deko: true` = ohne Physik |
+| `klotz` | `at` (Mitte), `size: [b, h, t]`, `yaw`, `look` (`'lego-rot'`, `'klotz-blau'`, `'abc'` + `text`), `deko: true` = ohne Physik, `richtung` (Grad wie `startYaw`) = Fahrfläche, die Kamera schaut darauf in diese Richtung |
 | `nische` | `at` (Mitte der Öffnung am Wegrand), `yaw` (nach aussen), `width`, `depth` – Wand dort mit Lücke bauen |
 | `stern` | `at`, `bonus: true` (lila, versteckt), `r` (Sammelradius) |
 | `checkpoint` | `at` (Boden, dort geht es weiter), `size: [b, h, t]`, `yaw` (Fahrtrichtung: dorthin schaut die Kamera, wenn sie nach dem Runterfallen hinfliegt), `side` (Figur nur rechts 1 / links -1, sonst wo Platz ist), `figur` (andere Figur als die der Welt) |

@@ -536,5 +536,7 @@ export function bauOrt(T, scene, ort, bereich = {}) {
   }
   root.userData = { meshes, dreiecke };
   // Reichweite für die Kamera: Raum und Garten bis zum Nachbarhaus
-  return { far: (Math.hypot(W, H, D) + (fe && fe.wand === 'S' ? 2300 : 0)) * CM, root };
+  // moebel: Möbel, die die Kamera ausblendet, wenn sie zwischen ihr und der Murmel stehen (view.js). Hier leer: Alles ist
+  // pro Material zu einem Mesh zusammengefasst, ein Möbel lässt sich nicht einzeln ausblenden (darum hat das Kopfteil keine Rückseite).
+  return { far: (Math.hypot(W, H, D) + (fe && fe.wand === 'S' ? 2300 : 0)) * CM, root, moebel: [] };
 }
