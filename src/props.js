@@ -3,6 +3,7 @@
 //   PROPS[form](T, opts) -> THREE.Group, steht auf y = 0, Mitte bei x = z = 0
 //   PROP_SIZE[form]      -> ungefähre Grösse [b, h, t] für einen Kollisions-Klotz (deko mit fest:true)
 // opts.farbe überschreibt die Hauptfarbe.
+import { werkstattProps, WERKSTATT_SIZE } from './props-werkstatt.js';
 
 export const mat = (T, color, extra = {}) => new T.MeshPhongMaterial({ color, shininess: 40, ...extra });
 export const mesh = (T, geo, m, x = 0, y = 0, z = 0) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
@@ -353,3 +354,7 @@ export function buildProp(T, form, opts = {}) {
   const f = PROPS[form];
   return f ? f(T, opts) : group(T, mesh(T, new T.BoxGeometry(2, 2, 2), mat(T, 0xFF00FF), 0, 1, 0));
 }
+
+// Werkzeuge der Welt Werkstatt liegen in einer eigenen Datei
+Object.assign(PROPS, werkstattProps({ mat, mesh, group, cyl }));
+Object.assign(PROP_SIZE, WERKSTATT_SIZE);

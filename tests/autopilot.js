@@ -13,14 +13,15 @@ import unterwasser from './routes/unterwasser.js';
 import winter from './routes/winter.js';
 import vulkan from './routes/vulkan.js';
 import chilbi from './routes/chilbi.js';
+import werkstatt from './routes/werkstatt.js';
 import pruefstand from './routes/pruefstand/index.js';
 
 const WAITS = {
   // n-te Plattform steht am Start bzw. am Ziel
   platAtFrom: (g, n = 0) => { const e = g.els.filter(x => x.type === 'plattform')[n]; return dist3(e.body.position, e.from) < 0.05 && speed(e.body.velocity) < 0.01; },
   platAtTo: (g, n = 0) => { const e = g.els.filter(x => x.type === 'plattform')[n]; return dist3(e.body.position, e.to) < 0.05 && speed(e.body.velocity) < 0.01; },
-  // alle Brücken oben (oder nur die mit dieser id: wait: ['bridgeUp', 'b1'])
-  bridgeUp: (g, id) => g.els.filter(x => x.type === 'bruecke' && (id === undefined || x.id === id)).every(e => e.k >= 1),
+  // alle Brücken oben und Messbänder ausgefahren (oder nur die mit dieser id: wait: ['bridgeUp', 'b1'])
+  bridgeUp: (g, id) => g.els.filter(x => (x.type === 'bruecke' || x.type === 'messband') && (id === undefined || x.id === id)).every(e => e.k >= 1),
   hoehe: (g, y) => g.ball.position.y > y,
   tiefer: (g, y) => g.ball.position.y < y,
   // die Murmel ist durchs Loch in den n-ten Abfluss (roehre mit down) gefallen und rollt im Rohr
@@ -251,4 +252,4 @@ export const ROUTES = {
 };
 
 // Routen der schweren Level und der Badezimmer-Welt liegen je Welt in tests/routes/
-Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, dach, weltraum, unterwasser, winter, chilbi, vulkan, pruefstand);
+Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, dach, weltraum, unterwasser, winter, chilbi, werkstatt, vulkan, pruefstand);

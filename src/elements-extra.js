@@ -90,7 +90,8 @@ export const EXTRA = {
   },
 
   // Förderband: Weg, der die Murmel in seine Richtung mitnimmt. speed in m/s (Standard 8), grip = wie stark (pro Sekunde, Standard 10).
-  // {type:'band', from, to, width, walls?, caps?, speed?, grip?}
+  // look: 'schleifband' = Schleifpapier statt Gummiband (Werkstatt)
+  // {type:'band', from, to, width, walls?, caps?, speed?, grip?, look?}
   band: {
     solids(d) {
       const out = TYPES.weg.solids({ ...d, look: 'band' });
@@ -107,10 +108,12 @@ export const EXTRA = {
     },
     view(el, v) {
       const T = v.THREE, w = el.width ?? 4, s = el.seg;
+      const [grund, pfeil, naht] = el.look === 'schleifband' ? ['#8A5A3C', '#F1DBAE', '#6E4428'] : ['#3A3F47', '#FFD23F', '#2B2F36'];
       const tex = v.canvasTex(64, 64, (x, W, H) => {
-        x.fillStyle = '#3A3F47'; x.fillRect(0, 0, W, H);
-        x.fillStyle = '#FFD23F'; x.beginPath(); x.moveTo(14, 40); x.lineTo(32, 20); x.lineTo(50, 40); x.lineTo(42, 46); x.lineTo(32, 34); x.lineTo(22, 46); x.closePath(); x.fill();
-        x.fillStyle = '#2B2F36'; x.fillRect(0, 0, W, 4);
+        x.fillStyle = grund; x.fillRect(0, 0, W, H);
+        if (el.look === 'schleifband') { x.fillStyle = naht; for (let i = 0; i < 90; i++) x.fillRect((i * 37) % W, (i * 23) % H, 2, 2); } // Körnung
+        x.fillStyle = pfeil; x.beginPath(); x.moveTo(14, 40); x.lineTo(32, 20); x.lineTo(50, 40); x.lineTo(42, 46); x.lineTo(32, 34); x.lineTo(22, 46); x.closePath(); x.fill();
+        x.fillStyle = naht; x.fillRect(0, 0, W, 4);
       });
       tex.repeat.set(Math.max(1, Math.round(w / 2)), s.L / 1.5);
       const m = new T.Mesh(new T.PlaneGeometry(w, s.L), new T.MeshLambertMaterial({ map: tex }));

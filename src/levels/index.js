@@ -22,6 +22,9 @@ import u3 from './wasser3.js';
 import wi1 from './winter1.js';
 import wi2 from './winter2.js';
 import wi3 from './winter3.js';
+import ws1 from './werkstatt1.js';
+import ws2 from './werkstatt2.js';
+import ws3 from './werkstatt3.js';
 import v1 from './vulkan1.js';
 import v2 from './vulkan2.js';
 import v3 from './vulkan3.js';
@@ -53,6 +56,7 @@ export const WORLDS = [
   { id: 'unterwasser', name: 'Unterwasser', emoji: '🌊', levels: [u1, u2, u3], hard: unterwasserS },
   { id: 'winter', name: 'Winter', emoji: '⛄', levels: [wi1, wi2, wi3] },
   { id: 'chilbi', name: 'Chilbi', emoji: '🎡', levels: [c1, c2, c3] },
+  { id: 'werkstatt', name: 'Werkstatt', emoji: '🧰', levels: [ws1, ws2, ws3] },
   // Profi-Welt: erst ab need Sternen offen
   { id: 'vulkan', name: 'Vulkan', emoji: '🌋', need: 50, levels: [v1, v2, v3], hard: vulkanS },
   ...(PRUEF ? [{ id: 'pruefstand', name: 'Prüfstand', emoji: '🔧', levels: PRUEFSTAND }] : [])

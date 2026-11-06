@@ -39,6 +39,11 @@ const pebbleTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => { // Flussbet
   const r = rnd(12);
   for (let i = 0; i < 70; i++) { const c = 110 + Math.floor(r() * 70); x.fillStyle = `rgb(${c},${c + 5},${c + 8})`; x.beginPath(); x.ellipse(r() * w, r() * h, 3 + r() * 6, 2 + r() * 4, r() * 3, 0, 7); x.fill(); }
 });
+const sawdustTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => { // Sägemehl: helle Späne
+  x.fillStyle = '#E3C590'; x.fillRect(0, 0, w, h);
+  const r = rnd(15);
+  for (let i = 0; i < 260; i++) { x.fillStyle = ['#CFAE74', '#F1DBAE', '#B8935A', '#F7E8C6'][i % 4]; x.save(); x.translate(r() * w, r() * h); x.rotate(r() * 3.1); x.fillRect(-3, -1, 3 + r() * 5, 1.5 + r()); x.restore(); }
+});
 const towelTex = THREE => canvasTex(THREE, 64, 64, (x, w, h) => { // Frottee mit Streifen
   x.fillStyle = '#F7A8C4'; x.fillRect(0, 0, w, h); x.fillStyle = '#FFFFFF'; x.fillRect(0, 26, w, 12);
   const r = rnd(4); x.fillStyle = 'rgba(0,0,0,0.06)'; for (let i = 0; i < 300; i++) x.fillRect(r() * w, r() * h, 1, 1);
@@ -193,6 +198,7 @@ export function createView(THREE, renderer, game) {
     else if (look === 'sand') m = lambert(0xffffff, { map: sandTex(THREE) });
     else if (look === 'handtuch') m = lambert(0xffffff, { map: towelTex(THREE) });
     else if (look === 'schnee') m = lambert(0xffffff, { map: snowTex(THREE) });
+    else if (look === 'saegemehl') m = lambert(0xffffff, { map: sawdustTex(THREE) });
     else if (look === 'seife') m = new THREE.MeshPhongMaterial({ map: soapTex(THREE), shininess: 100, specular: 0xffffff });
     else if (look === 'platform') m = new THREE.MeshPhongMaterial({ color: COLORS.gelb, shininess: 40 });
     else if (look === 'seesaw') m = new THREE.MeshPhongMaterial({ color: COLORS.orange, shininess: 40 });
@@ -317,6 +323,9 @@ export function createView(THREE, renderer, game) {
   const splash = { schlamm: createTrailFx(THREE, scene), pfuetze: createTrailFx(THREE, scene) };
   splash.schlamm.set({ shape: 'kugel', colors: [0x5B3A1E, 0x7D5A36, 0x4A2F18], size: 0.2, life: 0.5, every: 0.3, spread: 2.2, rise: 2.5, gravity: 12 });
   splash.pfuetze.set({ shape: 'kugel', colors: [0xBDEBFF, 0x7FC4F5, 0xFFFFFF], size: 0.18, life: 0.45, every: 0.2, spread: 2.5, rise: 3, gravity: 12, opacity: 0.8 });
+  // Späne stieben im Sägemehl auf
+  splash.saegemehl = createTrailFx(THREE, scene);
+  splash.saegemehl.set({ shape: 'kugel', colors: [0xE3C590, 0xF1DBAE, 0xC9A66B], size: 0.14, life: 0.5, every: 0.25, spread: 2, rise: 2.2, gravity: 9 });
 
   // ---------- Geistermurmeln: fahren beste Fahrten mit (src/ghost.js), mit Namensschild darüber ----------
   let ghosts = [];

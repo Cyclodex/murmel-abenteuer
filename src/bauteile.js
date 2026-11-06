@@ -1,6 +1,6 @@
 // Alle Bauteil-Typen an einem Ort: Grundteile (elements.js) + weitere (elements-extra.js) + Fallen (elements-fallen.js)
 // + echte Dinge der Welten (elements-welt.js) + Badezimmer (elements-bad.js) + Kugelbahn (elements-bahn.js)
-// + Chilbi (elements-chilbi.js).
+// + Chilbi (elements-chilbi.js) + Werkstatt (elements-werkstatt.js).
 import { TYPES } from './elements.js';
 import { EXTRA } from './elements-extra.js';
 import { FALLEN } from './elements-fallen.js';
@@ -8,6 +8,7 @@ import { WELT } from './elements-welt.js';
 import { BAD } from './elements-bad.js';
 import { BAHN } from './elements-bahn.js';
 import { CHILBI } from './elements-chilbi.js';
+import { WERKSTATT } from './elements-werkstatt.js';
 
-Object.assign(TYPES, EXTRA, FALLEN, WELT, BAD, BAHN, CHILBI);
+Object.assign(TYPES, EXTRA, FALLEN, WELT, BAD, BAHN, CHILBI, WERKSTATT);
 export { TYPES };

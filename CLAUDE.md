@@ -28,8 +28,8 @@ Der Rest gilt als Regel: Das Modell einer Session wählt der Benutzer.
 
 ## Tests
 
-Die volle Suite (`npm test`, 83 Tests) dauert im Cloud-Container 24 Minuten: 18 Autopilot-Tests fahren jedes Level mit
-allen Stärken und Murmeln. `npm run test:schnell` (die übrigen 65) dauert dort 5.2 Minuten.
+Die volle Suite (`npm test`, 85 Tests) dauert im Cloud-Container 24 Minuten: 18 Autopilot-Tests fahren jedes Level mit
+allen Stärken und Murmeln. `npm run test:schnell` (die übrigen 67) dauert dort 5.2 Minuten.
 Die volle Suite läuft als GitHub Action (`.github/workflows/tests.yml`) nachts, wenn main neue Commits hat, und lässt sich
 von Hand starten (Actions → „Tests (voll)“ → „Run workflow“). In der Session die volle Suite nicht selbst starten,
 ausser der Benutzer will es.
