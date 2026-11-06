@@ -201,17 +201,17 @@ export const THEMES = {
   },
 
   // Echte Orte im Haus (src/orte/): die Kulisse baut der Ort (level.ort), hier nur Himmel, Licht und die Looks der Dinge
-  // auf der Strecke. Grauer Rohbau: schlichte Farben, Details folgen.
+  // auf der Strecke. Holz, Stoff und Wand in denselben Tönen wie der Raum (src/orte/kinderzimmer.js).
   zuhause: {
-    sky: 0xCFE6F5, fog: [600, 1200], hemi: [0xffffff, 0x8a7a66, 0.85], sun: 0.75,
+    sky: 0xCFE6F5, fog: [600, 1200], hemi: [0xFFF8EE, 0x8a7a66, 0.76], sun: 0.55,
     floor: t => t.lambert(0xC9B79C), ramp: t => t.lambert(0xD6C6AD), wall: 0xB0A08A,
     look(t, look) {
       const L = {
-        holz: 0xB08E68, papier: 0xF7F7F2, karton: 0xC69C6D, lampe: 0x5C6B7A, schublade: 0xB9A58C,
+        holz: 0xD6BC94, papier: 0xF7F7F2, karton: 0xC69C6D, lampe: 0x5C6B7A, schublade: 0xCDB289,
         'buch-rot': 0xC0504D, 'buch-blau': 0x4F81BD, 'buch-gruen': 0x6BA368, 'stift-gelb': 0xF2C14E, 'stift-rot': 0xD9534F,
         'stift-blau': 0x5B8DEF, maeppchen: 0x7E57C2, becher: 0x90A4AE, radierer: 0xF48FB1,
-        decke: 0x6F95C8, kissen: 0xF2F2F2, kuscheltier: 0xA1774F, hase: 0xE8DCCF, bilderbuch: 0xE57373, rennbahn: 0x5C6BC0,
-        bauklotz: 0xF2C14E, nachttisch: 0xB9A58C, wecker: 0xD9534F, wand: 0xEDE6DA
+        decke: 0x7FA7D6, kissen: 0xF7F3EA, kuscheltier: 0xA1774F, hase: 0xE8DCCF, bilderbuch: 0xE57373, rennbahn: 0x5C6BC0,
+        bauklotz: 0xF2C14E, nachttisch: 0xD6BC94, wecker: 0xD9534F, wand: 0xEDE6DA
       }[look];
       return L === undefined ? null : t.lambert(L);
     }
