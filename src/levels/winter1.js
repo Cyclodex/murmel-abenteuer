@@ -1,71 +1,77 @@
-// Winter 1: Schlittelhang. Neu: bergab rollen auf der Piste, Pulverschnee (bremst) und Eis (rutschig).
-// Von der Berghütte den Hang hinunter: um die Slalomstangen und den Schneemann, über den gefrorenen Weiher zum Iglu.
+// Winter 1: Schlittelhang. Von der Berghütte über den vereisten Steilhang hinunter: schmale Eisbahnen ohne Rand
+// im Zickzack, dazwischen Inseln aus Pulverschnee, auf denen man bremsen und wenden muss (wer zu schnell ist,
+// schiesst über die Insel hinaus). Dann über die Gletscherspalte auf einer schmalen Schneebrücke, über die von
+// links und rechts Lawinen-Schneebälle donnern. Zum Schluss hinauf zum Iglu, den Schneebällen entgegen:
+// unten warten, hinauf, auf dem Absatz zur Seite ausweichen, warten, ganz hinauf.
 export default {
   id: 'wi1', name: 'Schlittelhang', emoji: '🛷', theme: 'winter',
-  start: [0, 5.1, 2], killY: -8,
+  start: [0, 7.5, 2], killY: -6,
   parts: [
     // Holzsteg vor der Berghütte, daneben steht ein Schlitten bereit
-    { type: 'weg', from: [0, 5.1, 6], to: [0, 5.1, -4], width: 5, walls: 0.8, caps: 'start' },
-    { type: 'klotz', at: [-8.95, 4.6, 0.5], size: [12.1, 1, 9], look: 'schnee', deko: true },
-    { type: 'deko', form: 'huette', at: [-10.5, 5.1, 0.5], yaw: -90 },
-    { type: 'deko', form: 'schlitten', at: [-4.6, 5.1, 1.5] },
-    { type: 'wand', from: [-4.4, 5.1, -4], to: [-2.7, 5.1, -4] },
-    { type: 'wand', from: [2.7, 5.1, -4], to: [4.4, 5.1, -4] },
+    { type: 'weg', from: [0, 7.5, 6], to: [0, 7.5, -2], width: 5, walls: 0.8, caps: 'start' },
+    { type: 'klotz', at: [-8.95, 7, 2], size: [12.1, 1, 9], look: 'schnee', deko: true },
+    { type: 'deko', form: 'huette', at: [-10.5, 7.5, 2], yaw: -90 },
+    { type: 'deko', form: 'schlitten', at: [-4.6, 7.5, 3] },
 
-    // Oberer Hang: Slalom um die Stangen
-    { type: 'weg', from: [0, 5.1, -4], to: [0, 3, -18], width: 8, walls: 0.8 },
-    { type: 'deko', form: 'torstange', at: [-1, 4.6, -7], fest: true },
-    { type: 'deko', form: 'torstange', at: [1, 4, -11], fest: true, farbe: 0x1E88E5 },
-    { type: 'deko', form: 'torstange', at: [-1, 3.4, -15], fest: true },
-    // Holzsteg zum Verschnaufen
-    { type: 'weg', from: [0, 3, -18], to: [0, 3, -24], width: 8, walls: 0.8 },
-    { type: 'checkpoint', at: [0, 3, -21], size: [8, 3, 3] },
+    // Eis-Steilhang: schmale Eisbahnen ohne Rand im Zickzack, Bremsinseln aus Pulverschnee
+    { type: 'weg', from: [0, 7.5, -2], to: [3.5, 6, -9.4], width: 1.8, surface: 'eis' },
+    { type: 'weg', from: [3.5, 6, -9], to: [3.5, 6, -12.6], width: 3.6, surface: 'schnee' },
+    { type: 'weg', from: [3.5, 6, -12.2], to: [-3.5, 4.5, -19.4], width: 1.8, surface: 'eis' },
+    { type: 'weg', from: [-3.5, 4.5, -19], to: [-3.5, 4.5, -22.6], width: 3.6, surface: 'schnee' },
+    { type: 'checkpoint', at: [-3.5, 4.5, -20.8], size: [3.6, 3, 1.6] },
+    { type: 'weg', from: [-3.5, 4.5, -22.2], to: [3.5, 3, -29.4], width: 1.8, surface: 'eis' },
+    { type: 'weg', from: [3.5, 3, -29], to: [3.5, 3, -32.6], width: 3.6, surface: 'schnee' },
+    { type: 'weg', from: [3.5, 3, -32.2], to: [-3.5, 1.5, -39.4], width: 1.8, surface: 'eis' },
+    { type: 'weg', from: [-3.5, 1.5, -39], to: [-3.5, 1.5, -42.6], width: 3.6, surface: 'schnee' },
+    { type: 'weg', from: [-3.5, 1.5, -42.2], to: [0, 0, -49.4], width: 1.8, surface: 'eis' },
+    { type: 'deko', form: 'tanne', at: [-8, 3, -12] },
+    { type: 'deko', form: 'tanne', at: [8.5, 1.5, -24], scale: 0.8 },
+    { type: 'deko', form: 'tanne', at: [-8.5, 0, -33], scale: 1.1 },
+    { type: 'deko', form: 'schneemann', at: [7, 0, -42], yaw: 90 },
+    { type: 'weg', from: [0, 0, -49], to: [0, 0, -54], width: 4, walls: 0.8 },
+    { type: 'checkpoint', at: [0, 0, -51.5], size: [4, 3, 2] },
 
-    // Unterer Hang: Pulverschnee bremst, rechts um den Schneemann herum
-    { type: 'weg', from: [0, 3, -24], to: [0, 2.4, -28], width: 8, walls: 0.8 },
-    { type: 'weg', from: [0, 2.4, -28], to: [0, 1.65, -33], width: 8, walls: 0.8, surface: 'schnee' },
-    { type: 'weg', from: [0, 1.65, -33], to: [0, 0.6, -40], width: 8, walls: 0.8 },
-    { type: 'deko', form: 'schneemann', at: [-2, 1.1, -36.5], yaw: 180, fest: true },
-    { type: 'weg', from: [0, 0.6, -40], to: [0, 0, -44], width: 8, walls: 0.8, surface: 'schnee' },
-    { type: 'wand', from: [-4.4, 0, -44], to: [-3.2, 0, -44] },
-    { type: 'wand', from: [3.2, 0, -44], to: [4.4, 0, -44] },
+    // Gletscherspalte: schmale Schneebrücke ohne Rand, Lawinen von links, rechts, links
+    { type: 'weg', from: [0, 0, -54], to: [0, 0, -70], width: 1.4, surface: 'schnee' },
+    { type: 'weg', from: [-12, 3, -58], to: [-0.7, 0, -58], width: 2.4, look: 'schnee' },
+    { type: 'weg', from: [12, 3, -63], to: [0.7, 0, -63], width: 2.4, look: 'schnee' },
+    { type: 'weg', from: [-12, 3, -67], to: [-0.7, 0, -67], width: 2.4, look: 'schnee' },
+    { type: 'felsen', from: [-11.5, 2.87, -58], dir: [1, 0], speed: 2, every: 4, r: 0.8, farbe: 0xFFFFFF },
+    { type: 'felsen', from: [11.5, 2.87, -63], dir: [-1, 0], speed: 2, every: 4, r: 0.8, farbe: 0xFFFFFF, offset: 1.4 },
+    { type: 'felsen', from: [-11.5, 2.87, -67], dir: [1, 0], speed: 2, every: 4, r: 0.8, farbe: 0xFFFFFF, offset: 3.4 },
+    { type: 'klotz', at: [-4, -3.5, -62], size: [6, 5, 18], look: 'eis', deko: true }, // Wände der Spalte
+    { type: 'klotz', at: [4, -3.5, -62], size: [6, 5, 18], look: 'eis', deko: true },
+    { type: 'deko', form: 'eiszapfen', at: [-1.6, -0.6, -60] },
+    { type: 'deko', form: 'eiszapfen', at: [1.6, -0.6, -65] },
 
-    // Schneehänge neben der Piste mit Tannen
-    { type: 'weg', from: [-6.9, 5.1, -4], to: [-6.9, 3, -18], width: 5, surface: 'schnee' },
-    { type: 'weg', from: [6.9, 5.1, -4], to: [6.9, 3, -18], width: 5, surface: 'schnee' },
-    { type: 'weg', from: [-6.9, 3, -24], to: [-6.9, 0, -44], width: 5, surface: 'schnee' },
-    { type: 'weg', from: [6.9, 3, -24], to: [6.9, 0, -44], width: 5, surface: 'schnee' },
-    { type: 'deko', form: 'tanne', at: [-7, 4.05, -10] },
-    { type: 'deko', form: 'tanne', at: [7.2, 3.3, -15], scale: 0.8 },
-    { type: 'deko', form: 'tanne', at: [7, 2.25, -28] },
-    { type: 'deko', form: 'tanne', at: [-7.1, 1.65, -32], scale: 1.1 },
-    { type: 'deko', form: 'tanne', at: [7.3, 0.45, -40], scale: 0.7 },
+    // Aufstieg zum Iglu, den Schneebällen entgegen. Links daneben warten (Podest unten, Absatz in der Mitte)
+    { type: 'weg', from: [0, 0, -70], to: [0, 0, -78], width: 2.4 },
+    { type: 'wand', from: [-1.4, 0, -70], to: [-1.4, 0, -78] },
+    { type: 'checkpoint', at: [0, 0, -73], size: [2.4, 3, 1.6], side: -1 },
+    { type: 'weg', from: [2.4, 0, -70], to: [2.4, 0, -80], width: 2.4, look: 'schnee' },
+    { type: 'weg', from: [2.4, 0, -80], to: [2.4, 2, -89], width: 2.4, look: 'schnee' },
+    { type: 'weg', from: [2.4, 2, -89], to: [2.4, 2, -93], width: 2.4, look: 'schnee' },
+    { type: 'weg', from: [0, 2, -89], to: [0, 2, -93], width: 2.4 },
+    { type: 'wand', from: [-1.4, 2, -89], to: [-1.4, 2, -93] },
+    { type: 'weg', from: [2.4, 2, -93], to: [2.4, 4, -102], width: 2.4, look: 'schnee' },
+    { type: 'weg', from: [2.4, 4, -102], to: [2.4, 4, -110], width: 2.4, look: 'schnee' },
+    { type: 'wand', from: [1.2, 4, -110.2], to: [3.6, 4, -110.2] },
+    { type: 'felsen', from: [2.4, 4, -108], dir: [0, 1], speed: 2, every: 9, r: 0.8, farbe: 0xFFFFFF },
+    // Gipfel mit Iglu: Ziel
+    { type: 'weg', from: [-2.4, 4, -102], to: [-2.4, 4, -110], width: 7.2, surface: 'schnee' },
+    { type: 'wand', from: [-6.2, 4, -102], to: [-6.2, 4, -110] },
+    { type: 'wand', from: [-6, 4, -110.2], to: [1.2, 4, -110.2] },
+    { type: 'wand', from: [1, 4, -106], to: [1, 4, -110] },
+    { type: 'deko', form: 'iglu', at: [-3, 4, -115], yaw: 180 },
+    { type: 'deko', form: 'schlitten', at: [-5, 4, -104], scale: 1.4, farbe: 0xE53935 },
+    { type: 'deko', form: 'tanne', at: [8, 2, -96] },
+    { type: 'ziel', at: [-2.4, 4, -107.5] },
 
-    // Unten im Schneefeld: Holzsteg, dann der gefrorene Weiher (rutschig!), am Ufer ein Pinguin
-    { type: 'klotz', at: [8, -0.55, -63], size: [36, 1, 38], look: 'schnee', deko: true },
-    { type: 'weg', from: [0, 0, -44], to: [0, 0, -48], width: 6, walls: 0.8 },
-    { type: 'checkpoint', at: [0, 0, -46], size: [6, 3, 3] },
-    { type: 'weg', from: [0, 0, -48], to: [0, 0, -56], width: 6, walls: 0.8, surface: 'eis' },
-    { type: 'deko', form: 'pinguin', at: [-5.6, -0.05, -52], yaw: -90 },
-    { type: 'weg', from: [0, 0, -56], to: [0, 0, -60], width: 6, walls: 0.8 },
-    { type: 'kurve', at: [0, 0, -60], yaw: 0, turn: 90, radius: 5, width: 6, walls: 0.8 },
-
-    // Ziel vor dem grossen Schlitten; links eine Nische vor dem Iglu
-    { type: 'weg', from: [5, 0, -65], to: [19, 0, -65], width: 6 },
-    { type: 'wand', from: [5, 0, -61.8], to: [19, 0, -61.8] },
-    { type: 'wand', from: [5, 0, -68.2], to: [9.75, 0, -68.2] },
-    { type: 'wand', from: [12.25, 0, -68.2], to: [19, 0, -68.2] },
-    { type: 'wand', from: [19.2, 0, -68.4], to: [19.2, 0, -61.6] },
-    { type: 'nische', at: [11, 0, -68], yaw: 0 },
-    { type: 'deko', form: 'iglu', at: [11, -0.05, -76.9], yaw: 180 },
-    { type: 'deko', form: 'schlitten', at: [22.5, -0.05, -66], scale: 2, farbe: 0xE53935 },
-    { type: 'ziel', at: [16, 0, -65] },
-
-    { type: 'stern', at: [0, 6, -2] },
-    { type: 'stern', at: [-1, 4.95, -11] },
-    { type: 'stern', at: [2, 2, -37] },
-    { type: 'stern', at: [0, 0.9, -52] },
-    { type: 'stern', at: [8, 0.9, -65] },
-    { type: 'stern', at: [11, 0.9, -70.5], bonus: true }
+    { type: 'stern', at: [1.75, 7.6, -5.7] },
+    { type: 'stern', at: [-4.9, 5.4, -22.2] },
+    { type: 'stern', at: [0, 0.9, -65] },
+    { type: 'stern', at: [2.4, 1.9, -85] },
+    { type: 'stern', at: [-5, 4.9, -103.5] },
+    { type: 'stern', at: [2.6, 1.4, -63], bonus: true }
   ]
 };

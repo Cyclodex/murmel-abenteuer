@@ -1,5 +1,14 @@
 // Autopilot-Routen der Welt Winter.
 
+// Schlittelhang: Eisbahnen im Zickzack über die Schnee-Inseln (Ende einer Bahn, Anfang der nächsten), dann auf die Schneebrücke
+const steilhang = [
+  { x: 0, z: -1.5, speed: 2 }, { x: 3.5, z: -9.3, speed: 2, r: 0.5 }, { x: 3.5, z: -12.3, speed: 1.5, r: 0.5 },
+  { x: -3.5, z: -19.3, speed: 2, r: 0.5 }, { x: -4.3, z: -21.8, speed: 1.2, r: 0.5 }, { x: -3.5, z: -22.3, speed: 1.2, r: 0.5 },
+  { x: 3.5, z: -29.3, speed: 2, r: 0.5 }, { x: 3.5, z: -32.3, speed: 1.5, r: 0.5 }, { x: -3.5, z: -39.3, speed: 2, r: 0.5 },
+  { x: -3.5, z: -42.3, speed: 1.5, r: 0.5 }, { x: 0, z: -49.3, speed: 2, r: 0.5 }, { x: 0, z: -53, speed: 2 }
+];
+const spalte = [{ x: 0, z: -55.3, speed: 1.5, r: 0.5 }, { x: 0, z: -60.5, speed: 3, r: 0.5, wait: ['phase', ['felsen', 0, 0.8, 0.85]] }];
+
 // Eisweiher: Bobbahn folgen bis auf den Schnee vor dem Weiher
 const bob = [{ x: 0, z: -3, speed: 3 }, { follow: true, bisY: 0.8, speed: 5 }, { x: 0, z: -37, speed: 3 }, { x: 0, z: -41, speed: 1.5 }];
 // Eisrisse: Mitte des Eisstreifens, Reihe für Reihe (Kachel 2.4)
@@ -11,12 +20,19 @@ const eisrisse = [
 ];
 
 export default {
-  // Schlittelhang: Slalom um die Stangen, rechts am Schneemann vorbei, über das Eis, in die Nische vor dem Iglu (Bonusstern) und ins Ziel
+  // Schlittelhang: auf den Schnee-Inseln bremsen und wenden, auf der Schneebrücke vor jeder Lawinenbahn warten, bis ihr Schneeball
+  // vorbei ist, am Hang unten und auf dem Absatz links warten, bis der Schneeball vorbei ist
   wi1: [
-    { x: 0, z: -3 }, { x: 0.9, z: -7, r: 0.8 }, { x: -0.9, z: -11, r: 0.8 }, { x: 0.9, z: -15, r: 0.8 },
-    { x: 0, z: -21, speed: 5 }, { x: 1.5, z: -31, speed: 5 }, { x: 2, z: -37 }, { x: 0, z: -42 }, { x: 0, z: -46 },
-    { x: 0, z: -52, speed: 3.5 }, { x: 0, z: -59, speed: 3.5 }, { x: 1.46, z: -63.54 }, { x: 5, z: -65 }, { x: 8, z: -65, speed: 3 },
-    { x: 11, z: -66.5, speed: 2 }, { x: 11, z: -70.5, speed: 2, r: 0.5 }, { x: 11, z: -66, speed: 2 }, { x: 16, z: -65 }
+    [
+      ...steilhang, ...spalte,
+      { x: 0, z: -65, speed: 3, r: 0.5, wait: ['phase', ['felsen', 1, 0.8, 0.85]] }, { x: 0, z: -69, speed: 3, r: 0.6, wait: ['phase', ['felsen', 2, 0.8, 0.85]] }, { x: 0, z: -72, speed: 2 }, { x: 0, z: -77, speed: 2, r: 0.6 },
+      { x: 2.4, z: -79.5, speed: 3, r: 0.7, wait: ['phase', ['felsen', 3, 0.96, 0.99]] }, { x: 2.4, z: -89.5, speed: 4, r: 0.7 },
+      { x: 0, z: -91, speed: 2, r: 0.6 },
+      { x: 2.4, z: -93, speed: 3, r: 0.7, wait: ['phase', ['felsen', 3, 0.72, 0.78]] }, { x: 2.4, z: -101.5, speed: 4, r: 0.7 },
+      { x: -1, z: -103.5, speed: 2, r: 0.7 }, { x: -4.4, z: -103.6, speed: 2, r: 0.5 }, { x: -2.4, z: -107.5, speed: 2 }
+    ],
+    // Bonusstern am Lawinenhang rechts: hinter dem zweiten Schneeball hinauf und gleich zurück
+    [...steilhang, ...spalte, { x: 0, z: -62.9, speed: 2, r: 0.4, wait: ['phase', ['felsen', 1, 0.82, 0.87]] }, { x: 2.4, z: -63, speed: 2.5, r: 0.7 }, { x: 0, z: -62.6, speed: 2, r: 0.4 }]
   ],
   // Eisweiher: Bobbahn mit Tempo 5 (schneller fliegt man in den flachen Kurven hinaus), im Zickzack über den Eisstreifen
   // (Abstecher zum Stern), Schollen gleich am Anfang ihrer Pause betreten und auf der Scholle stillhalten
