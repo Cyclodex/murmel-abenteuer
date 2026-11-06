@@ -45,9 +45,8 @@ if (h === before) missing.push('index.html: <meta name="version" content="dev"> 
 const ohneZeit = h;
 h = h.replace('<meta name="version-zeit" content="">', `<meta name="version-zeit" content="${zeit}">`);
 if (h === ohneZeit) missing.push('index.html: <meta name="version-zeit" content=""> fehlt');
-const ohneNummer = h;
+if (!h.includes('<meta name="version-nummer" content="">')) missing.push('index.html: <meta name="version-nummer" content=""> fehlt');
 h = h.replace('<meta name="version-nummer" content="">', `<meta name="version-nummer" content="${nummer}">`);
-if (h === ohneNummer) missing.push('index.html: <meta name="version-nummer" content=""> fehlt');
 h = h.replace(/(\s(?:src|href)=")((?!https?:|\/\/|#)[^"?]+\.(?:js|css))"/g, (m, a, p) => { n++; return `${a}${p}${v}"`; });
 writeFileSync(html, h);
 writeFileSync(join(dir, 'version.json'), JSON.stringify(nummer ? { version, zeit, nummer } : { version, zeit }) + '\n');
