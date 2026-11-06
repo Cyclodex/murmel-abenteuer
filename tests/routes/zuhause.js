@@ -1,10 +1,19 @@
 // Autopilot-Routen der Echten Orte im Haus (src/levels/zuhause/), id -> Wegpunkte (siehe tests/autopilot.js).
 export default {
-  // Schreibtisch: Bücher hinunter, Slalom um die Farbstifte, Kartonrolle, an der Lampe vorbei, über die Kante in die Schublade
+  // Schreibtisch: Bücher hinunter, übers Lineal (wippt), Slalom auf dem Heft, ums Mäppchen, im Wind zum Stern an der Kante,
+  // Kartonrolle, Stern beim Magneten, Kugelschreiber-Katapult auf die Bücher, hinunter, unter dem Locher durch,
+  // übers Lineal in die Schublade und durch die Bauklötze
   kz1: [
-    { x: 10, z: -6, speed: 2 }, { x: 10, z: -18, speed: 2 }, { x: 5, z: -21, speed: 2 }, { x: 3.5, z: -24, speed: 2 },
-    { x: 9, z: -29, speed: 2 }, { x: 15.5, z: -33, speed: 2 }, { x: 12, z: -38, speed: 2 }, { x: 10, z: -42, speed: 2 },
-    { x: 10, z: -53, speed: 2 }, { x: 2, z: -52, speed: 2 }, { x: -20, z: -53, speed: 2 }, { x: -33, z: -55, speed: 2 }
+    { x: -14, z: -6, speed: 2 }, { x: -14, z: -17, speed: 2 }, { x: -13.5, z: -22.5, speed: 1.5 }, { x: -11, z: -22.85, speed: 1.5, r: 0.6 },
+    { x: -4, z: -22.85, speed: 2.5, r: 0.6 }, { x: 4, z: -22.85, speed: 2.5, r: 0.6 }, { x: 10.5, z: -22.85, speed: 1.5, r: 0.4 },
+    { x: 13.5, z: -20.15, speed: 1.5, r: 0.4 }, { x: 16.5, z: -22.85, speed: 1.5, r: 0.4 }, { x: 19.5, z: -20.15, speed: 1.5, r: 0.4 },
+    { x: 22.5, z: -22.85, speed: 1.5, r: 0.4 }, { x: 22.5, z: -25.5, speed: 1.5 }, { x: 17, z: -30, speed: 2 },
+    { x: 15.5, z: -35, speed: 2 }, { x: 20.5, z: -38, speed: 1.5, r: 0.6 }, { x: 15, z: -41, speed: 2 }, { x: 15, z: -44, speed: 2, r: 0.6 },
+    { x: 15, z: -53, speed: 2 }, { x: 17.5, z: -57, speed: 1.5, r: 0.6 }, { x: 12, z: -60, speed: 2 }, { x: 8, z: -62, speed: 2 },
+    { x: -10, z: -38, speed: 2 }, { x: -11, z: -43.5, speed: 2 }, { x: -11, z: -52.5, speed: 2, r: 0.5 },
+    { x: -11, z: -59.5, speed: 4, wait: ['phase', ['hammer', 0, 0.72, 0.85]] }, { x: -13, z: -62, speed: 2, r: 0.6 },
+    { x: -16, z: -62, speed: 2.5, r: 0.6 }, { x: -24, z: -62, speed: 2.5 }, { x: -30.5, z: -61, speed: 1.5, r: 1.5 },
+    { x: -33, z: -57, speed: 3 }, { x: -33, z: -47.5, speed: 3 }
   ],
   // Bett: Kissenhang hinunter, über die Falten nach Süden, um den Teddy, zwischen Hase und Hund zurück,
   // das Bilderbuch hinauf, durch die Kurve und über die Lücke auf den Nachttisch, in die Schale

@@ -252,7 +252,7 @@ export const EXTRA = {
 
   // Kanone: Murmel rollt hinein, wird geladen und im Bogen genau auf target geschossen.
   // at = Bodenpunkt der Kanone, target = Bodenpunkt, wo die Murmel landet, time = Flugzeit s
-  // {type:'kanone', at, target, time?}
+  // {type:'kanone', at, target, time?, look?} look = Rohr (z. B. Kugelschreiber)
   kanone: {
     init(el, g) {
       const T = el.time ?? 1.4, base = add(el.at, [0, 0.9, 0]), aim = add(el.target, [0, R, 0]);
@@ -285,7 +285,7 @@ export const EXTRA = {
     },
     view(el, v) {
       const T = v.THREE, grp = new T.Group();
-      const dark = new T.MeshPhongMaterial({ color: 0x37474F, shininess: 50 });
+      const dark = el.look ? v.mat(el.look).clone() : new T.MeshPhongMaterial({ color: 0x37474F, shininess: 50 });
       const barrel = new T.Mesh(new T.CylinderGeometry(0.75, 0.9, 2.4, 20, 1, true), dark);
       barrel.material.side = T.DoubleSide;
       barrel.position.set(0, 0.4, 0); grp.add(barrel);
@@ -307,7 +307,7 @@ export const EXTRA = {
   // Dominos: weisse Steine mit Punkten, die umfallen. count Reihen von from bis to, bis zu quer (ungerade) Steine
   // nebeneinander (abstand = Mitte zu Mitte), jede zweite Reihe um einen halben Abstand versetzt mit einem Stein weniger:
   // ein fallender Stein trifft zwei der nächsten Reihe. Vorne beginnt es als Dreieck (1, 2, 3 …), damit alle umfallen.
-  // Einzelner Stein: at, yaw. {type:'domino', from, to, count?, quer?, abstand?, size?:[b,h,t]}
+  // Einzelner Stein: at, yaw. {type:'domino', from, to, count?, quer?, abstand?, size?:[b,h,t], look?} look = statt Dominosteinen (z. B. Bauklötze)
   domino: {
     init(el, g) {
       if (el.at) el.from = el.to = el.at;
@@ -349,6 +349,7 @@ export const EXTRA = {
       const geo = new T.BoxGeometry(he.x * 2, he.y * 2, he.z * 2);
       const white = new T.MeshPhongMaterial({ color: 0xF7F4EC, shininess: 60 });
       const meshes = el.bodies.map((b, i) => {
+        if (el.look) { const m = new T.Mesh(geo, v.mat(el.look)); m.castShadow = m.receiveShadow = true; v.scene.add(m); return m; }
         const [o, u] = DOMINO_PAARE[(i * 11 + 5) % DOMINO_PAARE.length];
         const face = new T.MeshPhongMaterial({ map: dominoTex(v, o, u), shininess: 60 });
         const m = new T.Mesh(geo, [white, white, white, white, face, face]);
