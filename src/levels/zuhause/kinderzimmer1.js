@@ -65,11 +65,11 @@ export default {
     { type: 'klotz', at: [-11, 4.47, -35], size: [11, 0.19, 9], look: 'mauspad', surface: 'handtuch' }, // Mauspad 18 × 14 cm, Neopren
     { type: 'checkpoint', at: [-11, 4.38, -43.5], size: [8, 3, 3] },
 
-    // 8. Schreibtischlampe: runder Fuss (als Klotz), Stange, Arm und Schirm über den Büchern nur zum Anschauen
-    { type: 'klotz', at: [2, 0.6, -54], size: [9.38, 1.2, 9.38], look: 'lampe' },
-    { type: 'klotz', at: [5, 12.6, -52], size: [1.2, 22.8, 1.2], look: 'lampe', deko: true },
-    { type: 'klotz', at: [-2, 24, -52], size: [14, 1, 1], look: 'lampe', deko: true },
-    { type: 'klotz', at: [-10, 22.5, -52], size: [7, 3, 7], look: 'lampe', deko: true },
+    // 8. Schreibtischlampe: runder Fuss und Stange (als Klötze), Arm und Schirm über den Büchern nur zum Anschauen
+    { type: 'klotz', at: [1.5, 0.6, -47], size: [9.38, 1.2, 9.38], look: 'lampe' },
+    { type: 'klotz', at: [2.5, 12.6, -43.5], size: [1.2, 22.8, 1.2], look: 'lampe' },
+    { type: 'klotz', at: [-4.25, 24, -46.25], size: [14.6, 1, 1], yaw: -22, look: 'lampe', deko: true },
+    { type: 'klotz', at: [-11, 22.5, -49], size: [7, 3, 7], look: 'lampe', deko: true },
 
     // 9. Locher: der Hebel schlägt auf die Strecke, Gehäuse daneben
     { type: 'hammer', at: [-11, 0, -55.5], side: 1, length: 4, size: [3.2, 1.4, 1.6], look: 'locher', offset: 1.7 },
@@ -83,7 +83,7 @@ export default {
     // Dinge auf dem Tisch neben der Strecke
     { type: 'klotz', at: [-3, 3.125, -64], size: [5, 6.25, 5], look: 'becher' },           // Stiftebecher 8 × 10 cm
     { type: 'klotz', at: [21, 0.31, -12], size: [3.13, 0.63, 1.25], look: 'radierer' },     // Radiergummi 5 × 2 × 1 cm
-    { type: 'klotz', at: [14, BUCH[1] / 2, -4], size: BUCH, look: 'buch-gruen', yaw: 20 },
+    { type: 'klotz', at: [12, BUCH[1] / 2, -5], size: BUCH, look: 'buch-gruen', yaw: 20 },
 
     // 11. Schublade: Boden, Front und Seiten (hinten schliesst die Tischplatte ab), Filz zum Landen, Bauklötze, Ziel
     { type: 'klotz', at: [(SB.x0 + SB.x1) / 2, -9.69, (SB.z0 + SB.z1) / 2], size: [SB.x1 - SB.x0, 0.63, SB.z1 - SB.z0], look: 'schublade' },
