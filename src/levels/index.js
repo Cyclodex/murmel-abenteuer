@@ -40,9 +40,11 @@ const PRUEF = typeof location !== 'undefined' && new URLSearchParams(location.se
 // Kategorien der Karte (Umschalter oben): Bahnen = alle bisherigen Welten, Echte Orte = Welten, die an einem echten Ort spielen
 // (Haus vom Dach bis in den Keller, siehe docs/plan-echte-orte.md). Welt ohne kategorie = 'bahn'.
 // bald = Hinweis, solange die Kategorie noch keine Welt hat
-// Echte Orte sind noch in Arbeit: im Browser nur mit Schlüssel (src/freischalten.js), sonst weder Umschalter noch Welten
-// (auch nicht in Album und Rangliste). In Node (pruefe-level, richtzeiten) immer dabei.
-export const ORTE_AN = typeof window === 'undefined' || (() => { try { return localStorage.getItem('murmel-orte') === 'an'; } catch (e) { return false; } })();
+// Echte Orte sind noch in Arbeit: im Browser nur in der Vorschau eines PRs (<meta name="vorschau">, .github/workflows/vorschau.yml)
+// oder mit Schlüssel (src/freischalten.js), sonst weder Umschalter noch Welten (auch nicht in Album und Rangliste).
+// In Node (pruefe-level, richtzeiten) immer dabei.
+export const ORTE_AN = typeof window === 'undefined' || !!document.querySelector('meta[name="vorschau"]')?.content ||
+  (() => { try { return localStorage.getItem('murmel-orte') === 'an'; } catch (e) { return false; } })();
 export const KATEGORIEN = [
   { id: 'bahn', name: 'Bahnen', emoji: '🎢' },
   { id: 'orte', name: 'Echte Orte', emoji: '🏠', bald: 'Hier entsteht ein ganzes Haus: vom Dach über den Estrich durch alle Stockwerke bis in den Keller.' }
