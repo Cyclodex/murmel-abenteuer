@@ -14,5 +14,14 @@ export default [
     { type: 'bumper', pos: [2.6, 0, -22.5], look: 'topf', kick: 5 },
     { type: 'weg', from: [0, 0, -26], to: [0, 0, -34], width: 5, walls: 0.8, caps: 'end' },
     { type: 'ziel', at: [0, 0, -31] }
+  ]),
+  // Knall: Luftdüse auf dem Steg ohne Rand stösst quer hinunter, danach blubbert ein Kessi radial in der Gasse mit Rand
+  lv('knall', 'Knall', 'chilbi', [
+    anlauf(-6),
+    { type: 'weg', from: [0, 0, -6], to: [0, 0, -20], width: 4 },
+    { type: 'knall', pos: [0, 0, -12], richtung: [1, 0], takt: [2.5, 1, 4], warn: 0.6, kick: [6, 4, 7], look: 'duese' },
+    { type: 'weg', from: [0, 0, -20], to: [0, 0, -36], width: 5, walls: 1, caps: 'end' },
+    { type: 'knall', pos: [0, 0, -25], r: 1.8, takt: [2, 3], kick: 5, up: 0.8, look: 'kessi' },
+    { type: 'ziel', at: [0, 0, -33] }
   ])
 ];

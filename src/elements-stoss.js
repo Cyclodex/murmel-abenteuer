@@ -131,5 +131,64 @@ export const STOSS = {
         }
       };
     }
+  },
+
+  // Knall aus dem Boden: eine Scheibe im Weg (Luftdüse, Kompressor, Käsekessi-Blubber, Lawinenstoss, Dachluke) knallt im
+  // Takt; jede Murmel über der Scheibe bekommt einen Stoss radial vom Zentrum weg (bzw. in richtung) und nach oben.
+  // Vorher warnt sie warn s lang (hebt sich, leuchtet). Nur Grafik und Stoss: einen Weg darunter legen.
+  // pos = Mitte (Oberkante des Bodens), r = Radius der Scheibe, kick = Tempo quer (m/s; Zahl oder Array pro Knall),
+  // up = Anteil nach oben (Tempo nach oben = up · kick), takt = Lücken zwischen den Knällen (s, Zahl oder Array),
+  // warn = s Vorwarnung, offset = Startverzögerung, richtung = [x, z] statt radial (z. B. quer vom Weg),
+  // look: 'duese' (Chilbi), 'kompressor' (Werkstatt), 'kessi' (Schweiz), 'lawine' (Winter), 'luke' (Dach)
+  // Autopilot: wait: ['frei', ['knall', n, rest]] = die nächsten rest s knallt es nicht.
+  // {type:'knall', pos, r?, kick?, up?, takt?, warn?, offset?, richtung?, look?}
+  knall: {
+    init(el) { el.frei = rest => STOSS.knall.plan(el).bis > rest; },
+    reset(el) { el.t = 0; el.k = -1; el.warnt = false; el.seit = 9; el.traf = false; },
+    plan: el => takt(el.takt ?? 3, el.t + (el.offset || 0)),
+    pre(el, g, h) { el.t += h; },
+    step(el, g, h, ev) {
+      const s = STOSS.knall.plan(el), r = el.r ?? 1.5;
+      el.warnt = s.bis < (el.warn ?? 0.5); el.seit = s.seit;
+      if (s.k < 0 || s.k === el.k) return;
+      el.k = s.k;
+      const p = ballPos(g), dx = p[0] - el.pos[0], dz = p[2] - el.pos[2], d = Math.hypot(dx, dz);
+      el.traf = d < r + R * 0.5 && p[1] > el.pos[1] - 0.3 && p[1] < el.pos[1] + 1.5 + R;
+      if (d < 25) ev.push('boom');
+      if (!el.traf) return;
+      const kick = zyk(el.kick ?? 6, s.k), v = g.ball.velocity;
+      const dir = el.richtung ? norm([el.richtung[0], 0, el.richtung[1]]) : d > 0.05 ? [dx / d, 0, dz / d] : [0, 0, -1];
+      v.x += dir[0] * kick; v.z += dir[2] * kick; v.y = Math.max(v.y, 0) + kick * (el.up ?? 0.4);
+    },
+    view(el, v) {
+      const T = v.THREE, r = el.r ?? 1.5, look = el.look || 'duese', grp = new T.Group();
+      const F = { duese: [0x37474F, 0xFDD835, 0xFFFFFF], kompressor: [0x607D8B, 0xE53935, 0xECEFF1], kessi: [0xF2C230, 0xC98A2B, 0xFFF3C4], lawine: [0xF5F9FF, 0xB3E5FC, 0xFFFFFF], luke: [0x8D6E63, 0x5D4037, 0xD7CCC8] }[look] || [0x37474F, 0xFDD835, 0xFFFFFF];
+      const platte = new T.MeshPhongMaterial({ color: F[0], shininess: look === 'lawine' ? 10 : 70 });
+      const eck = look === 'luke';
+      const scheibe = new T.Mesh(eck ? new T.BoxGeometry(r * 1.6, 0.1, r * 1.6) : new T.CylinderGeometry(r, r, 0.1, 32), platte);
+      scheibe.position.y = 0.05; grp.add(scheibe);
+      const ring = new T.Mesh(eck ? new T.BoxGeometry(r * 1.75, 0.06, r * 1.75) : new T.TorusGeometry(r, 0.09, 8, 36).rotateX(Math.PI / 2), new T.MeshPhongMaterial({ color: F[1], shininess: 40 }));
+      ring.position.y = eck ? 0.03 : 0.06; grp.add(ring);
+      if (!eck) for (let i = 0; i < 3; i++) { // Düsenringe bzw. Blasen in der Mitte
+        const m = new T.Mesh(new T.TorusGeometry(r * (0.2 + i * 0.22), 0.04, 6, 24).rotateX(Math.PI / 2), new T.MeshPhongMaterial({ color: F[1] }));
+        m.position.y = 0.11; grp.add(m);
+      }
+      if (el.richtung) { // Pfeil in Stossrichtung
+        const pf = new T.Mesh(new T.ConeGeometry(r * 0.3, r * 0.6, 3).rotateX(-Math.PI / 2), new T.MeshPhongMaterial({ color: F[1] }));
+        pf.rotation.y = Math.atan2(el.richtung[0], el.richtung[1]); pf.position.y = 0.14; grp.add(pf);
+      }
+      grp.position.set(...el.pos); v.scene.add(grp);
+      const fx = puffs(v, F[2], 14, look === 'lawine' ? 0.3 : 0.2);
+      let k = -1;
+      return {
+        tick(dt) {
+          scheibe.position.y = el.warnt ? 0.12 + Math.sin(el.seit * 60) * 0.03 : 0.05;
+          platte.emissive.setHex(el.warnt ? 0x882200 : el.seit < 0.2 ? 0x664400 : 0);
+          if (eck) scheibe.rotation.x = el.seit < 0.6 ? -Math.sin(el.seit / 0.6 * Math.PI) * 1.2 : 0; // Luke klappt auf und zu
+          if (el.k !== k) { k = el.k; if (k >= 0) fx.go(add(el.pos, [0, 0.3, 0]), r * 2.5, 4); }
+          fx.tick(dt);
+        }
+      };
+    }
   }
 };
