@@ -248,3 +248,90 @@ Fenster und Türen zueinander passen (aus dem Kinderzimmer sieht man in den Gart
 
 Dazu für Zone C: Heizkörper unter dem Fenster, Vorhang, Fussleisten, Steckdosen, Lichtschalter neben der Tür,
 Deckenlampe, Poster, Spielzeug auf dem Teppich, Kabel der Schreibtischlampe.
+
+## 9. Kinderzimmer im Detail
+
+![Kinderzimmer](kinderzimmer.svg)
+
+Masse als Daten in `docs/kinderzimmer.py` (erzeugt die Zeichnung und die Tabelle). Koordinaten in cm: x nach Osten ab
+Westwand, z nach Norden ab Südwand, Höhe ab Boden. Keine Möbel überlappen (vom Skript geprüft).
+
+| Ding | cm (B × T × H) | Einheiten | Oberkante (Einheiten) |
+|---|---|---|---|
+| Schreibtisch | 120 × 80 × 75 | 75 × 50 × 46.88 | 46.88 |
+| Stuhl | 50 × 45 × 45 | 31.25 × 28.13 × 28.13 | 28.13 |
+| Fensterbank | 150 × 25 × 2 | 93.75 × 15.63 × 1.25 | 56.25 |
+| Heizkörper | 100 × 10 × 55 | 62.5 × 6.25 × 34.38 | 43.75 |
+| Regal (Böden 0, 36, 72, 108, 144, 180 cm) | 35 × 100 × 180 | 21.88 × 62.5 × 112.5 | 112.5 |
+| Bett | 90 × 200 × 50 | 56.25 × 125 × 31.25 | 31.25 |
+| Nachttisch | 45 × 45 × 50 | 28.13 × 28.13 × 31.25 | 31.25 |
+| Schrank | 60 × 150 × 200 | 37.5 × 93.75 × 125 | 125 |
+| Teppich | 200 × 130 × 1 | 125 × 81.25 × 0.63 | 0.63 |
+| Holz-Kugelbahn (Spielzeug) | 60 × 30 × 60 | 37.5 × 18.75 × 37.5 | 38.13 |
+| Spielkiste | 60 × 40 × 40 | 37.5 × 25 × 25 | 25 |
+
+### 9.1 Sechs Level (Bereiche)
+Reihenfolge nach Schwierigkeit. Jedes Level zeigt das ganze Zimmer; der Boden ist Absturz.
+
+**1 Schreibtisch** (Platte 46.88, leicht, Einstieg)
+- Start oben auf einem Bücherstapel (3 Bücher, je 13.13 × 17.5 × 1.56) → Bücher versetzt als Treppe hinunter.
+- Über das Heft A4 (13.13 × 18.56) zwischen Farbstiften durch: Stifte Ø 0.44 liegen als niedrige Schwellen quer.
+- Durch eine Kartonrolle (Klorolle Ø 2.81, 6.25 lang) als Tunnel (`roehre`).
+- Aufgeschlagenes Buch als Mulde (`rinne` breit, Halfpipe) mit Wellen in den Seiten.
+- Um den Fuss der Schreibtischlampe (Ø 9.38), Kabel als Schwelle; Checkpoint beim Federmäppchen (12.5 × 5 × 3.13).
+- Zwei Lineale nebeneinander als Brücke von einem Buch zum nächsten (ein Lineal ist nur 1.88 breit, Murmel 1).
+- Ziel: in die offene Schublade (25 × 31.25 × 7.5) fallen.
+- Sterne: auf dem Radiergummi (3.13 × 1.25 × 0.63), im Stiftebecher (Ø 5, 6.25 hoch, Bonus), unter der Lampe.
+
+**2 Bett und Nachttisch** (Matratze 31.25, Einstieg in neue Oberfläche)
+- Start auf dem Kissen (50 × 25 × 9.38) am Kopfende → Kissenhang hinunter.
+- Bettdecke mit Falten als Wellen (Höhe etwa 5), neue Oberfläche `matratze` (federt, bremst).
+- Kuscheltiere (15.63) als weiche Hindernisse, Bilderbuch als Rampe, Taschenlampe mit Lichtkegel.
+- Sprung über die Lücke von 5 cm (3.13) aufs Nachttischchen; dort Wecker (Ø 6.25), Wasserglas (Ø 4.38).
+- Ziel: im Wasserglas oder in der Wecker-Schale.
+
+**3 Fensterbank** (56.25, schmal: 15.63 tief)
+- Lange, schmale Strecke vor dem Fenster, draussen der Garten (OG-Höhe).
+- Topfpflanzen (Topf Ø 7.5) als Slalom, Erde im Topf bremst (`sand`), Kaktus = nicht berühren (zurück zum Checkpoint).
+- Vorhang an beiden Enden: Stoff bremst (neue Oberfläche `stoff`), Fenstergriff, Spielfiguren, Muscheln.
+- Neue Oberfläche `stein` (glatte Fensterbank): rollt weit, schwer zu bremsen.
+- Ziel: in einer Muschel oder Sanduhr am Ostende.
+
+**4 Regal** (von 112.5 hinunter bis 0)
+- Zickzack über die fünf Böden (Abstand 22.5): auf jedem Boden hin, am Ende über eine schräg gelehnte Buchrutsche
+  auf den nächsten Boden. Keine freien Fälle über ganze Böden (22.5 hoch: Aufprall 21 Einheiten/s, berechnet).
+- Dinge: Bücher in Reihen (Lücken = Absturz), Bücherstützen, Pokale, Lego-Modell (Noppen: ein 2×4-Stein ist
+  2 × 1 × 0.6), Spardose, Dinosaurier, Plüschtiere.
+- Ziel: unten in einen Korb.
+
+**5 Holz-Kugelbahn auf dem Teppich** (Spielzeug, Oberkante 38.13)
+- Eine echte Spielzeug-Kugelbahn: Holzturm mit Rinnen (1.88 breit), Zickzack hinunter, Glocke unten.
+- Daneben Holzeisenbahn und Domino-Steine (1.5 × 3 × 0.47) aus der Spielkiste, die umfallen (`domino`).
+- Ziel: in die Spielkiste (Oberkante 25).
+
+**6 Schrank oben** (125, schwer, Profi)
+- Oben auf dem Schrank: Staub (neue Oberfläche `staub`, bremst und macht dreckig), Koffer (31.25 × 21.88 × 12.5),
+  Schuhschachteln (20.63 × 12.5 × 7.5), vergessene Spielsachen, Ball.
+- Schmale Kante entlang der Wand, Lücken zwischen den Schachteln.
+- Ziel: in eine offene Schuhschachtel.
+
+### 9.2 Details pro Zone
+- **Zone A (Strecke):** Bücher mit Rücken, Titel und Seitenkante; Heft mit Linien und Spirale; Lineal mit
+  cm-Strichen; Stifte sechseckig mit Spitze; Kissen und Decke mit Falten; Regalböden mit Holzmaserung.
+- **Zone B (Möbel):** Tischbeine, Schubladen mit Griffen, Stuhl mit Lehne, Bettgestell, Regal-Seitenwände, Schranktüren
+  mit Griffen, Kleinkram (Zeichnungen, Ladekabel, Socken, Bausteine auf dem Teppich).
+- **Zone C (Raum):** Tapete oder Wandfarbe, Fussleisten (6 cm), Steckdosen (bei Schreibtisch und Bett, 30 cm hoch),
+  Lichtschalter an der Tür (105 cm), Fenster mit Rahmen und Vorhängen, Heizkörper mit Rippen und Ventil, Deckenlampe,
+  Poster über dem Bett, Uhr an der Ostwand, Tür mit Klinke, durch das Fenster Garten und Nachbarhaus.
+
+### 9.3 Physik: was neu ist
+- Die meisten Teile gibt es schon: `weg` (Heft, Lineal, Regalböden), `klotz` (Bücher, Becher), `rinne` (aufgeschlagenes
+  Buch, Kugelbahn), `roehre` (Kartonrolle), `domino`, `schuessel` (Becher, Korb, Schublade als Ziel). Neu ist ihre Form
+  und Grafik nach den echten Dingen.
+- Neue Oberflächen in `src/game.js`: `matratze`, `stoff`, `stein`, `staub`. Werte im Rohbau abstimmen, dann
+  `pruefe-level.mjs` 16/16.
+- Lineal-Brücke und Fensterbank sind schmal: im Rohbau prüfen, ob alle 16 Kombinationen sie schaffen.
+
+### 9.4 Licht und Stimmung
+- Nachmittag: Sonne von Süden durchs Fenster, Lichtfleck auf Boden und Schreibtisch, Deckenlampe aus.
+- Später möglich: Abend (Schreibtischlampe und Deckenlampe an) als Variante für schwere Level.
