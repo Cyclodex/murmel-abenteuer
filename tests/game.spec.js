@@ -63,6 +63,7 @@ test('Spiel startet, Karte erscheint, Murmel rollt mit der Pfeiltaste', async ({
 });
 
 test('Jedes Level lässt sich mit Grafik laden und zeichnen', async ({ page }) => {
+  test.setTimeout(180_000); // 56 Level, in der Action gut 1 s pro Level: mit 60 s lief der Test ins Limit
   const errors = watchErrors(page);
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
