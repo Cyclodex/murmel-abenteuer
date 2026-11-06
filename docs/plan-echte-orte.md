@@ -134,3 +134,64 @@ Folgen (berechnet):
 ## 6. Später
 
 - Zeitlupe verfeinern, je nach Höhe der Strecke (`level.physik.schwerkraft`).
+
+## 7. Detaillierte Nachbildung: Vorgehen
+
+### 7.1 Vorlage: echte Masse, am besten ein echtes Zimmer
+- Pro Ort ein **Massblatt** in cm: Raum, Möbel, jedes Ding auf der Strecke. Beispiele Schreibtisch, umgerechnet (cm / 1.6):
+  Heft A4 21 × 29.7 cm = 13.1 × 18.6 Einheiten, Lineal 30 × 3 cm = 18.75 × 1.9, Bleistift Ø 0.7 cm = 0.44 (dünner als die
+  Murmel), Steckdose 8 × 8 cm = 5 × 5, Tür 200 cm = 125.
+- Am besten ein **echtes Zimmer** als Vorlage: Fotos aus mehreren Richtungen und Masse (Raum, Möbel). Dann lässt sich das
+  Ergebnis direkt mit dem Foto vergleichen.
+- Dazu eine **Draufsicht** (Skizze) mit Möbeln und den Bereichen der Level.
+
+### 7.2 Drei Detailzonen
+| Zone | Was | Detail |
+|---|---|---|
+| A: Strecke | alles, was die Murmel berührt oder knapp daneben liegt | echte Form (Kanten gerundet, Fasen, Buchrücken, Heftklammern), Textur in echter Grösse, Körper = sichtbare Form |
+| B: Bereich | das Möbel der Strecke und was in der Nähe im Bild ist | einfache Formen, gute Texturen, Kleinkram (Stifte, Kabel, Spielzeug) |
+| C: Raum | Wände, Boden, Decke, ferne Möbel | Detail über Texturen statt Geometrie: Tapete, Fussleiste, Steckdosen, Lichtschalter, Fenster mit Rahmen und Vorhang, Heizkörper, Poster, Deckenlampe |
+
+Was ein Zimmer erkennbar macht, sind die Dinge mit bekannter Grösse (Steckdose, Tür, Stuhl, Fenster). Die kommen in jeden Raum.
+
+### 7.3 Bauweise: im Code, wie bisher
+- Formen aus three.js r128 (alle im Kern, `vendor/three.min.js` geprüft): `ExtrudeGeometry` (mit Fase für gerundete
+  Kanten), `LatheGeometry` (Becher, Lampenschirm), `TubeGeometry` (Kabel, Griffe), `InstancedMesh` (Bücher, Stifte).
+- Texturen weiter im Code gezeichnet (Canvas, wie `src/themes.js`), mit Massstab in cm: Holzmaserung, Heftlinien,
+  Teppich, Tapete; dazu Bump-Maps für Struktur (wie `bumpTex` der Murmel).
+- **Eine Quelle für Bild und Physik:** Jedes Ding (z. B. `buch`, `heft`, `lineal`) wird aus seinen cm-Massen gebaut und
+  liefert Grafik und Körper aus denselben Daten. Was man sieht, ist was die Murmel berührt.
+- Ordner `src/orte/`: `raum.js` (Hülle mit Fenster, Tür, Fussleiste …), `moebel.js` (Tisch, Stuhl, Regal, Bett, Schrank),
+  je Ort eine Datei mit seinen Dingen (`schreibtisch.js` …).
+- Nicht gewählt: fertige 3D-Modelle (glTF). `GLTFLoader` ist nicht in `vendor/`, die Dateien wären gross, Stil und Lizenz
+  müssten pro Modell geprüft werden. Erst prüfen, falls die Code-Bauweise nicht echt genug wirkt.
+
+### 7.4 Licht
+- Fensterlicht als Sonne (Richtung durchs Fenster), Himmelslicht schwach, Deckenlampe als Punktlicht.
+- Echte Schatten nur rund um die Murmel (heute: Schattenkarte 1024² über ±12 Einheiten = ±19 cm).
+- Feste Schatten der Möbel (unter dem Tisch, am Boden hinter dem Bett) als dunkle Verläufe in die Texturen malen.
+
+### 7.5 Leistung
+Heute gemessen (Szene beim Levelstart, Desktop-Chromium, Meshes = obere Grenze der Draw Calls ohne Schatten-Durchgang):
+
+| Level | Meshes | Dreiecke |
+|---|---|---|
+| ausflug | 75 | 5 573 |
+| g1 | 257 | 37 471 |
+| k3 | 254 | 26 569 |
+| sz5 | 312 | 56 775 |
+| v3 | 446 | 12 837 |
+| b1 | 539 | 48 254 |
+
+- Budget pro Ort: nicht mehr als das heutige Maximum (539 Meshes, 56 775 Dreiecke), bis es auf dem Handy gemessen ist.
+- Mittel: Zone C und feste Teile von Zone B pro Material zu einem Mesh zusammenfassen (eigene Merge-Funktion,
+  `BufferGeometryUtils` ist nicht im Kern), gleiche Dinge als `InstancedMesh`.
+- Im Pilot auf dem Handy messen (Bildrate vorher/nachher), dann das Budget festlegen.
+
+### 7.6 Ablauf pro Ort
+1. Massblatt, Fotos, Draufsicht mit Bereichen.
+2. **Rohbau grau:** Raum und Möbel als graue Klötze, Strecke fahrbar, `pruefe-level.mjs` 16/16. Screenshots an den
+   Benutzer.
+3. Zone A: Dinge der Strecke in echter Form.
+4. Texturen, Zone B und C, Licht.
+5. **Abnahme:** Screenshot neben das Foto; erkennbar ohne Levelnamen; Kamera-Test; Leistung im Budget.
