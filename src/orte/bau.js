@@ -2,7 +2,8 @@
 // Der Ort steht in cm (src/orte/<ort>.js), das Level sagt mit bereich, wo sein Nullpunkt im Raum liegt:
 //   bereich = { at: [x, y, z] in cm (Raumpunkt, der im Level bei 0, 0, 0 liegt), yaw: Grad, strecke: [Möbel-ids] }
 //   Level-Achsen bei yaw 0: x = Osten, y = oben, -z = Norden; yaw dreht den Raum um den Nullpunkt (90: Osten = -z).
-//   strecke = Möbel, deren Oberfläche das Level selbst als Teile baut (bei 'tisch' zeichnet der Ort dann nur die Beine).
+//   strecke = Möbel, deren Oberfläche das Level selbst als Teile baut (bei 'tisch' zeichnet der Ort dann nur die Beine,
+//   bei 'bett' nur Gestell und Kopfteil, sonst gar nichts).
 // Wände und Decke zeigen nur nach innen (three.js zeichnet nur die Vorderseite): Von aussen, z. B. beim Überflug oder
 // wenn die Kamera hinter einer Wand steht, sieht man wie in ein Puppenhaus hinein.
 export const CM = 1 / 1.6; // 1 Einheit = 1.6 cm
@@ -86,9 +87,11 @@ export function bauOrt(T, scene, ort, bereich = {}) {
       box(x0, x1, s, m.lehne ?? 90, z1 - 3, z1, c); // Lehne auf der Nordseite (der Stuhl steht vor dem Tisch)
     } else if (m.art === 'bett') {
       box(x0, x1, y0, y1 - 20, z0, z1, dunkler);           // Gestell
-      box(x0 + 2, x1 - 2, y1 - 20, y1, z0 + 2, z1 - 2, c); // Matratze
       box(x0, x1, y0, y1 + 40, z1 - 4, z1, dunkler);       // Kopfteil
-      box(x0 + 15, x1 - 15, y1, y1 + 12, z1 - 45, z1 - 6, 0xF2F2F2); // Kissen
+      if (!strecke.has(m.id)) { // Matratze und Kissen baut sonst das Level (Strecke auf dem Bett)
+        box(x0 + 2, x1 - 2, y1 - 20, y1, z0 + 2, z1 - 2, c);
+        box(x0 + 15, x1 - 15, y1, y1 + 12, z1 - 45, z1 - 6, 0xF2F2F2);
+      }
     } else if (m.art === 'regal') {
       const t = 2;
       // Seitenwände (Regal steht an der Ostwand, offen nach Westen)
