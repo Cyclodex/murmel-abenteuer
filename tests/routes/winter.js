@@ -11,8 +11,11 @@ const steilhang = [
 // Schneebrücke: vor jeder Lawinenbahn warten, bis die Salve vorbei ist und der nächste Ball noch auf sich warten lässt
 const spalte = [{ x: 0, z: -55.3, speed: 1.5, r: 0.5 }, { x: 0, z: -60.5, speed: 3, r: 0.5, wait: ['frei', 'felsen', 0, 1.8, [0, -58]] }];
 
-// Eisweiher: Bobbahn folgen bis auf den Schnee vor dem Weiher
-const bob = [{ x: 0, z: -3, speed: 3 }, { follow: true, bisY: 0.8, speed: 5 }, { x: 0, z: -37, speed: 3 }, { x: 0, z: -41, speed: 1.5 }];
+// Eisweiher: Bobbahn folgen bis auf den Schnee vor dem Weiher, im Auslauf links und rechts an den Reifen vorbei
+const bob = [
+  { x: 0, z: -3, speed: 3 }, { follow: true, bisY: 0.8, speed: 5 }, { x: -0.9, z: -34.8, speed: 2.5, r: 0.5 },
+  { x: 0.9, z: -37.8, speed: 2, r: 0.5 }, { x: 0, z: -41, speed: 1.5 }
+];
 // Eisrisse: Mitte des Eisstreifens, Reihe für Reihe (Kachel 2.4)
 const eisrisse = [
   { x: -1.2, z: -43.6, speed: 1.5, r: 0.6 }, { x: -3.6, z: -46, speed: 1.5, r: 0.6 }, { x: -2.4, z: -48.4, speed: 1.2, r: 0.6 },
@@ -42,15 +45,16 @@ export default {
     // Bonusstern am Lawinenhang rechts: hinter dem zweiten Schneeball hinauf und gleich zurück
     [...steilhang, ...spalte, { x: 0, z: -62.9, speed: 2, r: 0.4, wait: ['frei', 'felsen', 1, 2.5, [0, -63]] }, { x: 2.4, z: -63, speed: 2.5, r: 0.7 }, { x: 0, z: -62.6, speed: 2, r: 0.4 }]
   ],
-  // Eisweiher: Bobbahn mit Tempo 5 (schneller fliegt man in den flachen Kurven hinaus), im Zickzack über den Eisstreifen
-  // (Abstecher zum Stern), Schollen gleich am Anfang ihrer Pause betreten und auf der Scholle stillhalten
+  // Eisweiher: Bobbahn mit Tempo 5 (schneller fliegt man in den flachen Kurven hinaus), Reifen-Schikane, im Zickzack über
+  // den Eisstreifen (Abstecher zum Stern), über jede Schaukelscholle erst, wenn sie lange genug ruhig liegt, die Treib-
+  // scholle gleich bei der Ankunft betreten und auf der Scholle stillhalten
   wi2: [
     [
       ...bob, ...eisrisse,
       { x: 0, z: -70, speed: 1.5 }, { x: 0, z: -74.4, speed: 1.5, r: 0.5 },
-      { x: 0, z: -77, speed: 1.5, r: 0.6, wait: ['phase', ['plattform', 0, 0, 0.04]] }, { x: 0, z: -90.5, speed: 2, wait: 'platAtTo' },
-      { x: 0, z: -96.4, speed: 1.2, r: 0.5 },
-      { x: 0, z: -99, speed: 1.5, r: 0.6, wait: ['phase', ['plattform', 1, 0, 0.04]] }, { x: 9, z: -99, speed: 1.5, r: 0.6, wait: ['platAtTo', 1] },
+      { x: 0, z: -82.2, speed: 2.5, r: 0.5, wait: ['frei', 'rutschplatte', 0, 3.2] }, { x: 0, z: -90.5, speed: 2.5, wait: ['frei', 'rutschplatte', 1, 3] },
+      { x: 0, z: -96.4, speed: 1.2, r: 0.5, wait: 'platAtTo' },
+      { x: 0, z: -99, speed: 1.5, r: 0.6, wait: 'platAtFrom' }, { x: 9, z: -99, speed: 1.5, r: 0.6, wait: 'platAtTo' },
       { x: 9, z: -102, speed: 1.5, r: 0.6 }, { x: 9, z: -104, speed: 1.5, r: 0.6 }, { x: 7.54, z: -107.54, speed: 1.5, r: 0.6 },
       { x: 4, z: -109, speed: 1.5, r: 0.6 }, { x: -2, z: -109, speed: 3 }
     ],
