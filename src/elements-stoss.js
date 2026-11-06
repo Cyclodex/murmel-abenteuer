@@ -416,7 +416,7 @@ export const STOSS = {
   // pos = Mitte (Oberkante), yaw, size = [breit, lang], dicke, takt = Liste [dauer, neigX, neigZ] (Grad): kippt in kipp s
   // dorthin und hält dauer s, dann der nächste (zyklisch; Start bei der letzten Neigung). neigX > 0 = rechte Seite tiefer,
   // neigZ > 0 = vorne (Richtung yaw) tiefer. offset, surface (z. B. 'eis'), ruhig = Grad, die für frei als flach gelten (3),
-  // look: 'holz', 'scholle' (Winter), 'wackel' (Chilbi), 'kaese' (Schweiz)
+  // look: 'holz', 'scholle' (Winter), 'wackel' (Chilbi), 'kaese' (Schweiz), 'schoggi' (Schokoladetafel mit Rillen, Schweiz)
   // Autopilot: wait: ['frei', 'rutschplatte', n, rest] = die nächsten rest s liegt sie (fast) flach.
   // {type:'rutschplatte', pos, yaw?, size?, dicke?, takt?, kipp?, offset?, surface?, ruhig?, look?}
   rutschplatte: {
@@ -468,10 +468,20 @@ export const STOSS = {
         if (look === 'scholle') { x.fillStyle = '#EAF6FF'; x.fillRect(0, 0, W, H); x.strokeStyle = 'rgba(120,180,220,0.6)'; x.lineWidth = 2; for (let i = 0; i < 5; i++) { x.beginPath(); x.moveTo(i * 29, 0); x.lineTo(i * 23 + 30, H); x.stroke(); } }
         else if (look === 'wackel') { for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.fillStyle = (i + j) % 2 ? '#FDD835' : '#E53935'; x.fillRect(i * 32, j * 32, 32, 32); } }
         else if (look === 'kaese') { x.fillStyle = '#F2C230'; x.fillRect(0, 0, W, H); x.fillStyle = '#D99A1C'; for (let i = 0; i < 8; i++) { x.beginPath(); x.arc((i * 47 + 15) % W, (i * 71 + 25) % H, 6 + (i % 3) * 4, 0, 7); x.fill(); } }
+        else if (look === 'schoggi') { // Tafel: dunkle Stücke mit hellem Rand oben links und Rillen dazwischen
+          x.fillStyle = '#6B3A1E'; x.fillRect(0, 0, W, H);
+          for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+            const px = i * 64, py = j * 64;
+            x.fillStyle = '#8A4E2A'; x.fillRect(px + 6, py + 6, 52, 52);
+            x.fillStyle = '#5A2F17'; x.fillRect(px + 12, py + 12, 46, 46);
+            x.fillStyle = '#6B3A1E'; x.fillRect(px + 12, py + 12, 40, 40);
+          }
+          x.fillStyle = '#3E1F0D'; x.fillRect(0, 0, W, 4); x.fillRect(0, 62, W, 4); x.fillRect(0, 0, 4, H); x.fillRect(62, 0, 4, H);
+        }
         else { x.fillStyle = '#C58B4E'; x.fillRect(0, 0, W, H); x.strokeStyle = '#8D5A2B'; x.lineWidth = 3; for (let i = 0; i < 4; i++) { x.beginPath(); x.moveTo(i * 32 + 2, 0); x.lineTo(i * 32 + 2, H); x.stroke(); } }
       });
       tex.repeat.set(Math.max(1, Math.round(b / 3)), Math.max(1, Math.round(l / 3)));
-      const top = new T.MeshPhongMaterial({ map: tex, shininess: look === 'scholle' ? 90 : 20 }), side = new T.MeshPhongMaterial({ color: { scholle: 0xB3E5FC, wackel: 0x1E88E5, kaese: 0xC98A2B }[look] ?? 0x8D5A2B });
+      const top = new T.MeshPhongMaterial({ map: tex, shininess: look === 'scholle' ? 90 : look === 'schoggi' ? 45 : 20 }), side = new T.MeshPhongMaterial({ color: { scholle: 0xB3E5FC, wackel: 0x1E88E5, kaese: 0xC98A2B, schoggi: 0x4A2612 }[look] ?? 0x8D5A2B });
       const m = new T.Mesh(new T.BoxGeometry(b, th, l), [side, side, top, side, side, side]);
       m.position.y = -th / 2; m.castShadow = m.receiveShadow = true;
       const grp = new T.Group(); grp.add(m); v.scene.add(grp);

@@ -51,7 +51,10 @@ const WAITS = {
   // Falltür n ist zu (und nicht gerade am Aufgehen)
   tuerZu: (g, n = 0) => { const e = g.els.filter(x => x.type === 'falltuer')[n]; return e.state === 'zu' && e.a < 0.01; },
   // der drehende Balken (oder Rasensprenger) ist gerade am Punkt [x, z] vorbei (10°..80° danach), bis er zurückkommt bleibt Zeit
-  balkenWeg: (g, [x, z]) => g.els.filter(e => e.type === 'balken' || e.type === 'sprenger').every(e => {
+  // Balken mit takt (Tempo wechselt, steht, dreht andersrum): stattdessen frei für die nächsten rest s (Standard 1.5, r wie frei),
+  // statt [x, z] auch eine Strecke [[x1, z1], [x2, z2]] (alle Balken bleiben ihr fern; nur für Balken, nicht Sprenger)
+  balkenWeg: (g, [x, z, rest = 1.5, r]) => g.els.filter(e => e.type === 'balken' || e.type === 'sprenger').every(e => {
+    if (e.type === 'balken' && (e.takt || Array.isArray(x))) return TYPES.balken.frei(e, rest, [x, z, r]);
     const dx = x - e.at[0], dz = z - e.at[2];
     if (Math.hypot(dx, dz) > (e.length ?? 6) / 2 + 1) return true;
     const dir = Math.sign(e.speed ?? 40), pa = Math.atan2(dz, dx); // Balkenachse liegt bei Winkel -a

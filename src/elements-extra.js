@@ -215,7 +215,10 @@ export const EXTRA = {
   // Drehender Balken, der die Murmel sanft schubst. form = Gegenstand aus src/props.js, der sich mitdreht (bekommt laenge = length,
   // hoehe = height; z. B. 'kaeseharfe', 'zeiger'); mit enden: true steht je eine Figur an beiden Enden, Gesicht in Drehrichtung
   // (z. B. 'pferd' für ein Karussell), scale = deren Grösse. Alles nur Grafik.
-  // {type:'balken', at (Drehpunkt am Boden), length?, speed?:Grad/s, height?, farbe?, form?, enden?, scale?}
+  // takt = [[dauer, faktor], …]: Faktor auf speed, zyklisch ab Level-Start (negativ = dreht andersrum, 0 = steht), offset dazu.
+  // Autopilot: wait ['frei', 'balken', n, rest, [x, z, r?]] = kommt die nächsten rest s nicht näher als r an [x, z]
+  // (statt [x, z] auch eine Strecke [[x1, z1], [x2, z2], r?]).
+  // {type:'balken', at (Drehpunkt am Boden), length?, speed?:Grad/s, height?, farbe?, form?, enden?, scale?, takt?, offset?}
   balken: {
     init(el, g) {
       const L = el.length ?? 6, hh = el.height ?? 0.6;
@@ -223,12 +226,33 @@ export const EXTRA = {
       el.body.position.set(...el.at);
       el.body.userData = { surface: el.surface };
     },
-    reset(el) { el.a = (el.yaw || 0) * DEG; },
+    reset(el) { el.a = (el.yaw || 0) * DEG; el.t = 0; el.f = faktor(el, 0); },
     pre(el, g, h) {
-      const w = (el.speed ?? 40) * DEG;
+      el.f = faktor(el, el.t);
+      const w = (el.speed ?? 40) * DEG * el.f;
       el.body.quaternion.set(...quatYawPitch(el.a, 0));
       el.body.angularVelocity.set(0, w, 0);
-      el.a += w * h;
+      el.a += w * h; el.t += h;
+    },
+    // Abstand von [x, z] zur Balkenachse (Winkel -a) bei Winkel a; ausserhalb der Länge zählt der Abstand zum Ende
+    abstand(el, a, x, z) {
+      const dx = x - el.at[0], dz = z - el.at[2], c = Math.cos(-a), s = Math.sin(-a);
+      const l = dx * c + dz * s, q = -dx * s + dz * c, L = (el.length ?? 6) / 2;
+      return Math.hypot(Math.max(0, Math.abs(l) - L), q);
+    },
+    // Autopilot: in den nächsten rest s nie näher als r an den Punkt [x, z] oder an die Strecke [[x1, z1], [x2, z2]]
+    // (r = halbe Balkendicke + Murmel + Luft); rechnet die Schritte von pre() voraus, mit Takt
+    frei(el, rest, [p, q, r = 0.2 + R + 0.4] = []) {
+      const pts = [];
+      if (!Array.isArray(p)) pts.push([p, q]);
+      else { const n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 0.25)); for (let i = 0; i <= n; i++) pts.push([p[0] + (q[0] - p[0]) * i / n, p[1] + (q[1] - p[1]) * i / n]); }
+      const w = (el.speed ?? 40) * DEG, h = 1 / 60;
+      let a = el.a, t = el.t;
+      for (let s = 0; s <= rest + 1e-9; s += h) {
+        if (pts.some(([x, z]) => TYPES.balken.abstand(el, a, x, z) < r)) return false;
+        a += w * faktor(el, t) * h; t += h;
+      }
+      return true;
     },
     view(el, v) {
       const T = v.THREE, hub = new T.Mesh(new T.CylinderGeometry(0.35, 0.45, (el.height ?? 0.6) + 0.3, 16), v.mats.pole);
