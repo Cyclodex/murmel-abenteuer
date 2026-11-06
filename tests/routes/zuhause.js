@@ -14,5 +14,13 @@ export default {
     { x: 15, z: -90, speed: 3 }, { x: 19, z: -78, speed: 3 }, { x: 19, z: -66, speed: 3 }, { x: 10, z: -61, speed: 3 },
     { x: 9, z: -50, speed: 3 }, { x: 3.1, z: -45, speed: 3 }, { x: 3.1, z: -24, speed: 8, r: 1.5 },
     { x: -12, z: -19, speed: 8, r: 3 }, { x: -14, z: -19, speed: 2 }, { x: -12, z: -12, speed: 2 }, { x: -12, z: -6, speed: 1.5 }
+  ],
+  // Fensterbank: Slalom um die Töpfe (Zimmerkante, Glas, Zimmerkante), durch den Untersetzer mit Erde,
+  // zwischen den Spielfiguren durch, am Topf vorbei an der Kante entlang und in die Muschel
+  kz3: [
+    { x: -1, z: -9, speed: 2 }, { x: -3.5, z: -15, speed: 2 }, { x: -1, z: -20, speed: 2 }, { x: 3.5, z: -26, speed: 2 },
+    { x: 1, z: -31, speed: 2 }, { x: -1, z: -36, speed: 2 }, { x: -1, z: -44, speed: 2 }, { x: -1, z: -51, speed: 2 },
+    { x: -1, z: -57, speed: 2 }, { x: 0, z: -63, speed: 2 }, { x: -3.5, z: -68, speed: 2 }, { x: -3.5, z: -77, speed: 2 },
+    { x: 0, z: -80, speed: 1.5 }, { x: 0, z: -84, speed: 1.5 }
   ]
 };

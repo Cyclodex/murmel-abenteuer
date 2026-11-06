@@ -33,6 +33,7 @@ import vulkanS from './schwer/vulkan.js';
 import { PRUEFSTAND } from './pruefstand/index.js';
 import kz1 from './zuhause/kinderzimmer1.js';
 import kz2 from './zuhause/kinderzimmer2.js';
+import kz3 from './zuhause/kinderzimmer3.js';
 
 // Prüfstand (ein Level pro Bauteil, für Tests) nur mit ?pruefstand in der Adresse als eigene Welt
 const PRUEF = typeof location !== 'undefined' && new URLSearchParams(location.search).has('pruefstand');
@@ -62,7 +63,7 @@ export const WORLDS = [
   // Profi-Welt: erst ab need Sternen offen
   { id: 'vulkan', name: 'Vulkan', emoji: '🌋', need: 50, levels: [v1, v2, v3], hard: vulkanS },
   // Echte Orte: das Haus vom Dach bis in den Keller (docs/plan-echte-orte.md), nur freigeschaltet sichtbar
-  { id: 'kinderzimmer', name: 'Kinderzimmer', emoji: '🛏️', kategorie: 'orte', levels: [kz1, kz2] },
+  { id: 'kinderzimmer', name: 'Kinderzimmer', emoji: '🛏️', kategorie: 'orte', levels: [kz1, kz2, kz3] },
   ...(PRUEF ? [{ id: 'pruefstand', name: 'Prüfstand', emoji: '🔧', levels: PRUEFSTAND }] : [])
 ].filter(w => ORTE_AN || kategorie(w) !== 'orte');
 

@@ -28,7 +28,9 @@ export const SURFACES = {
   rohr: { friction: 0.3, bounce: 1, grip: 0, drag: 0 }, // geschlossenes Rohr (Abfluss): drinnen lenkt man nicht
   trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 }, // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
   spirale: { friction: 0.4, bounce: 1, grip: 1, drag: 0.3, wash: 0.015 }, // Boden von Spirale und geneigter Kurve: bremst etwas, sonst zu schnell für die Kurve
-  matratze: { friction: 0.6, bounce: 0.2, grip: 1, drag: 1.0 } // Bett, Decke, Kissen (Echte Orte): weich, federt wenig und bremst
+  matratze: { friction: 0.6, bounce: 0.2, grip: 1, drag: 1.0 }, // Bett, Decke, Kissen (Echte Orte): weich, federt wenig und bremst
+  stein: { friction: 0.15, bounce: 1, grip: 0.7, drag: 0, roll: 0.5 }, // glatte Fensterbank (Echte Orte): rollt weit, schwer zu bremsen (zwischen normal und eis)
+  stoff: { friction: 0.9, bounce: 0.1, grip: 1, drag: 2.2 } // Vorhang (Echte Orte): weich, bremst stark
 };
 const DIRT_STILL = 0.08; // so viel Dreck pro Sekunde auch im Stehen im Schlamm
 const WASH_WATER = 0.6;  // Unterwasser: Abwaschen pro Sekunde
