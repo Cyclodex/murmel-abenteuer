@@ -137,13 +137,14 @@ Folgen (berechnet):
 
 ## 7. Detaillierte Nachbildung: Vorgehen
 
-### 7.1 Vorlage: echte Masse, am besten ein echtes Zimmer
-- Pro Ort ein **Massblatt** in cm: Raum, Möbel, jedes Ding auf der Strecke. Beispiele Schreibtisch, umgerechnet (cm / 1.6):
-  Heft A4 21 × 29.7 cm = 13.1 × 18.6 Einheiten, Lineal 30 × 3 cm = 18.75 × 1.9, Bleistift Ø 0.7 cm = 0.44 (dünner als die
-  Murmel), Steckdose 8 × 8 cm = 5 × 5, Tür 200 cm = 125.
-- Am besten ein **echtes Zimmer** als Vorlage: Fotos aus mehreren Richtungen und Masse (Raum, Möbel). Dann lässt sich das
-  Ergebnis direkt mit dem Foto vergleichen.
-- Dazu eine **Draufsicht** (Skizze) mit Möbeln und den Bereichen der Level.
+### 7.1 Vorlage: typisches Kinderzimmer mit echten Massen
+**Entscheid (Benutzer):** Kein bestimmtes echtes Zimmer, sondern ein typisches Kinderzimmer, das viel Spielraum lässt.
+Echt wirken soll es dadurch, dass Raum und Dinge da sind (statt Bahn im leeren Raum), mit vielen Details; keine
+Foto-Texturen, keine Simulation. Handy und Tablet müssen es flüssig zeigen.
+- Pro Ort ein **Massblatt** in cm (Norm- und übliche Möbelmasse, Vorlagen und Fotos aus dem Web). Beispiele Schreibtisch,
+  umgerechnet (cm / 1.6): Heft A4 21 × 29.7 cm = 13.1 × 18.6 Einheiten, Lineal 30 × 3 cm = 18.75 × 1.9, Bleistift Ø 0.7 cm
+  = 0.44 (dünner als die Murmel), Steckdose 8 × 8 cm = 5 × 5, Tür 200 cm = 125.
+- Grundriss und Möbel: Abschnitt 8.
 
 ### 7.2 Drei Detailzonen
 | Zone | Was | Detail |
@@ -189,9 +190,41 @@ Heute gemessen (Szene beim Levelstart, Desktop-Chromium, Meshes = obere Grenze d
 - Im Pilot auf dem Handy messen (Bildrate vorher/nachher), dann das Budget festlegen.
 
 ### 7.6 Ablauf pro Ort
-1. Massblatt, Fotos, Draufsicht mit Bereichen.
+1. Massblatt, Vorlagen, Draufsicht mit Bereichen.
 2. **Rohbau grau:** Raum und Möbel als graue Klötze, Strecke fahrbar, `pruefe-level.mjs` 16/16. Screenshots an den
    Benutzer.
 3. Zone A: Dinge der Strecke in echter Form.
 4. Texturen, Zone B und C, Licht.
-5. **Abnahme:** Screenshot neben das Foto; erkennbar ohne Levelnamen; Kamera-Test; Leistung im Budget.
+5. **Abnahme:** Screenshot neben die Vorlagen; erkennbar ohne Levelnamen; Kamera-Test; Leistung im Budget.
+
+## 8. Haus «Zuhause» (grob)
+
+![Hausplan](hausplan.svg)
+
+Erzeugt mit `python3 docs/hausplan.py` (Masse dort als Daten). Alle Orte der Kategorie liegen in diesem einen Haus, damit
+Fenster und Türen zueinander passen (aus dem Kinderzimmer sieht man in den Garten, durch die Tür in den Gang).
+
+- Grundfläche 10 × 9 m, drei Geschosse, Satteldach 30°: EG-Boden 0, OG-Boden 2.75 m, Traufe 5.5 m, First 8.10 m
+  (5.5 + 4.5 · tan 30°), Keller bis −2.5 m. Garten im Süden.
+- Räume: UG Werkstatt, Waschküche, Vorratskeller; EG Eingang, WC, Küche, Wohnzimmer, Esszimmer; OG Kinderzimmer,
+  Elternzimmer, Badezimmer, Büro. Treppe in allen Geschossen an derselben Stelle.
+- Welten der Kategorie (Vorschlag, in dieser Reihenfolge): Kinderzimmer, Küche, Badezimmer, Werkstatt, Wohnzimmer,
+  Dach + Garten.
+
+### 8.1 Kinderzimmer (OG, Südwest-Ecke)
+4 × 3.5 × 2.5 m = 250 × 218.75 × 156.25 Einheiten. Fenster nach Süden (Brüstung 0.9 m), Tür nach Norden zum Gang.
+
+| Möbel | cm (B × T × H) | Einheiten | Bereich / Level |
+|---|---|---|---|
+| Schreibtisch (unter dem Fenster) | 120 × 80 × 75 | 75 × 50 × 46.88 | **Level 1** |
+| Stuhl | 50 × 45 × 45 | 31.25 × 28.13 × 28.13 | Teil von Level 1 (Sitz) |
+| Fensterbank | Brüstung 90 hoch | 56.25 hoch | Level |
+| Regal (Ostwand) | 35 × 100 × 180 | 21.88 × 62.5 × 112.5 | Level |
+| Bett (Westwand) | 90 × 200 × 50 | 56.25 × 125 × 31.25 | Level |
+| Nachttisch | 45 × 45 × 50 | 28.13 × 28.13 × 31.25 | mit Bett |
+| Schrank (Ostwand) | 60 × 150 × 200 | 37.5 × 93.75 × 125 | Level (oben drauf) |
+| Spielkiste | 60 × 40 × 40 | 37.5 × 25 × 25 | Ziel eines Levels |
+| Teppich | 200 × 130 | 125 × 81.25 | Kulisse (Boden = Absturz) |
+
+Dazu für Zone C: Heizkörper unter dem Fenster, Vorhang, Fussleisten, Steckdosen, Lichtschalter neben der Tür,
+Deckenlampe, Poster, Spielzeug auf dem Teppich, Kabel der Schreibtischlampe.
