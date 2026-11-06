@@ -5,5 +5,6 @@ import kraefte from './kraefte.js';
 import welt from './welt.js';
 import werkstatt from './werkstatt.js';
 import schweiz from './schweiz.js';
+import stoss from './stoss.js';
 
-export default { ...bahn, ...beweglich, ...kraefte, ...welt, ...werkstatt, ...schweiz };
+export default { ...bahn, ...beweglich, ...kraefte, ...welt, ...werkstatt, ...schweiz, ...stoss };

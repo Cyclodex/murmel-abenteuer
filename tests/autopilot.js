@@ -43,8 +43,9 @@ const WAITS = {
   },
   // Takt mit Listen: wait: ['frei', type, n, rest, arg?] = das n-te Teil vom Typ type meldet, dass die nächsten rest s sicher
   // sind (Methode frei(el, rest, arg) des Bauteils: Hammer oben, Schieber weg von arg = [x, z, r?] bzw. steht still,
-  // Felsen: nächster Start später und letzter an arg = [x, z] vorbei, Falltür zu, Wind/Band/Pendel/Riesenrad/Schraubstock)
-  frei: (g, [type, n = 0, rest = 1, arg]) => TYPES[type].frei(g.els.filter(x => x.type === type)[n], rest, arg),
+  // Felsen: nächster Start später und letzter an arg = [x, z] vorbei, Falltür zu, Wind/Band/Pendel/Riesenrad/Schraubstock;
+  // Bauteile ohne Typ-Methode, z. B. aus elements-stoss.js, haben el.frei(rest))
+  frei: (g, [type, n = 0, rest = 1, arg]) => { const el = g.els.filter(x => x.type === type)[n]; return TYPES[type].frei ? TYPES[type].frei(el, rest, arg) : el.frei(rest); },
   // Riesenrad n: die Gondel mit der Murmel steht am Platz platz (0 = unten, gondeln / 2 = oben) und hält noch mindestens rest s
   gondel: (g, [n, platz, rest = 1]) => { const e = g.els.filter(x => x.type === 'riesenrad')[n]; return e.platz === platz && e.halt >= rest; },
   // Falltür n ist zu (und nicht gerade am Aufgehen)

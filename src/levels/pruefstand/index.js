@@ -7,8 +7,9 @@ import kraefte from './kraefte.js';
 import welt from './welt.js';
 import werkstatt from './werkstatt.js';
 import schweiz from './schweiz.js';
+import stoss from './stoss.js';
 
-export const GRUPPEN = { bahn, beweglich, kraefte, welt, werkstatt, schweiz };
+export const GRUPPEN = { bahn, beweglich, kraefte, welt, werkstatt, schweiz, stoss };
 export const PRUEFSTAND = Object.values(GRUPPEN).flat();
 // Markiert: keine Punkte-Rekorde (sonst landeten sie in der Online-Rangliste)
 for (const l of PRUEFSTAND) l.pruefstand = true;
