@@ -48,6 +48,18 @@ import { PRUEFSTAND } from './pruefstand/index.js';
 // Prüfstand (ein Level pro Bauteil, für Tests) nur mit ?pruefstand in der Adresse als eigene Welt
 const PRUEF = typeof location !== 'undefined' && new URLSearchParams(location.search).has('pruefstand');
 
+// Kategorien der Karte (Umschalter oben): Bahnen = alle bisherigen Welten, Echte Orte = Welten, die an einem echten Ort spielen
+// (Haus vom Dach bis in den Keller, siehe docs/plan-echte-orte.md). Welt ohne kategorie = 'bahn'.
+// bald = Hinweis, solange die Kategorie noch keine Welt hat
+// Echte Orte sind noch in Arbeit: im Browser nur mit Schlüssel (src/freischalten.js), sonst weder Umschalter noch Welten
+// (auch nicht in Album und Rangliste). In Node (pruefe-level, richtzeiten) immer dabei.
+export const ORTE_AN = typeof window === 'undefined' || (() => { try { return localStorage.getItem('murmel-orte') === 'an'; } catch (e) { return false; } })();
+export const KATEGORIEN = [
+  { id: 'bahn', name: 'Bahnen', emoji: '🎢' },
+  { id: 'orte', name: 'Echte Orte', emoji: '🏠', bald: 'Hier entsteht ein ganzes Haus: vom Dach über den Estrich durch alle Stockwerke bis in den Keller.' }
+].filter(k => k.id === 'bahn' || ORTE_AN);
+export const kategorie = w => w.kategorie || 'bahn';
+
 export const WORLDS = [
   { id: 'uebung', name: 'Übung', emoji: '🌳', levels: [ausflug], hard: uebungS },
   { id: 'spielzimmer', name: 'Spielzimmer', emoji: '🧸', levels: [sz1, sz2, sz3, sz4, sz5], hard: spielzimmerS },
@@ -64,6 +76,6 @@ export const WORLDS = [
   // Profi-Welt: erst ab need Sternen offen
   { id: 'vulkan', name: 'Vulkan', emoji: '🌋', need: 50, levels: [v1, v2, v3], hard: vulkanS },
   ...(PRUEF ? [{ id: 'pruefstand', name: 'Prüfstand', emoji: '🔧', levels: PRUEFSTAND }] : [])
-];
+].filter(w => ORTE_AN || kategorie(w) !== 'orte');
 
 export const LEVELS = WORLDS.flatMap(w => [...w.levels, ...(w.hard || [])]);

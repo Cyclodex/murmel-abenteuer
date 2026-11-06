@@ -34,12 +34,12 @@ function read() {
   const d = load(KEY);
   if (d) {
     const players = Array.isArray(d.players) ? d.players.filter(p => p && p.id && p.name).map(p => ({ ...newPlayer(p.name, p), id: p.id })) : [];
-    return { players, current: d.current || null, control: d.control || null, power: d.power || 'normal', sound: d.sound || 'alle', legacy: d.legacy || null, geist: d.geist || null };
+    return { players, current: d.current || null, control: d.control || null, power: d.power || 'normal', sound: d.sound || 'alle', legacy: d.legacy || null, geist: d.geist || null, kategorie: d.kategorie || 'bahn' };
   }
   // Alter Spielstand: Einstellungen übernehmen, Sterne bekommt der erste neue Spieler
   const o = load(OLD_KEY) || {};
   const legacy = o.done && Object.keys(o.done).length ? { done: o.done, best: o.best || {}, skin: o.skin, stickers: o.stickers, trail: o.trail } : null;
-  return { players: [], current: null, control: o.control || null, power: o.power || 'normal', sound: o.sound || 'alle', legacy };
+  return { players: [], current: null, control: o.control || null, power: o.power || 'normal', sound: o.sound || 'alle', legacy, kategorie: 'bahn' };
 }
 
 const stars = p => Object.values(p.best).reduce((a, b) => a + b, 0);
@@ -147,6 +147,8 @@ export function createProgress() {
     setControl(c) { data.control = c; save(); },
     setPower(p) { data.power = p; save(); },
     setSound(m) { data.sound = m; save(); },
+    // Kategorie auf der Karte ('bahn' oder 'orte'), für alle Spieler
+    setKategorie(k) { data.kategorie = k; save(); },
     // zuletzt gewählte Geister beim Levelstart ('ich', 'best', 'beide', 'kein')
     setGeist(g) { data.geist = g; save(); },
     clear() { const p = me(); p.done = {}; p.best = {}; p.bonus = {}; p.skin = 'standard'; p.stickers = {}; p.trail = 'keine'; p.times = {}; p.runs = {}; delete ghosts[p.id]; delete fast[p.id]; save(); saveGhosts(); }
