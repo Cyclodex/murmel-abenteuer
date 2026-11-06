@@ -857,6 +857,9 @@ function loop(now) {
   if (intro && view.cinemaT >= view.INTRO_END) endIntro();
   updatePilot();
   $('stars').textContent = `⭐ ${game.st.stars}/${game.st.starTotal}`;
+  const kz = game.els.find(e => e.type === 'kanone' && e.state === 'zielen'); // zielbare Kanone: Zeit bis zum Schuss
+  const zt = kz ? `🎯 ${Math.max(0, kz.zielen.zeit - kz.t).toFixed(1)}` : '';
+  if ($('zielZeit').textContent !== zt) { $('zielZeit').textContent = zt; show('zielZeit', !!kz); }
   view.render(dt, sx, sz, camYaw, power().tilt, input.mode === 'tilt' ? 1 : 0);
   requestAnimationFrame(loop);
 }
