@@ -1,22 +1,21 @@
 // Autopilot-Routen für src/levels/chilbi2.js (siehe tests/autopilot.js).
-const XL = 0, XR = 9;                   // Arena: hier wird links bzw. rechts gequert
+const XR = 9;                           // hier geht es aus der Arena auf den Steg
 const SX = 5 * Math.sin(Math.PI / 3);   // so weit links hält die Gondel am Bonus-Steg
-// Auto n ist eben vom Querungspunkt weggefahren (Mitte überquert), bis es zurückkommt, bleibt Zeit
-const weg = (n, time, pause) => { const per = 2 * (time + pause), a = (pause + 0.5 * time) / per; return ['phase', ['schieber', n, a, a + 0.08]]; };
-// Arena im Zickzack (links queren, Gasse nach rechts mit Stern links, rechts queren, Gasse nach links mit Stern rechts,
-// links queren, hinaus nach rechts), Steg, Doppelhammer (zwischen den Hämmern warten), Einstieg ins Riesenrad
+// Arena: die drei Putschautos fahren Schleifen mit gleicher Dauer (16.4 s), darum sagt ein einziges Auto, wann eine Lücke
+// im ganzen Verkehr kommt (ausgesucht mit einer Simulation der Pfade): Tor -> Insel, wenn das gelbe Auto 6 s weg von
+// [7.5, -5.5] bleibt; um den Mast herum (dort kommt keines hin); Insel -> Steg, wenn das rote 5 s weg von [-3, -17.5] bleibt.
+// Steg: warten, bis der Karussell-Arm 2.2 s zur Seite bleibt. Doppelhammer: vor jedem Hammer warten, bis er oben bleibt.
+// Riesenrad: einsteigen, wenn es noch mindestens 1.7 s hält.
 const anfang = [
-  { x: 0, z: -3, speed: 3 }, { x: XL, z: -6.3, speed: 2, r: 0.5 },
-  { x: XL, z: -11.75, speed: 4, r: 0.6, wait: weg(0, 1.6, 1.6) }, { x: -1.1, z: -11.75, speed: 2, r: 0.5 },
-  { x: XR, z: -11.75, speed: 3, r: 0.5 },
-  { x: XR, z: -17.25, speed: 4, r: 0.6, wait: weg(1, 2.4, 1.0) }, { x: 10.1, z: -17.25, speed: 2, r: 0.5 },
-  { x: XL, z: -17.25, speed: 3, r: 0.5 },
-  { x: XL, z: -22.6, speed: 4, r: 0.6, wait: weg(2, 1.1, 2.2) }, { x: XR, z: -22.6, speed: 3, r: 0.6 },
-  { x: XR, z: -26, speed: 2.5, r: 0.6 }, { x: XR, z: -31, speed: 3, r: 0.6 }, { x: XR, z: -37, speed: 2, r: 0.5 },
-  { x: XR, z: -41.75, speed: 5, r: 0.6, wait: ['phase', ['hammer', 0, 0.72, 0.85]] }, { x: XR + 0.7, z: -41.75, speed: 1.5, r: 0.4 },
+  { x: 0, z: -3, speed: 2, r: 0.5 },
+  { x: 1.5, z: -7.7, speed: 4, r: 0.8, wait: ['frei', 'schieber', 2, 6, [7.5, -5.5, 3.5]] }, { x: 3, z: -12.4, speed: 4, r: 0.6 },
+  { x: 3.3, z: -15.2, speed: 1.5, r: 0.4 }, { x: 6, z: -15.6, speed: 1.5, r: 0.4 },
+  { x: 7.5, z: -20.3, speed: 4, r: 0.8, wait: ['frei', 'schieber', 0, 5, [-3, -17.5, 6]] }, { x: XR, z: -24.4, speed: 2.5, r: 0.5 },
+  { x: XR, z: -31.5, speed: 5, r: 0.6, wait: ['frei', 'besen', 0, 2.2] }, { x: XR, z: -37, speed: 2, r: 0.5 },
+  { x: XR, z: -41.75, speed: 5, r: 0.6, wait: ['frei', 'hammer', 0, 1.6] }, { x: XR + 0.7, z: -41.75, speed: 1.5, r: 0.4 },
   { x: XR, z: -41.75, speed: 1.5, r: 0.5 },
-  { x: XR, z: -48, speed: 5, r: 0.6, wait: ['phase', ['hammer', 1, 0.72, 0.85]] },
-  { x: XR, z: -53.2, speed: 2, r: 0.6 }, { x: XR, z: -56, speed: 2.5, r: 0.5, wait: ['phase', ['riesenrad', 0, 0, 0.2]] }
+  { x: XR, z: -48, speed: 5, r: 0.6, wait: ['frei', 'hammer', 1, 2] },
+  { x: XR, z: -53.2, speed: 2, r: 0.6 }, { x: XR, z: -56, speed: 2.5, r: 0.5, wait: ['frei', 'riesenrad', 0, 1.7] }
 ];
 
 export default {
