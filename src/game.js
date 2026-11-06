@@ -355,6 +355,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
 
   function substep(ix, iz, ev) {
     const grip = g.lock ? 0 : g.surface.grip; // lock: Röhre/Kanone steuern die Murmel
+    g.ix = ix; g.iz = iz; // Eingabe für Bauteile (zielbare Kanone)
     world.gravity.set(Math.sin(g.tilt) * G * ix * grip, -g.G, Math.sin(g.tilt) * G * iz * grip);
     for (const el of g.els) TYPES[el.type].pre?.(el, g, H);
     if (g.squashNew) { g.squashNew = false; ev.push('quetsch'); }
