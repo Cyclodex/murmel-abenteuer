@@ -26,12 +26,13 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 | `src/elements-fallen.js` | Fallen für schwere Level (Feld mit Löchern, Falltür, Schieber, Hammer, Treppe, Fluss, Felsen) |
 | `src/elements-welt.js` | Echte Dinge der Welten (Schüssel = Pfanne/Topf/Lavabo, Deko-Gegenstände, Herdplatte, Rasensprenger) |
 | `src/elements-bahn.js` | Kugelbahn: Rinne (schmal = Rutsche, auch als Kurve/Spirale; breit = Halfpipe), Spiraltrichter; `ringSolids` baut runde Flächen (auch Schüsseln) aus Klötzen, `rohrSolids` ein geschlossenes Rohr (Abfluss, Klo) |
+| `src/elements-werkstatt.js` | Werkstatt: Schraubstock (Tor, das auf- und zugeht und quetscht), Messband (Rollmeter, dessen Band nach dem Schalter über die Lücke ausfährt) |
 | `src/elements-bad.js` | Badezimmer: Badewanne mit Wasser (hineinfallen = zurück zum Checkpoint), Schiffchen mit Trampolin, Wasserstrahl aus dem Hahn (wäscht), Toilette als Ziel |
-| `src/props.js` | Riesige Alltagsgegenstände aus einfachen Formen (Apfel, Tasse, Toaster, Ente, Zwerg, Sandburg …) |
-| `src/checkpoint-figuren.js` | Checkpoint-Grafik: Zielband, das beim Durchfahren reisst, und eine Figur je Welt (Springteufel, Gartenzwerg, Toaster, Quietscheente, Astronaut, Oktopus, Geysir), die schläft und beim Erreichen mit der Fahne und eigenem Jubel-Klang (`cp-<figur>` in `src/audio.js`) jubelt |
+| `src/props.js` | Riesige Alltagsgegenstände aus einfachen Formen (Apfel, Tasse, Toaster, Ente, Zwerg, Sandburg …); Werkzeug der Werkstatt (Hammer, Schraube, Farbdose, Fuchsschwanz, Rollmeter …) in `src/props-werkstatt.js` |
+| `src/checkpoint-figuren.js` | Checkpoint-Grafik: Zielband, das beim Durchfahren reisst, und eine Figur je Welt (Springteufel, Gartenzwerg, Toaster, Quietscheente, Astronaut, Oktopus, Geysir, Schraube), die schläft und beim Erreichen mit der Fahne und eigenem Jubel-Klang (`cp-<figur>` in `src/audio.js`) jubelt |
 | `src/bauteile.js` | Sammelt alle Bauteil-Typen |
 | `src/themes.js` | Aussehen der Welten (Boden, Wände, Himmel, Untergrund, Partikel) |
-| `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm, Pfütze, Keramik, Kunststoff), Dreck (`g.dirt`: Schlamm macht dreckig, Pfütze/Wind/Wasser waschen), Hangabtrieb bergab (`SLOPE_PUSH`), Bremsen (`BREMSE`: Rollwiderstand gleichmässig in der Ebene, ausser beim Gasgeben in Fahrtrichtung; Luftwiderstand ∝ v²), Bremshilfe nur in der Ebene; runde Flächen (`rund`) geben den an den Nähten der Klötze verlorenen Schwung zurück und behalten Reibung auch an steilen Stellen; eigene Breitphase und Kontakt-Tabelle (schnell auch mit Hunderten Klötzen) |
+| `src/game.js` | Physik + Spielregeln, ohne Grafik (auch headless nutzbar), Oberflächen (Eis, Schlamm, Pfütze, Sägemehl, Keramik, Kunststoff), Dreck (`g.dirt`: Schlamm macht dreckig, Pfütze/Wind/Wasser waschen), Hangabtrieb bergab (`SLOPE_PUSH`), Bremsen (`BREMSE`: Rollwiderstand gleichmässig in der Ebene, ausser beim Gasgeben in Fahrtrichtung; Luftwiderstand ∝ v²), Bremshilfe nur in der Ebene; runde Flächen (`rund`) geben den an den Nähten der Klötze verlorenen Schwung zurück und behalten Reibung auch an steilen Stellen; eigene Breitphase und Kontakt-Tabelle (schnell auch mit Hunderten Klötzen) |
 | `src/view.js` | three.js-Szene, Themen (Spielzimmer), Kamera (Bauteile wie Looping, Nagelwand und Klo können eine eigene Kamera liefern: `view()` gibt `cam(p)` zurück), Kamerafahrt `cinema()`: Überflug beim Levelstart und nach dem Gewinn Hochflug in die Weitsicht über das ganze Level mit der gefahrenen Strecke (Tippen überspringt; in Playwright-Tests nur mit `?flug`) |
 | `src/input.js` | Kippen, schwebender Joystick (überall drücken + ziehen; Knopf 📱/🕹️ wechselt jederzeit), Pfeiltasten, Stärken 🐢 Langsam / 🐇 Mittel / 🚀 Schnell (`POWERS`, auf der Karte beschriftet) |
 | `src/audio.js` | Alle Klänge + Musik live erzeugt (WebAudio): Effekte `SFX`, Rollgeräusch je Oberfläche, Lieder `SONGS` |
@@ -102,12 +103,12 @@ Ohne Netz läuft alles lokal weiter, dann mit den Spielern auf dem Gerät.
 
 Koordinaten in Metern: `x` = rechts, `y` = oben, `-z` = vorwärts. Murmel-Radius 0.5.
 Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rechts (+x).
-`theme`: `'spielzimmer'`, `'garten'`, `'kueche'`, `'badezimmer'`, `'weltraum'`, `'unterwasser'`, `'vulkan'` (siehe `src/themes.js`).
+`theme`: `'spielzimmer'`, `'garten'`, `'kueche'`, `'badezimmer'`, `'weltraum'`, `'unterwasser'`, `'werkstatt'`, `'vulkan'` (siehe `src/themes.js`).
 `physik`: `{ schwerkraft: 0.45, wasser: 0.35, abprall: 0.5 }` (Faktor Schwerkraft, Wasserbremse pro Sekunde, Faktor Abprall).
 
 | Bauteil | Felder |
 |---|---|
-| `weg` | `from`, `to` (Oberkante; Höhenunterschied = Rampe), `width`, `walls`, `caps` (`'start'`/`'end'`/`'both'`), `thick`, `surface` (`'eis'`/`'schlamm'`/`'pfuetze'`/`'sand'`/`'seife'`/`'handtuch'`) |
+| `weg` | `from`, `to` (Oberkante; Höhenunterschied = Rampe), `width`, `walls`, `caps` (`'start'`/`'end'`/`'both'`), `thick`, `surface` (`'eis'`/`'schlamm'`/`'pfuetze'`/`'sand'`/`'seife'`/`'handtuch'`/`'saegemehl'`) |
 | `kurve` | `at` (Start, Mitte), `yaw` (Startrichtung), `turn` (+ rechts / - links), `radius`, `width`, `walls` |
 | `looping` | `at` (Einfahrt unten), `yaw`, `radius`, `width`, `shift` (Ausfahrt seitlich versetzt, beginnt und endet weich). Braucht `turbo` davor. Im Looping wirkt Kippen nicht |
 | `wand` | `from`, `to` (Unterkante), `height`, `look` |
@@ -130,7 +131,7 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `magnet` | `at` (Boden darunter), `radius`, `strength` (negativ = stösst ab) |
 | `kanone` | `at` (Boden), `target` (Landepunkt), `time` (Flugzeit) |
 | `domino` | `from`, `to`, `count` (Reihen), `quer` (bis zu so viele Steine nebeneinander, versetzt, vorne als Dreieck), `abstand`, `size: [b, h, t]`; einzelner Stein: `at`, `yaw` |
-| `feld` | `at` (Mitte der vorderen Kante), `yaw`, `cell` (Kachel, Standard 2), `map` (Zeilen, unterste = Einfahrt): `#` Boden, `.` Loch, `w` Mauer, `e`/`s`/`p`/`a`/`o`/`h` Eis/Schlamm/Pfütze/Sand/Seife/Handtuch; `walls` |
+| `feld` | `at` (Mitte der vorderen Kante), `yaw`, `cell` (Kachel, Standard 2), `map` (Zeilen, unterste = Einfahrt): `#` Boden, `.` Loch, `w` Mauer, `e`/`s`/`p`/`a`/`o`/`h`/`m` Eis/Schlamm/Pfütze/Sand/Seife/Handtuch/Sägemehl; `walls` |
 | `falltuer` | `at`, `size: [b, t]`, `yaw`, `delay` (s bis sie aufklappt, Standard 0.6), `offen` (s bis sie zugeht) |
 | `schieber` | `from`, `to` (Mitte unten), `size: [b, h, t]`, `time`, `pause`, `offset` – schiebt die Murmel weg |
 | `hammer` | `at` (Aufschlag, Oberkante), `yaw` (Wegrichtung), `side` (1 = Stiel rechts), `length`, `size`, `up`, `down`, `offset`, `farbe` – quetscht die Murmel |
@@ -150,8 +151,11 @@ Winkel in Grad; `yaw` 0 = nach vorne (-z), 90 = nach links (-x), -90 = nach rech
 | `schiff` | `at` (Wasseroberfläche), `size: [b, lang]`, `yaw`, `deck`, `bob`, `to`/`time`/`pause`/`offset` (fährt wie die Plattform), `farbe`, `segel`, `surface` (Standard Frottee; `'normal'` = Holz, z. B. für eine Fähre), `trampolin: { vorne, size, ziel, time, bremse }` – springt immer genau auf `ziel` (Flug je Murmel ausgerechnet), Frottee-Deck fängt auf |
 | `strahl` | `at` (Auslauf oben), `unten` (y), `r`, `wash`, `push`, `hahn`, `yaw`, `lang` – Wasserstrahl, wäscht die Murmel |
 | `klo` | `at` (Schüsselboden), `yaw`, `r`, `R`, `h`, `rim`, `tief` (Rohr, Standard 3.5) – Toilette mit Deckel und Spülkasten, in der Mitte ein Loch mit geschlossenem Rohr darunter. `ziel` 2 m unter `at` ins Rohr legen: gewonnen, wenn die Murmel hinuntergespült ist; spült, sobald die Murmel im Abfluss ist; Kamera 45° von oben, solange die Murmel über der Schüssel ist |
+| `schraubstock` | `at` (Mitte der Durchfahrt, Oberkante des Wegs), `yaw` (Wegrichtung), `weit` (Öffnung offen, Standard 3), `size: [dick, hoch, lang]` der Backen, `time` (s zum Zu-/Auffahren), `pause` (s offen bzw. zu), `offset`, `seite` (1 = bewegliche Backe rechts) – Schraubstock quer über dem Weg: fährt im Takt zu und auf, wer beim Zufahren dazwischen ist, wird zerquetscht. Weg dort ohne Rand bauen. Autopilot: `wait: ['phase', ['schraubstock', 0, 0.94, 0.03]]` |
+| `messband` | `from` (Bandaustritt, Oberkante des Bodens; das Gehäuse steht 3 m lang dahinter und ist im Weg), `to` (Ende des Bands), `width`, `id` (wie Schalter), `time` (s zum Ausfahren), `kante` (so viele m liegt das Band ab `from` noch auf dem Boden: dort nur Grafik, danach trägt es und hat einen Rand `rand`) – Rollmeter: das Band fährt nach dem Schalter aus und trägt erst, wenn es eingehängt ist. Autopilot: `wait: 'bridgeUp'` |
+| Looks der Werkstatt | `balken` mit `farbe: 'saege'` = Sägeblatt, `band` mit `look: 'schleifband'` = Schleifband, `schieber` = Stahl; `klotz`/`wand` mit `look: 'latte-natur'`/`'latte-dunkel'`/`'latte-rot'`/`'latte-blau'`/`'latte-gruen'`/`'latte-gelb'`, `'stahl'`, `'saegemehl'` |
 
-Neues Hindernis erfinden: in `src/elements.js` einen Typ ergänzen (`solids`, `init`, `reset`, `pre`, `step`, `view`), danach kann es in jedem Level verwendet werden.
+Neues Hindernis erfinden: in `src/elements.js` (oder einer eigenen Datei je Welt wie `src/elements-werkstatt.js`, in `src/bauteile.js` eintragen) einen Typ ergänzen (`solids`, `init`, `reset`, `pre`, `step`, `view`), danach kann es in jedem Level verwendet werden.
 Neues Bauteil: im Prüfstand (`src/levels/pruefstand/<gruppe>.js`) ein Mini-Level dafür anlegen, Route in `tests/routes/pruefstand/<gruppe>.js`; der Test „Prüfstand …“ fährt es bei jedem PR mit jeder Stärke und jeder Murmel.
 
 Neues Level testen: in `tests/autopilot.js` (schwere Level: `tests/routes/<welt>.js`) eine Route (Wegpunkte) ergänzen, dann `node tests/pruefe-level.mjs <id>` (schnell, ohne Browser; `--fahrt` zeigt eine Fahrt mit Wegpunkten und Abstürzen) und `npm test`. Wegpunkte können warten (`wait: 'platAtTo'`, `'amBoden'`, `['hoehe', 7]`, `['balkenWeg', [x, z]]` (auch Sprenger), `['phase', ['hammer', 0, 0.72, 0.85]]` (Takt von Hammer/Felsen/Plattform/Schieber), `['tuerZu', 0]`, `['tiefer', y]`) oder der Bahn folgen (`{ follow: true, bisY }`); mehrere Routen pro Level sind möglich (z. B. Umweg zum Bonusstern).

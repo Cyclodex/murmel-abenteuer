@@ -2,8 +2,8 @@
 
 ## Tests
 
-Die volle Suite (`npm test`, 81 Tests) dauert im Cloud-Container 24 Minuten: 16 Autopilot-Tests fahren jedes Level mit
-allen Stärken und Murmeln. `npm run test:schnell` (die übrigen 65) dauert dort 5.2 Minuten.
+Die volle Suite (`npm test`, 85 Tests) dauert im Cloud-Container 24 Minuten: 18 Autopilot-Tests fahren jedes Level mit
+allen Stärken und Murmeln. `npm run test:schnell` (die übrigen 67) dauert dort 5.2 Minuten.
 Die volle Suite läuft als GitHub Action (`.github/workflows/tests.yml`) nachts, wenn main neue Commits hat, und lässt sich
 von Hand starten (Actions → „Tests (voll)“ → „Run workflow“). In der Session die volle Suite nicht selbst starten,
 ausser der Benutzer will es.
@@ -20,7 +20,7 @@ Welche Tests eine Änderung betrifft (im PR-Text nennen):
 
 | Geändert | Prüfen |
 |---|---|
-| Grafik, Kamera, Menüs, HUD (`view.js`, `themes.js`, `props.js`, `main.js`, `style.css`, `index.html`, `view()` der Bauteile) | `npm run test:schnell` (alles ausser den 16 Autopilot-Tests) oder einzelne Tests: `npx playwright test -g "<Name>"` |
+| Grafik, Kamera, Menüs, HUD (`view.js`, `themes.js`, `props.js`, `main.js`, `style.css`, `index.html`, `view()` der Bauteile) | `npm run test:schnell` (alles ausser den 18 Autopilot-Tests) oder einzelne Tests: `npx playwright test -g "<Name>"` |
 | Ein Level oder seine Route (`src/levels/`, `tests/autopilot.js`, `tests/routes/`) | `node tests/pruefe-level.mjs <id>` (ohne Browser) für jedes betroffene Level; neues Level oder geänderte Strecke: Richtzeit mit `node tests/richtzeiten.mjs <id>` neu messen |
 | Online-Rangliste (`src/online.js`, `supabase/schema.sql`) | Tests „Online-Rangliste“; SQL-Änderungen gegen ein lokales Postgres prüfen (Rollen `anon`, `authenticated` anlegen, Schema zweimal ausführen) und dem Benutzer sagen, dass er `schema.sql` im Supabase SQL-Editor neu ausführen muss |
 | Physik, Bauteile, Murmeln (`game.js`, `solids`/`init`/`step` in `src/elements*.js`, `skins.js`, `input.js`) | `pruefe-level.mjs` für das Prüfstand-Level des Bauteils (`p-<name>`) und die Level, die das Bauteil nutzen, und `npm run test:schnell`; im PR erwähnen, dass die volle Suite nachts läuft |

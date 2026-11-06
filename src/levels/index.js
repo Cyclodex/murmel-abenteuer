@@ -19,6 +19,9 @@ import w3 from './weltraum3.js';
 import u1 from './wasser1.js';
 import u2 from './wasser2.js';
 import u3 from './wasser3.js';
+import ws1 from './werkstatt1.js';
+import ws2 from './werkstatt2.js';
+import ws3 from './werkstatt3.js';
 import v1 from './vulkan1.js';
 import v2 from './vulkan2.js';
 import v3 from './vulkan3.js';
@@ -43,6 +46,7 @@ export const WORLDS = [
   ...(bad.levels.length ? [{ id: 'badezimmer', name: 'Badezimmer', emoji: '🛁', levels: bad.levels, hard: bad.hard }] : []),
   { id: 'weltraum', name: 'Weltraum', emoji: '🚀', levels: [w1, w2, w3], hard: weltraumS },
   { id: 'unterwasser', name: 'Unterwasser', emoji: '🌊', levels: [u1, u2, u3], hard: unterwasserS },
+  { id: 'werkstatt', name: 'Werkstatt', emoji: '🧰', levels: [ws1, ws2, ws3] },
   // Profi-Welt: erst ab need Sternen offen
   { id: 'vulkan', name: 'Vulkan', emoji: '🌋', need: 50, levels: [v1, v2, v3], hard: vulkanS },
   ...(PRUEF ? [{ id: 'pruefstand', name: 'Prüfstand', emoji: '🔧', levels: PRUEFSTAND }] : [])

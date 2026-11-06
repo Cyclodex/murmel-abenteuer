@@ -12,6 +12,7 @@ export const COLORS = { rot: 0xE53935, blau: 0x1E88E5, gelb: 0xFDD835, gruen: 0x
 const PASTELL = { rosa: 0xF8BBD0, mint: 0xB2DFDB, hellblau: 0xBBDEFB, gelb: 0xFFF59D, lila: 0xD1C4E9, weiss: 0xFAFAFA };
 const NEON = { blau: 0x00E5FF, pink: 0xFF4FD8, gruen: 0x76FF03, gelb: 0xFFEA00 };
 const BASALT = { dunkel: 0x2E2A2B, hell: 0x4A4344, rot: 0x6B2E22 };
+const LATTE = { natur: 0xE2B77A, dunkel: 0x9A6B3C, rot: 0xD9534A, blau: 0x3F8FD0, gruen: 0x5BAA5F, gelb: 0xF2C230 };
 const KORALLE = { rot: 0xFF6F61, orange: 0xFFA25C, rosa: 0xFF8FB8, lila: 0xB388FF, gelb: 0xFFD54F };
 
 export function rnd(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
@@ -71,6 +72,13 @@ const basaltTex = (THREE, base, glow) => canvasTex(THREE, 256, 256, (x, w, h) =>
     const c = base + Math.floor(r() * 18); x.fillStyle = `rgb(${c},${c - 4},${c - 3})`;
     x.fillRect(i * 64 + 2 + r() * 2, j * 64 + 2 + r() * 2, 59, 59);
   }
+});
+// Sägeblatt: Stahl, oben eine Reihe Zähne (Klötze sind alle 2 m gekachelt, ein Balken ist 0.6 hoch: nur das untere Drittel ist zu sehen)
+const sawTex = THREE => canvasTex(THREE, 256, 256, (x, w, h) => {
+  x.fillStyle = '#C3CAD1'; x.fillRect(0, 0, w, h);
+  x.fillStyle = '#EEF2F5'; x.fillRect(0, h * 0.9, w, h * 0.04);
+  x.fillStyle = '#4A525A';
+  for (let i = 0; i < 16; i++) { const a = i * w / 16; x.beginPath(); x.moveTo(a, h * 0.7); x.lineTo(a + w / 16, h * 0.7); x.lineTo(a + w / 32, h * 0.78); x.fill(); }
 });
 // Lava: fliessende, glühende Flecken
 const lavaTex = THREE => dots(THREE, '#E8480C', ['#FF7A1A', '#FFB020', '#B8290A', '#FFD54A'], 160, 6, 22, 23);
@@ -265,6 +273,34 @@ export const THEMES = {
           im.instanceMatrix.needsUpdate = true;
         }
       };
+    }
+  },
+
+  werkstatt: {
+    // Werkbank: helle Bretter über der grünen Schneidematte, Ränder aus bunten Holzlatten, ringsum riesiges Werkzeug
+    sky: 0xD3DCE0, fog: [55, 130], hemi: [0xffffff, 0x8a7a66, 0.85],
+    walls: ['latte-natur', 'latte-rot', 'latte-natur', 'latte-blau', 'latte-natur', 'latte-gruen'],
+    floor: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#EFDCB0', '#A8834C') }),
+    ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#CFA064', '#6E4A22') }),
+    pillars: ['latte-dunkel'],
+    props: [['hammer'], ['schraube'], ['farbdose'], ['mutter'], ['bleistift'], ['saege'], ['farbdose', 0x1E88E5], ['schraubenzieher'], ['werkzeugkasten'],
+      ['holzstapel'], ['rollmeter'], ['schraube', 0xD4A93A], ['saegeblatt'], ['farbdose', 0xFDD835], ['schraubenzieher', 0x43A047]],
+    look(t, look) {
+      const [k, c] = look.split('-');
+      // Holzlatten, zum Teil gestrichen
+      if (k === 'latte') return t.lambert(LATTE[c] ?? LATTE.natur, { map: woodTex(t.THREE, '#FFFFFF', '#8A8A8A') });
+      // Sägeblatt (balken mit farbe: 'saege'): Stahl mit Zähnen an der Oberkante
+      if (look === 'klotz-saege') return phong(t.THREE, 0xffffff, { map: sawTex(t.THREE), shininess: 120, specular: 0xffffff });
+      // Schleifband (band): Schleifpapier
+      if (look === 'band') return t.lambert(0xffffff, { map: dots(t.THREE, '#8A5A3C', ['#7A4C30', '#9C6A48', '#6E4428'], 600, 0.6, 1.4, 27, 128) });
+      // Stahl (schieber, klotz mit look: 'stahl')
+      if (look === 'stahl' || look === 'schieber') return phong(t.THREE, 0xB8C0C8, { shininess: 130, specular: 0xffffff });
+      return null;
+    },
+    ground(t, y) {
+      // Schneidematte mit Raster
+      const tex = tiles(t.THREE, '#2F7F62', '#2F7F62', 4, '#8FD0B0'); tex.repeat.set(30, 30); t.plane(tex, y);
+      scatter(t, y, THEMES.werkstatt.props, 13, 30);
     }
   }
 };

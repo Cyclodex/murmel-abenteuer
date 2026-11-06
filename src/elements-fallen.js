@@ -9,14 +9,14 @@ const WATER_DRAG = 2; // Wasserwiderstand im Fluss (siehe fluss.step)
 const quatRoll = a => [0, 0, Math.sin(a / 2), Math.cos(a / 2)];
 
 // Zeichen im Feld -> Oberfläche ('' = normaler Boden)
-const FELD = { '#': '', e: 'eis', s: 'schlamm', p: 'pfuetze', a: 'sand', o: 'seife', h: 'handtuch' };
+const FELD = { '#': '', e: 'eis', s: 'schlamm', p: 'pfuetze', a: 'sand', o: 'seife', h: 'handtuch', m: 'saegemehl' };
 
 // Zeitplan für Teile, die im Takt laufen (Hammer, Felsen): Phase 0..1 im Takt, mit Startverzögerung offset
 export const phaseOf = (el, per) => (((el.t + (el.offset || 0)) % per) + per) % per / per;
 
 export const FALLEN = {
   // Feld aus Zeichen: jede Zeile ist eine Reihe Kacheln, die unterste Zeile liegt bei at (Einfahrt), nach oben geht es vorwärts.
-  // '#' Boden, '.' oder ' ' Loch, 'w' Mauerblock, e/s/p/a/o/h = Eis/Schlamm/Pfütze/Sand/Seife/Handtuch.
+  // '#' Boden, '.' oder ' ' Loch, 'w' Mauerblock, e/s/p/a/o/h/m = Eis/Schlamm/Pfütze/Sand/Seife/Handtuch/Sägemehl.
   // at = Mitte der vorderen Kante (Oberkante), cell = Kachelgrösse, walls = Rand links/rechts (Höhe), wallH = Höhe der Mauerblöcke.
   // {type:'feld', at, yaw?, cell?, map:[...], walls?, wallH?, look?}
   feld: {

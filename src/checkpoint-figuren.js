@@ -11,7 +11,7 @@ const R = 0.5;          // Murmel-Radius
 const JUBEL = 1.8;      // s Jubel nach dem Erreichen, danach winken
 const GRAU = 0xBBBBBB, GRUEN = 0x3BB273;
 const FIG_R = 1.1, FIG_H = 3.2; // Platzbedarf der Figur (Radius, Höhe)
-export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', vulkan: 'geysir' };
+export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', vulkan: 'geysir', werkstatt: 'schraube' };
 // Figur eines Checkpoints: el.figur oder die der Welt (bestimmt auch den Jubel-Klang 'cp-' + Figur in audio.js)
 export const figurVon = (el, theme) => FIGUREN[el.figur] ? el.figur : FIGUR_JE_WELT[theme] || 'zwerg';
 
@@ -344,6 +344,31 @@ export const FIGUREN = {
           const k = p.age / p.life;
           p.m.position.set(p.dx * k, 1.35 + p.vy * p.age, p.dz * k); p.m.scale.setScalar(p.size * (1 + p.age * 2)); p.m.material.opacity = 0.7 * (1 - k);
         }
+      }
+    };
+  },
+
+  // Schraube: steckt tief im Holzklotz und döst, dreht sich jubelnd heraus und wirbelt die Fahne herum
+  schraube(T, F) {
+    const stahl = mat(T, 0xC3CAD1, { shininess: 140, specular: 0xffffff });
+    const augen = [-1, 1].map(k => { const a = auge(T, 0.1); a.position.set(k * 0.2, 0.12, -0.44); return a; });
+    const kopf = group(T, mesh(T, new T.SphereGeometry(0.5, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), stahl), mesh(T, cyl(T, 0.5, 0.5, 0.08, 18), stahl, 0, -0.04, 0),
+      mesh(T, new T.BoxGeometry(0.7, 0.08, 0.12), mat(T, 0x555B62), 0, 0.5, 0), ...augen);
+    const gewinde = group(T, mesh(T, cyl(T, 0.2, 0.2, 1.5, 12), stahl, 0, -0.75, 0));
+    for (let i = 0; i < 6; i++) { const r = mesh(T, new T.TorusGeometry(0.23, 0.05, 6, 14), stahl, 0, -0.2 - i * 0.22, 0); r.rotation.x = Math.PI / 2 + 0.2; gewinde.add(r); }
+    const fahne = F.make(1.2); fahne.position.set(0.3, 0.3, 0); fahne.rotation.z = -0.3;
+    const schraube = group(T, gewinde, kopf, fahne);
+    const klotz = mesh(T, new T.BoxGeometry(1.5, 0.6, 1.5), mat(T, 0xD9B07A, { shininess: 10 }), 0, 0.3, 0);
+    const TIEF = 0.68, HOCH = 1.63; // Kopf-Unterkante: eingeschraubt, herausgedreht
+    return {
+      g: group(T, klotz, schraube), kopf: [0, 1.3, 0], sockel: 0xC89858,
+      pose(z, t) {
+        augen.forEach(a => a.auf(z === 'schlaf' ? 0 : 1));
+        if (z === 'schlaf') { schraube.position.y = TIEF + 0.02 * Math.sin(t * 2); schraube.rotation.y = 0.05 * Math.sin(t * 1.3); }
+        else if (z === 'jubel') {
+          const k = ease(t / 0.9); // drei Umdrehungen heraus, danach hüpfen
+          schraube.position.y = TIEF + (HOCH - TIEF) * k + (t > 0.9 ? huepf(t - 0.9, 0.4, 0.3) : 0); schraube.rotation.y = -k * Math.PI * 6;
+        } else { schraube.position.y = HOCH + 0.04 * Math.abs(Math.sin(t * 4)); schraube.rotation.y = 0.5 * Math.sin(t * 2); }
       }
     };
   }
