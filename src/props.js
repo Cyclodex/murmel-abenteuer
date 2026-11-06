@@ -16,7 +16,8 @@ export const PROP_SIZE = {
   blume: [3, 6, 3], zwerg: [3, 6, 3], giesskanne: [7, 5, 3], eimer: [4, 4, 4], schaufel: [1.6, 0.5, 9], burg: [9, 7, 9], baum: [6, 12, 6],
   pilz: [3, 3, 3], stein: [4, 2.4, 3.4], teddy: [5, 6, 4], wuerfel: [3, 3, 3], auto: [3.6, 2.4, 6], kreisel: [3, 3.2, 3],
   fisch: [2, 2.4, 5], muschel: [4, 1.6, 4], anker: [5, 6, 1], truhe: [5, 4, 3.4], seestern: [4, 0.6, 4], koralle: [3, 5, 3],
-  rakete: [3, 10, 3], satellit: [8, 3, 3], ufo: [6, 2.4, 6], kristall: [2.4, 5, 2.4], vulkanstein: [4, 3, 4]
+  rakete: [3, 10, 3], satellit: [8, 3, 3], ufo: [6, 2.4, 6], kristall: [2.4, 5, 2.4], vulkanstein: [4, 3, 4],
+  satschuessel: [3, 4, 2]
 };
 
 export const PROPS = {
@@ -147,6 +148,13 @@ export const PROPS = {
   satellit(T, o) { const g = group(T, mesh(T, new T.BoxGeometry(2, 2, 2), mat(T, 0xFFC928, { shininess: 120 }), 0, 1.5, 0)); for (const x of [-3, 3]) g.add(mesh(T, new T.BoxGeometry(3, 0.1, 1.6), mat(T, o.farbe ?? 0x1565C0, { shininess: 120 }), x, 1.5, 0)); return g; },
   ufo(T, o) { return group(T, mesh(T, new T.SphereGeometry(3, 24, 12).scale(1, 0.3, 1), mat(T, 0xB0BEC5, { shininess: 150 }), 0, 1, 0), mesh(T, new T.SphereGeometry(1.4, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(T, o.farbe ?? 0x76FF03, { transparent: true, opacity: 0.6 }), 0, 1.5, 0)); },
   kristall(T, o) { const m = mat(T, o.farbe ?? 0xB388FF, { emissive: o.farbe ?? 0x5E35B1, emissiveIntensity: 0.4, flatShading: true, shininess: 120 }); return group(T, mesh(T, new T.OctahedronGeometry(1.2, 0).scale(1, 2, 1), m, 0, 2.4, 0), mesh(T, new T.OctahedronGeometry(0.7, 0).scale(1, 2, 1), m, 1, 1.4, 0.3)); },
+  // ---------- Dach ----------
+  satschuessel(T, o) { // Satellitenschüssel auf einem Mast, schaut schräg nach oben
+    const grau = mat(T, o.farbe ?? 0xE6EAEE, { shininess: 90, side: T.DoubleSide }), dunkel = mat(T, 0x55606A);
+    const dish = mesh(T, new T.SphereGeometry(2.4, 24, 10, 0, Math.PI * 2, 0, 0.62), grau, 0, 0.9, 1.9); dish.rotation.x = -2.0;
+    const arm = mesh(T, cyl(T, 0.06, 0.06, 1.7, 6), dunkel, 0, 2.9, -0.5); arm.rotation.x = 1.1;
+    return group(T, mesh(T, cyl(T, 0.14, 0.14, 2.6, 10), dunkel, 0, 1.3, 0), dish, arm, mesh(T, new T.SphereGeometry(0.22, 10, 8), dunkel, 0, 3.3, -1.25));
+  },
   vulkanstein(T, o) { return group(T, mesh(T, new T.DodecahedronGeometry(2, 0).scale(1, 0.75, 1), mat(T, o.farbe ?? 0x3E3438, { flatShading: true }), 0, 1.4, 0)); }
 };
 

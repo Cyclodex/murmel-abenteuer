@@ -143,7 +143,7 @@ export function createView(THREE, renderer, game) {
   let wallIdx = 0;
   // Werkzeuge für die Welt-Themen (themes.js)
   const tools = {
-    THREE, scene, lambert,
+    THREE, scene, lambert, level: game.level, // level: Welten mit echter Kulisse lesen daraus ihre Masse (z. B. haus im Dach)
     // Boden unter dem Level. Reicht in der Weitsicht bis hinter den Nebel, sonst sieht man seine Kante: Kamera bis ~5 Level-Radien
     // von der Mitte (0.64 davon waagrecht), Nebel bis 2 Radien hinter der Mitte -> 11 Radien ringsum.
     // tex.repeat ist für 240 m gedacht und wächst mit, damit die Kacheln gleich gross bleiben

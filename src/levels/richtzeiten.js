@@ -26,6 +26,7 @@ export const RICHTZEIT = {
   k3s: 61.4,
   b1: 43.1,
   b1s: 82.5,
+  d1: 26.9,
   w1: 18.8,
   w2: 13.2,
   w3: 26.1,

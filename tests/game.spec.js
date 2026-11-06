@@ -282,7 +282,7 @@ test('Ohne localStorage läuft das Spiel trotzdem', async ({ page }) => {
 
 // Autopilot pro Welt (laufen parallel): jede Stärke mit der Standard-Murmel, jede Murmel mit Stärke normal.
 // Neue Welt: hier eintragen (der Test darunter meldet vergessene Welten).
-const WELTEN = ['uebung', 'spielzimmer', 'garten', 'kueche', 'badezimmer', 'weltraum', 'unterwasser', 'vulkan'];
+const WELTEN = ['uebung', 'spielzimmer', 'garten', 'kueche', 'badezimmer', 'dach', 'weltraum', 'unterwasser', 'vulkan'];
 
 test('Jedes Level hat eine Route und gehört zu einer Welt aus WELTEN', async ({ page }) => {
   await page.goto('/');
