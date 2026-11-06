@@ -1,7 +1,9 @@
 // Werkstatt 1: Werkbank. Die Strecke läuft ohne Rand der Werkbank entlang. Gefahren: Auf der Werkbank-Kante liegt Werkzeug
-// (Schrauben, Muttern, ein Rollmeter) als feste Hindernisse, man zielt durch die schmalen Lücken neben der Kante. Dann fahren
-// die Schubladen im Takt aus der Bank und schieben die Murmel vom Brett ohne Rand: in den Lücken zwischen ihnen warten.
-// Vier Schubladen mit verschiedenen Takten. Zwei Bohrmaschinen (links und rechts, gegenläufig) drehen ihre Bohrer quer über
+// (Schrauben, Muttern, ein Rollmeter) als feste Hindernisse, man zielt durch die schmalen Lücken neben der Kante. Mitten
+// zwischen dem Werkzeug liegt ein Kompressor-Anschluss: Er zischt (Vorwarnung) und knallt die Murmel quer über die Kante
+// hinaus, in unregelmässigen Abständen und verschieden stark. Dann fahren die Schubladen aus der Bank und schieben die
+// Murmel vom Brett ohne Rand: in den Lücken zwischen ihnen warten. Vier Schubladen mit Taktlisten (jede Fahrt, jeder Halt
+// anders lang). Zwei Bohrmaschinen (links und rechts, gegenläufig) drehen ihre Bohrer quer über
 // einen schmalen Weg ohne Rand (abpassen, zwischen ihnen warten), dann ein Brett ohne Rand hinauf zum Rollmeter.
 // Den Schalter am Ende eines ganz schmalen Stegs drücken, dann trägt das Messband ohne Rand als einzige Brücke zum Ziel.
 // Bonusstern: hinter dem Schalter am Ende des Stegs.
@@ -12,8 +14,13 @@ const KANTE = 2.8;   // Breite der Werkbank-Kante
 // Werkzeug als Hindernis auf der Kante: [form, x, z, scale, yaw]
 const WERKZEUG = [['schraube', 0.7, -7, 0.3, 0], ['mutter', -0.75, -11, 0.4, 20], ['rollmeter', 0.72, -15, 0.4, 0],
   ['schraube', -0.7, -19, 0.3, 0], ['mutter', 0.75, -22, 0.4, -15]];
-// Schubladen: [z, time, pause, offset]
-const LADE = [[-31, 0.9, 2.2, 0], [-36, 0.7, 2.0, 1.1], [-41, 1.1, 1.8, 2.3], [-46, 0.8, 1.6, 0.6]];
+// Schubladen: [z, time, pause, offset]; pause mit ungerader Länge: drinnen und draussen tauschen jede Runde die Rollen
+const LADE = [
+  [-31, [0.9, 0.6, 1.2], [2.8, 0.8, 1.6], 0],
+  [-36, [0.7, 1.0], [2.6, 0.6, 3.0, 1.2, 0.9], 1.1],
+  [-41, [1.1, 0.7, 0.9], [2.6, 0.5, 1.4], 2.3],
+  [-46, [0.8, 0.5], [2.7, 0.7, 1.8], 0.6]
+];
 // Bohrmaschinen: [x, z, speed]
 const BOHRER = [[-2.6, -59, 40], [2.6, -67, -50]];
 
@@ -28,6 +35,8 @@ export default {
     // Werkbank-Kante ohne Rand, Werkzeug liegt im Weg
     { type: 'weg', from: [0, 0, -3], to: [0, 0, -24], width: KANTE, look: 'latte-natur' },
     ...WERKZEUG.map(([form, x, z, scale, yaw]) => ({ type: 'deko', form, at: [x, 0, z], scale, yaw, fest: true })),
+    // Kompressor zwischen Rollmeter und Schraube: stösst quer nach rechts über die Kante
+    { type: 'knall', pos: [0, 0, -17], r: 1.1, richtung: [1, 0], kick: [6, 4, 7.5], up: 0.35, takt: [2.2, 0.9, 3.4, 1.4], warn: 0.7, look: 'kompressor' },
     { type: 'weg', from: [0, 0, -24], to: [0, 0, -28], width: 3, walls: 0.8 },
     { type: 'checkpoint', at: [0, 0, -26], size: [3, 3, 2] },
 
