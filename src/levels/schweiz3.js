@@ -64,7 +64,7 @@ export default {
     { type: 'checkpoint', at: [16.25, SY, KZ], yaw: -90, size: [3.2, 3, 2] },
 
     // Schoggitafel ohne Rand: kippt im Takt zur Seite, nach vorne und hinten, dazwischen liegt sie flach
-    { type: 'rutschplatte', pos: [20.5, SY, KZ], yaw: -90, size: [3, 6], dicke: 0.5,
+    { type: 'rutschplatte', pos: [20.5, SY, KZ], yaw: -90, size: [3, 6], dicke: 0.5, look: 'schoggi',
       takt: [[2.6, 0, 0], [1.2, 9, 2], [0.8, -7, -3], [3.4, 0, 0], [1, 5, 4], [0.6, -10, 0]] },
 
     // Anlauf schräg über den Rand in den Abfülltrichter, darunter die Auffangschale, durchs Rohr auf das Giessblech

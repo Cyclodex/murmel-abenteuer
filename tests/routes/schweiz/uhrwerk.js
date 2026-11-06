@@ -23,14 +23,14 @@ export default {
       { x: X, z: -31, speed: 3, r: 0.6 },
       // Zugfeder: der Bahn folgen
       { follow: true, bisY: -2.3, speed: 3 },
-      // Zifferblatt: in der Ecke warten, bis beide Zeiger an der Kante vorbei sind, dann der Kante entlang zur nächsten Ecke
-      // (rechts erst beide Zeiger, dann noch einmal nur der Minutenzeiger: sein Ende ist eben an der Ecke vorbei;
-      // hinten reicht der Stundenzeiger nicht bis an den Weg)
+      // Zifferblatt: in der Ecke warten, bis beide Zeiger der ganzen Kante fern bleiben (sie rucken, stehen und zucken
+      // zurück: frei rechnet ihren Takt voraus), dann der Kante entlang zur nächsten Ecke, dort wieder warten (hinten
+      // reicht der Stundenzeiger nicht ganz an den Weg: kleiner Abstand genügt)
       { x: XF + 4.5, z: ZF + 4.7, speed: 2.5, r: 0.5 },
-      { x: XF + 4.5, z: ZF + 4.6, speed: 1, r: 0.6, wait: ['balkenWeg', [XF + 4.11, ZF + 0.87]] },
-      { x: XF + 4.5, z: ZF - 4.3, speed: 4, r: 0.6, wait: ['balkenWeg', [XF + 4.46, ZF + 4.31]] },
+      { x: XF + 4.5, z: ZF + 4.6, speed: 1, r: 0.6 },
+      { x: XF + 4.5, z: ZF - 4.3, speed: 4, r: 0.6, wait: ['balkenWeg', [[XF + 4.5, ZF + 4.6], [XF + 4.5, ZF - 5], 3.5]] },
       { x: XF + 4.5, z: ZF - 5, speed: 1, r: 0.4 },
-      { x: XF - 3.7, z: ZF - 5, speed: 4, r: 0.6, wait: ['balkenWeg', [XF + 3.73, ZF - 4.95]] },
+      { x: XF - 3.7, z: ZF - 5, speed: 4, r: 0.6, wait: ['balkenWeg', [[XF + 4.5, ZF - 5], [XF - 4.7, ZF - 5], 3.5, 0.65]] },
       { x: XS, z: ZF - 5, speed: 1.5, r: 0.4 },
       { x: XS, z: -48.4, speed: 3, r: 0.5 },
       // Uhrgewichte: auf jedes, sobald es oben angekommen ist (jedes folgt dem vorigen 1.5 s später)

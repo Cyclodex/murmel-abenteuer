@@ -1,8 +1,7 @@
 // Schweiz 2: Uhrwerk. Im Innern einer riesigen Uhr, alles ohne Rand. Vier Zahnräder greifen ineinander (gross, klein,
 // gross, klein, jedes andersrum): die dicke Achse in der Mitte lässt nur einen schmalen Ring zum Mitfahren, hinüber geht
 // es nur dort, wo Zahn auf Zahn steht. Die Zugfeder führt schmal und ohne Rand eine Runde hinunter. Auf dem Zifferblatt
-// ohne Rand kreuzen Minuten- und Stundenzeiger mit verschiedenem
-// Tempo: in den Ecken ist man sicher, an den Kanten entlang nur, wenn beide Zeiger eben vorbei sind. Drei Uhrgewichte
+// ohne Rand kreuzen Minuten- und Stundenzeiger, jeder in seinem eigenen ruckenden Takt: in den Ecken ist man sicher, an den Kanten entlang nur, wenn beide Zeiger eben vorbei sind. Drei Uhrgewichte
 // steigen und sinken nacheinander wie eine Welle, mal schnell, mal langsam, oben bleiben sie mal kurz, mal länger: man geht
 // von Gewicht zu Gewicht, solange sie oben sind. Zuletzt der schmale Steg ohne Rand: ein Pendel, das mal rasch schwingt,
 // mal an der Seite verharrt, gleich dahinter der Glockenhammer, der mal zweimal schnell schlägt und mal lange oben bleibt
@@ -47,8 +46,10 @@ export default {
     { type: 'checkpoint', at: [X, Y, -33], size: [2.6, 3, 1.4] },
     { type: 'klotz', at: [XF, Y - 0.5, ZF], size: [11, 1, 11], look: 'zifferblatt' },
     { type: 'deko', form: 'zifferblatt', at: [XF, Y, ZF], scale: 0.9 },
-    { type: 'balken', at: [XF, Y, ZF], length: 11, speed: -20, yaw: 30, form: 'zeiger', farbe: 'stahl' },
-    { type: 'balken', at: [XF, Y, ZF], length: 8.6, speed: -6, yaw: 3, form: 'zeiger', farbe: 'messing' },
+    // Minutenzeiger ruckt (schnell, Halt, schnell, Halt, dann eine Weile gemächlich), der Stundenzeiger zieht mal an
+    // und zuckt kurz zurück
+    { type: 'balken', at: [XF, Y, ZF], length: 11, speed: -20, yaw: 30, form: 'zeiger', farbe: 'stahl', takt: [[0.6, 3], [1.4, 0], [0.6, 3], [1.4, 0], [2, 0.8]] },
+    { type: 'balken', at: [XF, Y, ZF], length: 8.6, speed: -6, yaw: 3, form: 'zeiger', farbe: 'messing', takt: [[3, 1], [1, 0], [1.5, 3], [1.5, -1]] },
     { type: 'weg', from: [XS, Y, ZF - 5.5], to: [XS, Y, -46.5], width: 1.6 },
     { type: 'weg', from: [XS, Y, -46.5], to: [XS, Y, -49.1], width: 3, walls: 0.8 },
     { type: 'checkpoint', at: [XS, Y, -47.8], size: [3, 3, 1.6] },
