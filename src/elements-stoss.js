@@ -140,7 +140,7 @@ export const STOSS = {
   // up = Anteil nach oben (Tempo nach oben = up · kick), takt = Lücken zwischen den Knällen (s, Zahl oder Array),
   // warn = s Vorwarnung, offset = Startverzögerung, richtung = [x, z] statt radial (z. B. quer vom Weg),
   // look: 'duese' (Chilbi), 'kompressor' (Werkstatt), 'kessi' (Schweiz), 'lawine' (Winter), 'luke' (Dach)
-  // Autopilot: wait: ['frei', ['knall', n, rest]] = die nächsten rest s knallt es nicht.
+  // Autopilot: wait: ['frei', 'knall', n, rest] = die nächsten rest s knallt es nicht.
   // {type:'knall', pos, r?, kick?, up?, takt?, warn?, offset?, richtung?, look?}
   knall: {
     init(el) { el.frei = rest => STOSS.knall.plan(el).bis > rest; },
@@ -200,7 +200,7 @@ export const STOSS = {
   // stellen = Anteil 0..1 auf der Linie (Zahl oder Array, pro Fall zyklisch), every = Lücken zwischen den Fällen (s, Zahl oder
   // Array), offset, warn, liegt, r = Grösse, form: 'ziegel' | 'eiszapfen' | 'kastanie' | 'schraube' | 'laib', farbe,
   // kick (m/s), quetscht, anzahl = so viele gleichzeitig unterwegs (Standard 3)
-  // Autopilot: wait: ['frei', ['fallend', n, rest]] = nichts in der Luft, und die nächsten rest s fällt nichts.
+  // Autopilot: wait: ['frei', 'fallend', n, rest] = nichts in der Luft, und die nächsten rest s fällt nichts.
   // {type:'fallend', from, to?, stellen?, every?, offset?, warn?, liegt?, r?, form?, farbe?, kick?, quetscht?, anzahl?}
   fallend: {
     FORM: {
@@ -338,7 +338,7 @@ export const STOSS = {
   // pause s, dann zum nächsten (zyklisch; Start beim letzten Winkel), speed = °/s (Zahl oder Array pro Schwenk), offset,
   // gasse = Winkel, in dem der Arm über dem Weg liegt (Standard: Mitte der Winkel), gasseBreite = ± Grad (Standard 50),
   // look: 'besen' (Werkstatt), 'wischer' (Scheibenwischer), 'kette' (Chilbi: Kettenkarussell-Arm), 'harfe' (Käseharfe), farbe
-  // Autopilot: wait: ['frei', ['besen', n, rest]] = die nächsten rest s bleibt der Arm aus der Gasse.
+  // Autopilot: wait: ['frei', 'besen', n, rest] = die nächsten rest s bleibt der Arm aus der Gasse.
   // {type:'besen', pos, yaw?, len?, h?, takt?, speed?, offset?, gasse?, gasseBreite?, look?, farbe?}
   besen: {
     init(el, g) {
@@ -417,7 +417,7 @@ export const STOSS = {
   // dorthin und hält dauer s, dann der nächste (zyklisch; Start bei der letzten Neigung). neigX > 0 = rechte Seite tiefer,
   // neigZ > 0 = vorne (Richtung yaw) tiefer. offset, surface (z. B. 'eis'), ruhig = Grad, die für frei als flach gelten (3),
   // look: 'holz', 'scholle' (Winter), 'wackel' (Chilbi), 'kaese' (Schweiz)
-  // Autopilot: wait: ['frei', ['rutschplatte', n, rest]] = die nächsten rest s liegt sie (fast) flach.
+  // Autopilot: wait: ['frei', 'rutschplatte', n, rest] = die nächsten rest s liegt sie (fast) flach.
   // {type:'rutschplatte', pos, yaw?, size?, dicke?, takt?, kipp?, offset?, surface?, ruhig?, look?}
   rutschplatte: {
     init(el, g) {
