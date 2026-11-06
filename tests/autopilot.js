@@ -1,7 +1,10 @@
 // Autopilot für Tests (und zum Zuschauen: Spiel mit ?autopilot öffnen): fährt eine Liste von Wegpunkten ab und prüft so, ob ein Level schaffbar ist.
-// Wegpunkt: {x, z, speed?, r?, free?, wait?}
+// Wegpunkt: {x, z, speed?, r?, free?, wait?, follow?}
 //   speed = Wunschtempo (m/s), r = Radius "erreicht", free = nicht lenken (z. B. im Looping),
-//   wait = Name einer Bedingung aus WAITS, vorher wird angehalten.
+//   wait = Name einer Bedingung aus WAITS, vorher wird angehalten,
+//   follow: true = der Bahn folgen bis bisY; follow: [type, n, abstand?] = hinter dem n-ten Teil vom Typ type herfahren
+//   (z. B. Schieber mit Pfad), bis [x, z] erreicht ist.
+import { TYPES } from '../src/bauteile.js';
 import uebung from './routes/uebung.js';
 import spielzimmer from './routes/spielzimmer.js';
 import garten from './routes/garten.js';
@@ -38,6 +41,10 @@ const WAITS = {
     const u = ((t % per) + per) % per / per;
     return a <= b ? u >= a && u <= b : u >= a || u <= b;
   },
+  // Takt mit Listen: wait: ['frei', type, n, rest, arg?] = das n-te Teil vom Typ type meldet, dass die nächsten rest s sicher
+  // sind (Methode frei(el, rest, arg) des Bauteils: Hammer oben, Schieber weg von arg = [x, z, r?] bzw. steht still,
+  // Felsen: nächster Start später und letzter an arg = [x, z] vorbei, Falltür zu, Wind/Band/Pendel/Riesenrad/Schraubstock)
+  frei: (g, [type, n = 0, rest = 1, arg]) => TYPES[type].frei(g.els.filter(x => x.type === type)[n], rest, arg),
   // Riesenrad n: die Gondel mit der Murmel steht am Platz platz (0 = unten, gondeln / 2 = oben) und hält noch mindestens rest s
   gondel: (g, [n, platz, rest = 1]) => { const e = g.els.filter(x => x.type === 'riesenrad')[n]; return e.platz === platz && e.halt >= rest; },
   // Falltür n ist zu (und nicht gerade am Aufgehen)
@@ -64,7 +71,8 @@ export function createPilot(g, wps) {
     drive() {
       const cur = Math.min(pilot.i, wps.length - 1), w = wps[cur], p = g.ball.position, v = g.ball.velocity;
       let ix = 0, iz = 0;
-      const [wName, wArg] = w.wait ? [].concat(w.wait) : [];
+      const [wName, ...wRest] = w.wait ? [].concat(w.wait) : [];
+      const wArg = wName === 'frei' ? wRest : wRest[0]; // frei: flache Liste ['frei', type, n, rest, arg?]
       const waiting = wName && !ok.has(cur) && !WAITS[wName](g, wArg);
       if (wName && !waiting) ok.add(cur);
       pilot.waiting = waiting ? wName : null;
@@ -72,7 +80,14 @@ export function createPilot(g, wps) {
       const tgt = waiting ? wps[Math.max(0, cur - 1)] : w; // auch am Ende der Route (i über das Listenende hinaus)
       const dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1e-6;
       const onKin = g.groundBody && g.groundBody.type === g.C.Body.KINEMATIC;
-      if (w.follow && !waiting) { // der Bahn folgen (Spirale), bis die Murmel tief genug ist
+      if (Array.isArray(w.follow) && !waiting) { // hinter einem bewegten Teil herfahren (Abstand in seiner Fahrtrichtung)
+        const [type, n = 0, ab = 2.5] = w.follow, b = g.els.filter(x => x.type === type)[n].body, bv = b.velocity, bs = Math.hypot(bv.x, bv.z);
+        if (bs > 0.3 || !pilot.fdir) pilot.fdir = bs > 0.3 ? [bv.x / bs, bv.z / bs] : [0, 0];
+        const ex = b.position.x - pilot.fdir[0] * ab - p.x, ez = b.position.z - pilot.fdir[1] * ab - p.z, ed = Math.hypot(ex, ez) || 1e-6;
+        const sp = Math.min(w.speed ?? 6, ed * 1.5 + bs);
+        ix = clamp((ex / ed * sp - v.x) * 1.2); iz = clamp((ez / ed * sp - v.z) * 1.2);
+        const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
+      } else if (w.follow && !waiting) { // der Bahn folgen (Spirale), bis die Murmel tief genug ist
         const y = g.track.yaw, fx = -Math.sin(y), fz = -Math.cos(y), rx = Math.cos(y), rz = -Math.sin(y), sp = w.speed ?? 4;
         const lat = -(g.track.lateral || 0) * 1.5;
         ix = clamp((fx * sp - v.x) * 0.8 + rx * lat); iz = clamp((fz * sp - v.z) * 0.8 + rz * lat);
@@ -86,7 +101,7 @@ export function createPilot(g, wps) {
         ix = clamp((dx / d * sp - v.x) * 1.2); iz = clamp((dz / d * sp - v.z) * 1.2);
         const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
       }
-      if (!waiting && !w.follow && d < (w.r ?? 1.2)) pilot.i++;
+      if (!waiting && w.follow !== true && d < (w.r ?? 1.2)) { pilot.i++; pilot.fdir = null; }
       return [ix, iz];
     },
     // nach dem Runterfallen beim nächstgelegenen Wegpunkt weitermachen
