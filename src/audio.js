@@ -64,6 +64,12 @@ export const SONGS = {
       69, null, 72, 76, 81, null, 80, 77, 76, 74, 72, 71, 69, null, null, null],
     bass: [45, 45, 52, 45, 43, 43, 50, 43, 41, 41, 48, 41, 40, 47, 45, null]
   },
+  schweiz: { // Ländler: hüpfende Dreiklänge wie ein Jodel
+    bpm: 116, lead: 'pluck', drums: true,
+    melody: [67, 72, 76, 72, 79, 76, 72, null, 67, 71, 74, 71, 77, 74, 71, null,
+      67, 72, 76, 79, 84, 79, 76, 72, 74, 77, 74, 71, 72, null, null, null],
+    bass: [48, 55, 52, 55, 43, 50, 47, 50, 48, 55, 52, 55, 43, 50, 48, null]
+  },
   spielzimmer: {
     bpm: 100, lead: 'box', drums: true,
     melody: [72, null, 76, 79, 81, 79, 76, null, 74, null, 77, 81, 79, 77, 74, null,
@@ -82,6 +88,7 @@ const ROLL = {
   seife: { f0: 2200, fv: 120, q: 3, vol: 0.12, rumble: 0.2 },
   handtuch: { f0: 160, fv: 20, q: 0.6, vol: 0.08, rumble: 0.5 },
   flussbett: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 },
+  schoggi: { f0: 300, fv: 40, q: 0.6, vol: 0.14, rumble: 0.8 },
   keramik: { f0: 1300, fv: 140, q: 1.6, vol: 0.15, rumble: 0.3 },
   kunststoff: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 },
   trichter: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 }
@@ -185,6 +192,10 @@ export function createAudio(opts = {}) {
       tone(70, t, 0.5, 0.5, 'sine', 40); hiss(t, 0.3, 0.3, 'lowpass', 300, 150, 0.7);
       hiss(t + 0.1, 0.7, 0.45, 'bandpass', 400, 3500, 1.2);
       bell(midi(91), t + 0.8, 0.2, 0.6); bell(midi(98), t + 0.9, 0.15, 0.5);
+    },
+    'cp-murmeltier': t => { // drei schrille Pfiffe, Kuhglocke
+      for (const d of [0, 0.16, 0.32]) tone(2400, t + d, 0.11, 0.22, 'sine', 3300);
+      bell(midi(77), t + 0.55, 0.22, 0.5); bell(midi(72), t + 0.72, 0.2, 0.6); bell(midi(77), t + 0.89, 0.18, 0.7);
     },
     turbo: t => { hiss(t, 0.4, 1.0, 'bandpass', 400, 3500, 1.5); tone(180, t, 0.35, 0.3, 'sawtooth', 700); },
     click: t => { hiss(t, 0.03, 0.7, 'highpass', 2500); tone(1200, t, 0.04, 0.2, 'square', 900); tone(midi(72), t + 0.08, 0.2, 0.18, 'triangle'); },

@@ -125,7 +125,8 @@ export function createBallMesh(THREE) {
 }
 
 export function createView(THREE, renderer, game) {
-  const theme = THEMES[game.level.theme] || THEMES.standard;
+  // Thema der Welt; ein Level kann eine Variante davon wählen (variante, z. B. schweiz: kaeserei, uhrwerk, schoggi)
+  const basis = THEMES[game.level.theme] || THEMES.standard, theme = { ...basis, ...(basis.varianten || {})[game.level.variante] };
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(theme.sky);
   scene.fog = new THREE.Fog(theme.sky, theme.fog[0], theme.fog[1]);

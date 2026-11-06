@@ -282,7 +282,7 @@ test('Ohne localStorage läuft das Spiel trotzdem', async ({ page }) => {
 
 // Autopilot pro Welt (laufen parallel): jede Stärke mit der Standard-Murmel, jede Murmel mit Stärke normal.
 // Neue Welt: hier eintragen (der Test darunter meldet vergessene Welten).
-const WELTEN = ['uebung', 'spielzimmer', 'garten', 'kueche', 'badezimmer', 'weltraum', 'unterwasser', 'vulkan'];
+const WELTEN = ['uebung', 'spielzimmer', 'garten', 'kueche', 'badezimmer', 'weltraum', 'unterwasser', 'schweiz', 'vulkan'];
 
 test('Jedes Level hat eine Route und gehört zu einer Welt aus WELTEN', async ({ page }) => {
   await page.goto('/');
@@ -328,7 +328,7 @@ for (const welt of WELTEN) for (const art of ['normal', 'schwer']) {
 
 // Prüfstand: jedes Bauteil einzeln (src/levels/pruefstand/, eine Gruppe pro Datei) mit jeder Stärke und jeder Murmel.
 // Kurze Level, darum auch in npm run test:schnell und bei jedem PR.
-const PRUEF_GRUPPEN = ['bahn', 'beweglich', 'kraefte', 'welt'];
+const PRUEF_GRUPPEN = ['bahn', 'beweglich', 'kraefte', 'welt', 'schweiz'];
 for (const gruppe of PRUEF_GRUPPEN) {
   test(`Prüfstand ${gruppe}: jedes Bauteil mit jeder Stärke und jeder Murmel`, async ({ page }) => {
     test.setTimeout(300_000);
@@ -1090,7 +1090,7 @@ test('Checkpoint: Figur je Welt schläft, jubelt beim Erreichen, Band reisst, Ne
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
   const cp = () => page.evaluate(() => ({ ...window.murmel.view.scene.getObjectByName('checkpoint').userData }));
-  const welten = { ausflug: 'zwerg', sz2: 'springteufel', g1: 'zwerg', k1: 'toaster', b1: 'ente', w1: 'astronaut', u1: 'oktopus', v1: 'geysir' };
+  const welten = { ausflug: 'zwerg', sz2: 'springteufel', g1: 'zwerg', k1: 'toaster', b1: 'ente', w1: 'astronaut', u1: 'oktopus', sch1: 'murmeltier', v1: 'geysir' };
   for (const [id, figur] of Object.entries(welten)) {
     await page.evaluate(i => { const m = window.murmel; m.startLevel(m.LEVELS.findIndex(l => l.id === i)); }, id);
     await expect.poll(cp, { message: id }).toMatchObject({ figur, zustand: 'schlaf', band: 'ganz' });
@@ -1166,7 +1166,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir', 'cp-murmeltier']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
@@ -1174,11 +1174,11 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
     out.rollenPfuetze = await render(a => a.roll(6, true, 'pfuetze'), 1);
     out.rollenLuft = await render(a => a.roll(6, false, 'normal'), 1);
     out.aus = await render(a => { a.setMode('aus'); a.sfx('win'); });
-    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser', 'vulkan', 'badezimmer']) out['musik_' + song] = await render(a => a.music(song), 1);
+    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser', 'vulkan', 'badezimmer', 'schweiz']) out['musik_' + song] = await render(a => a.music(song), 1);
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir', 'cp-murmeltier', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer', 'musik_schweiz']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }

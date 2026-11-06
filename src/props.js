@@ -3,6 +3,7 @@
 //   PROPS[form](T, opts) -> THREE.Group, steht auf y = 0, Mitte bei x = z = 0
 //   PROP_SIZE[form]      -> ungefähre Grösse [b, h, t] für einen Kollisions-Klotz (deko mit fest:true)
 // opts.farbe überschreibt die Hauptfarbe.
+import { PROPS_SCHWEIZ, SIZE_SCHWEIZ } from './props-schweiz.js';
 
 export const mat = (T, color, extra = {}) => new T.MeshPhongMaterial({ color, shininess: 40, ...extra });
 export const mesh = (T, geo, m, x = 0, y = 0, z = 0) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
@@ -149,6 +150,10 @@ export const PROPS = {
   kristall(T, o) { const m = mat(T, o.farbe ?? 0xB388FF, { emissive: o.farbe ?? 0x5E35B1, emissiveIntensity: 0.4, flatShading: true, shininess: 120 }); return group(T, mesh(T, new T.OctahedronGeometry(1.2, 0).scale(1, 2, 1), m, 0, 2.4, 0), mesh(T, new T.OctahedronGeometry(0.7, 0).scale(1, 2, 1), m, 1, 1.4, 0.3)); },
   vulkanstein(T, o) { return group(T, mesh(T, new T.DodecahedronGeometry(2, 0).scale(1, 0.75, 1), mat(T, o.farbe ?? 0x3E3438, { flatShading: true }), 0, 1.4, 0)); }
 };
+
+// Gegenstände der Welt Schweiz (src/props-schweiz.js)
+Object.assign(PROPS, PROPS_SCHWEIZ);
+Object.assign(PROP_SIZE, SIZE_SCHWEIZ);
 
 // Gegenstand bauen (unbekannte Form: Klotz als Platzhalter)
 export function buildProp(T, form, opts = {}) {

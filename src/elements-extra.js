@@ -3,6 +3,7 @@
 import { DEG, quatYawPitch, rotate, add, sub, scale, lerp3, toLocal, fwdOf } from './math.js';
 import { TYPES, segment, kinematicBody, ballPos } from './elements.js';
 import { rohrSolids, abflussPts, ABFLUSS } from './elements-bahn.js';
+import { buildProp } from './props.js';
 
 const R = 0.5;
 const UP = [0, 1, 0];
@@ -197,7 +198,8 @@ export const EXTRA = {
     }
   },
 
-  // Drehender Balken, der die Murmel sanft schubst. {type:'balken', at (Drehpunkt am Boden), length?, speed?:Grad/s, height?}
+  // Drehender Balken, der die Murmel sanft schubst. form = Gegenstand aus src/props.js, der sich mitdreht (bekommt laenge = length,
+  // z. B. 'kaeseharfe', 'zeiger'). {type:'balken', at (Drehpunkt am Boden), length?, speed?:Grad/s, height?, farbe?, form?}
   balken: {
     init(el, g) {
       const L = el.length ?? 6, hh = el.height ?? 0.6;
@@ -215,7 +217,9 @@ export const EXTRA = {
     view(el, v) {
       const T = v.THREE, hub = new T.Mesh(new T.CylinderGeometry(0.35, 0.45, (el.height ?? 0.6) + 0.3, 16), v.mats.pole);
       hub.position.set(el.at[0], el.at[1] + ((el.height ?? 0.6) + 0.3) / 2, el.at[2]); v.scene.add(hub);
-      return v.bodyGroup(el.body);
+      const b = v.bodyGroup(el.body);
+      if (el.form) b.grp.add(buildProp(T, el.form, { laenge: el.length ?? 6, hoehe: el.height ?? 0.6 }));
+      return b;
     }
   },
 
