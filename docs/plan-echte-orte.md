@@ -1,7 +1,10 @@
 # Plan: Echte Orte statt Bahn im Leeren (#84)
 
 Ziel: Ein Level ist ein Weg durch einen echten Ort. Die Kulisse ist der Ort, die Hindernisse sind Dinge dieses Ortes,
-das Material verändert das Fahren. Bestehende Level bleiben, wie sie sind.
+das Material verändert das Fahren.
+
+**Entscheid (Benutzer):** Die echten Orte sind eine neue Kategorie im ganzen Spiel. Die bisherigen Strecken werden nicht
+verändert.
 
 ## 1. Stand (geprüft im Code)
 
@@ -54,9 +57,20 @@ reicht ohne Änderung.
 - Draussen wie heute (Sonne). Drinnen: `ort.licht` mit Fensterlicht und Deckenlampe, Nebel weiter weg als der Raum
   (Nebel im Zimmer sieht falsch aus). Schattenkamera der Sonne (±12 um die Murmel) bleibt.
 
+### 3.5 Kategorie «Echte Orte»
+- Heute ist die Karte eine Liste von Welten (`WORLDS` in `src/levels/index.js`, eine Reihe pro Welt in `showMap()`,
+  `src/main.js:204`). Neu bekommt jede Welt `kategorie`: `'bahn'` (Standard, alle heutigen Welten) oder `'orte'`.
+- Karte: zwei Abschnitte mit Überschrift, zuerst «Bahnen», darunter «Echte Orte 🏠». Die Welten der Kategorie stehen in
+  `WORLDS` hinter den heutigen, so ändert sich an Reihenfolge und Freischalten der bisherigen Level nichts (`isOpen` geht
+  nach der Stelle in `LEVELS`).
+- Sterne, Bestzeiten, Rangliste, Geister und Sticker laufen pro Level bzw. pro Welt und brauchen nichts Neues.
+- Bisherige Level und Welten bleiben unverändert, auch Themen und `scatter`.
+
 ## 4. Schritte (je ein PR)
 
-1. **`level.ort` + `haus`** (nach Merge von #78): `haus` aus `themes.js` nach `src/orte.js`, `d1` auf `ort: { art: 'haus' }`.
+0. **Kategorie auf der Karte**: `kategorie` an den Welten, zwei Abschnitte in `showMap()`. Test: Karte zeigt beide
+   Abschnitte, bisherige Welten unverändert in «Bahnen».
+1. **`level.ort` + `haus`** (nach Merge von #78), `d1` wird die erste Welt der Kategorie «Echte Orte»: `haus` aus `themes.js` nach `src/orte.js`, `d1` auf `ort: { art: 'haus' }`.
    Kein Unterschied im Bild. Test: Screenshot-Test von `d1` unverändert, `pruefe-level.mjs d1` 16/16.
 2. **`raum` + Kamera**: Bauer für Wände, Boden, Decke, Fenster, Tür, einfache Möbel (Kisten-Formen); einseitige Wände;
    `kulisse` mit `fade()`. Neuer Test «Kamera im Raum»: auf der Route des Levels in Abständen prüfen, dass der Strahl
@@ -66,12 +80,14 @@ reicht ohne Änderung.
    Ziel in der Spielzeugkiste. Neue Oberfläche `matratze` (federt, bremst). Richtzeit messen (`richtzeiten.mjs`).
 4. **Bauteile aus echten Dingen** (Stufe 2): `buch` (Klotz mit Buchrücken, stapelbar), `lineal` (schmaler Weg mit
    Zentimetern), `bett` (Matratze + Decke), `tisch` (Platte + Beine als Körper). Je ein Prüfstand-Level `p-<name>`, 16/16.
-5. **Echte Wege in weiteren Orten** (Stufe 3), Vorschläge für die offenen Welten:
-   - Werkstatt (#82): Werkbank als `tisch` im 1.6-cm-Massstab, Werkzeug liegt auf der Platte statt riesig daneben.
-   - Schweiz (#83): Käserei und Schoggifabrik als `raum` (Halle), Uhrwerk als Gehäuse.
-   - Winter (#79): Hang statt Ebene (Gelände folgt der Piste), Hütte als Ziel.
-   - Chilbi (#80): Platz mit Buden ringsum statt verstreut.
-6. **Mehr Orte im Haus**: Treppenhaus (10 cm), Keller, Küche als Raum. Zusammen mit `d1` eine Welt «Zuhause».
+5. **Echte Wege in weiteren Orten** (Stufe 3), als neue Level der Kategorie. Die Welt-PRs #79, #80, #82, #83 bleiben
+   Bahn-Welten; ihre Themen können als echte Orte neu entstehen:
+   - Werkbank als `tisch` im 1.6-cm-Massstab, Werkzeug liegt auf der Platte.
+   - Käserei und Schoggifabrik als `raum` (Halle), Uhrwerk als Gehäuse.
+   - Schlittelhang: Gelände folgt der Piste, Hütte als Ziel.
+   - Chilbi-Platz mit Buden ringsum.
+6. **Mehr Orte im Haus**: Treppenhaus (10 cm), Keller, Küche als Raum. Zusammen mit `d1` und dem Kinderzimmer eine Welt
+   «Zuhause».
 
 ## 5. Woran wir es erkennen
 
@@ -85,5 +101,5 @@ reicht ohne Änderung.
 
 1. Massstab Zimmer 5 cm (Murmel Ø 5 cm) oder 1.6 cm (echte Murmel, Zimmer 250 Einheiten breit)?
 2. Boden im Raum: Absturz wie heute, oder befahrbar (dann braucht es eine andere Regel für «runtergefallen»)?
-3. Die vier offenen Welt-PRs (#79, #80, #82, #83) vor dem Merge auf echte Orte umbauen oder erst danach?
-4. Neue Welt «Zuhause» (Dach, Kinderzimmer, Treppenhaus …) oder Räume in die bestehenden Welten?
+3. Kategorie «Echte Orte» von Anfang an offen, oder erst ab einer Anzahl Sterne (wie Vulkan mit `need`)?
+4. Karte: zwei Abschnitte untereinander (Vorschlag) oder Umschalter «Bahnen / Echte Orte»?
