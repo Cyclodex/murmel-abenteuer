@@ -1,9 +1,11 @@
-// Winter 3: Skischanze. Oben auf dem Turm geht die Startschranke im Takt auf und zu: wer beim Zugehen darunter ist,
-// wird vom schmalen Startsteg geschoben. Der Anlauf ist breit, der Schanzentisch aber schmal: genau zentrieren, sonst
-// fällt man neben dem Tisch hinunter. Absprung mit festem Schwung, Aufsprunghang schmal und ohne Rand.
-// Dann über den Grat (schmal, ohne Rand, mit Eisplatten) zum Eiskanal: Doppelschranke mit zwei verschiedenen
-// Takten, dazwischen warten. Im Eiskanal Tempo halten: die zweite Steilkurve steigt an, wer zu langsam ist,
-// rollt zurück.
+// Winter 3: Skischanze. Oben auf dem Turm geht die Startschranke unregelmässig auf und zu (mal kurz, mal lang offen):
+// wer beim Zugehen darunter ist, wird vom schmalen Startsteg geschoben. Der Anlauf ist breit, der Schanzentisch aber
+// schmal: genau zentrieren, sonst fällt man neben dem Tisch hinunter. Absprung mit festem Schwung, Aufsprunghang schmal
+// und ohne Rand. Dann über den Grat (schmal, ohne Rand, mit Eisplatten), über dem von einem Felsdach Eiszapfen auf die
+// Eisplatte brechen (Schatten vorher; wer getroffen wird, rutscht vom Grat). Zum Eiskanal: Doppelschranke mit zwei
+// verschiedenen, unregelmässigen Takten, dazwischen warten. Am Einstieg in den Eiskanal fallen Eiszapfen in die Rinne
+// und spiessen auf: die Salve abwarten, dann hinein. Im Eiskanal Tempo halten: die zweite Steilkurve steigt an, wer zu
+// langsam ist, rollt zurück.
 export default {
   id: 'wi3', name: 'Skischanze', emoji: '🎿', theme: 'winter',
   start: [0, 0, 2], killY: -38,
@@ -16,7 +18,7 @@ export default {
     { type: 'klotz', at: [0, -10, 1.5], size: [4, 19, 9], look: 'stamm', deko: true },
     // Startschranke über dem schmalen Startsteg
     { type: 'weg', from: [0, 0, -3], to: [0, 0, -7], width: 2.4 },
-    { type: 'schieber', from: [0, 0, -5], to: [2.9, 0, -5], size: [2.6, 1, 0.6], time: 0.7, pause: 1.6, look: 'stamm' },
+    { type: 'schieber', from: [0, 0, -5], to: [2.9, 0, -5], size: [2.6, 1, 0.6], time: [0.7, 0.5, 0.9], pause: [1.6, 0.6, 2.6, 1, 0.4], look: 'stamm' },
     { type: 'klotz', at: [3.6, 0.7, -5], size: [0.4, 1.4, 0.4], look: 'stamm', deko: true },
 
     // Anlauf breit, Schanzentisch schmal (zentrieren!), Absprung mit festem Schwung
@@ -40,16 +42,21 @@ export default {
     { type: 'weg', from: [6, -23.5, -86], to: [10, -23.5, -86], width: 1.6, surface: 'eis' },
     { type: 'weg', from: [10, -23.5, -86], to: [12, -23.5, -86], width: 1.6, surface: 'schnee' },
     { type: 'weg', from: [12, -23.5, -86], to: [16, -23.5, -86], width: 1.6, surface: 'eis' },
+    // Felsdach über der zweiten Eisplatte: Eiszapfen brechen ab und stossen quer vom Grat
+    { type: 'klotz', at: [14, -18.6, -88.4], size: [5, 1.2, 3], look: 'eis', deko: true },
+    { type: 'fallend', from: [12.6, -19.3, -86], to: [15.4, -86], stellen: [0.3, 0.8, 0.5, 0.1], every: [1.4, 3.8, 0.9, 5], warn: 0.8, form: 'eiszapfen', kick: 5 },
     { type: 'kurve', at: [16, -23.5, -86], yaw: -90, turn: -90, radius: 6, width: 1.6, surface: 'schnee' },
     { type: 'weg', from: [22, -23.5, -92], to: [22, -23.5, -96], width: 4, walls: 0.8 },
     { type: 'checkpoint', at: [22, -23.5, -94], size: [4, 3, 2] },
 
     // Start des Eiskanals: Doppelschranke mit zwei Takten, dazwischen Platz zum Warten
     { type: 'weg', from: [22, -23.5, -96], to: [22, -23.5, -103], width: 2 },
-    { type: 'schieber', from: [22, -23.5, -98.5], to: [24.6, -23.5, -98.5], size: [2.2, 1, 0.6], time: 0.7, pause: 1.8, look: 'stamm' },
-    { type: 'schieber', from: [22, -23.5, -101.5], to: [19.4, -23.5, -101.5], size: [2.2, 1, 0.6], time: 0.6, pause: 1.4, offset: 1, look: 'stamm' },
+    { type: 'schieber', from: [22, -23.5, -98.5], to: [24.6, -23.5, -98.5], size: [2.2, 1, 0.6], time: [0.7, 0.5], pause: [1.8, 0.7, 2.4], look: 'stamm' },
+    { type: 'schieber', from: [22, -23.5, -101.5], to: [19.4, -23.5, -101.5], size: [2.2, 1, 0.6], time: [0.6, 0.9, 0.5], pause: [1.4, 2.2, 0.6, 1.1], offset: 1, look: 'stamm' },
     // Eiskanal: Steilkurve hinunter, Steilkurve hinauf (Tempo halten), zum Ziel hinunter
     { type: 'rinne', from: [22, -23.5, -103], to: [22, -26, -111], r: 1.6, bogen: 80, surface: 'eis', farbe: 0xBFE6FA },
+    // Eiszapfen über dem Einstieg: fallen in Salven in die Rinne und spiessen auf (zurück zum Checkpoint)
+    { type: 'fallend', from: [22, -18, -104], to: [22, -110], stellen: [0.2, 0.75, 0.45, 0.95, 0.6], every: [0.8, 0.8, 4.5, 1.5, 5.5], warn: 0.7, form: 'eiszapfen', quetscht: true, anzahl: 4 },
     { type: 'rinne', at: [22, -26, -111], yaw: 0, turn: -180, radius: 4, rise: -2, r: 1.6, bogen: 90, surface: 'eis', farbe: 0xBFE6FA },
     { type: 'rinne', from: [14, -28, -111], to: [14, -30, -103], r: 1.6, bogen: 80, surface: 'eis', farbe: 0xBFE6FA },
     { type: 'rinne', at: [14, -30, -103], yaw: 180, turn: 180, radius: 4, rise: 1, r: 1.6, bogen: 90, surface: 'eis', farbe: 0xBFE6FA },
