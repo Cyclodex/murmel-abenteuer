@@ -1,9 +1,12 @@
 // Chilbi 3: Achterbahn. Die Murmel ist der Wagen. Im Bahnhof ohne Rand wartet sie neben dem Gleis, bis der Mitnehmer des
 // Kettenlifts unten steht, dann schiebt er sie hinauf (wer zu früh aufs Gleis rollt, den wirft der zurückfahrende
-// Mitnehmer hinten aus dem Bahnhof). Oben die rote Schiene hinunter auf einen schmalen Steg ohne Rand, der Turbo wirft
+// Mitnehmer hinten aus dem Bahnhof). Der Lift hat keinen festen Takt: er fährt mal zügig, mal gemächlich und wartet unten
+// mal lang, mal kurz. Oben die rote Schiene hinunter auf einen schmalen Steg ohne Rand, der Turbo wirft
 // die Murmel über die Lücke in die nächste Rinne, dann mit dem zweiten Turbo durch den Looping und im Bremssand zum
-// Stehen. Eine Kehre ohne Rand führt aufs Band, das rückwärts fährt, an der Strecke entlang zurück: Mitten auf dem Band
-// kreuzt ein Wagen der anderen Bahn, und anhalten kann man auf dem Band nicht. Am Ende schiesst die Kanone die Murmel auf
+// Stehen. Eine Kehre ohne Rand, in der eine Luftdüse im Boden faucht (zischt kurz vorher, bläst nach aussen, Pausen
+// verschieden lang), führt aufs Band, das rückwärts an der Strecke entlang zurückfährt: Es ruckt, wird schneller, steht
+// fast und läuft kurz zurück. Mitten auf dem Band kreuzt ein Wagen der anderen Bahn, der an den Enden verschieden lang
+// wartet, und anhalten kann man auf dem Band nicht. Am Ende schiesst die Kanone die Murmel auf
 // ein kleines Podest vor der Zielscheibe, eine schmale Rampe ohne Rand führt hinunter zum Zirkuszelt.
 // Versteckt: oben am Lift ein schmales Brett ohne Rand mit dem Bonusstern.
 const LIFT = 6, SCH = 3, LOOP = -1, PO = 0.5, ZI = -2.5; // Höhen: Lift oben, Schiene, Looping, Podest, Ziel
@@ -11,6 +14,7 @@ const BODEN = -12;                                      // Boden der Welt (1 m u
 const S = LIFT / 16;                                     // Steigung des Lifts
 const BAND = 13;                                         // x des Bands (fährt rückwärts, Richtung +z)
 const KR = -76;                                          // z der Kreuzung mit der anderen Bahn
+const DUESE = 40 * Math.PI / 180;                        // Luftdüse in der Kehre: so weit nach dem Anfang
 // Stütze der Achterbahn vom Boden bis unter die Schiene
 const stuetze = (x, z, oben) => ({ type: 'klotz', at: [x, (BODEN + oben) / 2, z], size: [0.6, oben - BODEN, 0.6], look: 'pfosten', deko: true });
 // Sockel neben der Bahn (nur Grafik), darauf steht ein Gegenstand
@@ -31,7 +35,8 @@ export default {
     // Bahnhof ohne Rand, hinten offen; der Mitnehmer des Kettenlifts wartet unten (schaut aus dem Boden)
     { type: 'weg', from: [0, 0, -1.5], to: [0, 0, -6], width: 3 },
     { type: 'weg', from: [0, 0, -6], to: [0, LIFT, -22], width: 3, walls: 0.8 },
-    { type: 'schieber', from: [0, -0.975, -3.4], to: [0, LIFT, -22], size: [2.8, 1.2, 1.2], time: 4.5, pause: 2, look: 'zelt-rot' },
+    { type: 'schieber', from: [0, -0.975, -3.4], to: [0, LIFT, -22], size: [2.8, 1.2, 1.2], look: 'zelt-rot',
+      time: [4.5, 2.6, 5.2, 3.0], pause: [2, 0.8, 3.2, 1.2, 1.6, 0.6] }, // gerade Einträge: unten warten, hinauffahren
     stuetze(-1.4, -14, LIFT * 0.5 - 1), stuetze(1.4, -14, LIFT * 0.5 - 1), stuetze(-1.4, -21, LIFT - 1), stuetze(1.4, -21, LIFT - 1),
     { type: 'deko', form: 'turm', at: [-8, BODEN, -20], scale: 1.5 },
 
@@ -67,11 +72,16 @@ export default {
     { type: 'weg', from: [5, LOOP, -79], to: [5, LOOP, -83], width: 3, walls: 0.8 },
     { type: 'checkpoint', at: [5, LOOP, -81], size: [3, 3, 2] },
 
-    // Kehre ohne Rand, dann das Band rückwärts an der Strecke entlang; quer fährt ein Wagen der anderen Bahn
+    // Kehre ohne Rand mit Luftdüse (bläst nach aussen), dann das Band rückwärts an der Strecke entlang (Takt mit Rucken
+    // und kurz zurück); quer fährt ein Wagen der anderen Bahn
     { type: 'weg', from: [5, LOOP, -83], to: [5, LOOP, -85], width: 2 },
     { type: 'kurve', at: [5, LOOP, -85], yaw: 0, turn: 180, radius: 4, width: 2 },
-    { type: 'band', from: [BAND, LOOP, -85], to: [BAND, LOOP, -67], width: 2, speed: 3 },
-    { type: 'schieber', from: [BAND - 3, LOOP, KR], to: [BAND + 3, LOOP, KR], size: [2.4, 1.2, 1.6], time: 1.4, pause: 2.4, look: 'zelt-blau' },
+    { type: 'knall', pos: [9 - 4 * Math.cos(DUESE), LOOP, -85 - 4 * Math.sin(DUESE)], r: 1, look: 'duese', warn: 0.7,
+      richtung: [-Math.cos(DUESE), -Math.sin(DUESE)], kick: [6, 4.5, 7, 5], takt: [1.4, 0.9, 4.6, 1.2, 2.6] },
+    { type: 'band', from: [BAND, LOOP, -85], to: [BAND, LOOP, -67], width: 2, speed: 3,
+      takt: [[3, 1], [1.2, 0.2], [2.5, 1.6], [1, -0.4], [2.3, 1]] },
+    { type: 'schieber', from: [BAND - 3, LOOP, KR], to: [BAND + 3, LOOP, KR], size: [2.4, 1.2, 1.6], look: 'zelt-blau',
+      time: [1.4, 1.1, 1.7], pause: [5.4, 1.3, 2.0, 6.0] },
     { type: 'klotz', at: [BAND - 4.6, LOOP - 0.3, KR], size: [1.6, 0.4, 2], look: 'pfosten', deko: true },
     { type: 'klotz', at: [BAND + 4.6, LOOP - 0.3, KR], size: [1.6, 0.4, 2], look: 'pfosten', deko: true },
     stuetze(BAND, -82, LOOP - 0.5), stuetze(BAND, -70, LOOP - 0.5),
