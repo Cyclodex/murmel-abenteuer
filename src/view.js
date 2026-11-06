@@ -43,6 +43,12 @@ const towelTex = THREE => canvasTex(THREE, 64, 64, (x, w, h) => { // Frottee mit
   x.fillStyle = '#F7A8C4'; x.fillRect(0, 0, w, h); x.fillStyle = '#FFFFFF'; x.fillRect(0, 26, w, 12);
   const r = rnd(4); x.fillStyle = 'rgba(0,0,0,0.06)'; for (let i = 0; i < 300; i++) x.fillRect(r() * w, r() * h, 1, 1);
 });
+const snowTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => { // Pulverschnee: weiche Buckel, Glitzer
+  x.fillStyle = '#F4F8FC'; x.fillRect(0, 0, w, h);
+  const r = rnd(15);
+  for (let i = 0; i < 26; i++) { x.fillStyle = 'rgba(120,160,205,0.3)'; x.beginPath(); x.ellipse(r() * w, r() * h, 6 + r() * 10, 3 + r() * 5, 0, 0, 7); x.fill(); }
+  x.fillStyle = '#A9CBEA'; for (let i = 0; i < 90; i++) x.fillRect(r() * w, r() * h, 2, 2);
+});
 const soapTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => { // Seifenschaum
   x.fillStyle = '#CFEFFF'; x.fillRect(0, 0, w, h);
   const r = rnd(6);
@@ -186,6 +192,7 @@ export function createView(THREE, renderer, game) {
     else if (look === 'ufer') m = lambert(theme.bank ?? 0x6D8F4E);
     else if (look === 'sand') m = lambert(0xffffff, { map: sandTex(THREE) });
     else if (look === 'handtuch') m = lambert(0xffffff, { map: towelTex(THREE) });
+    else if (look === 'schnee') m = lambert(0xffffff, { map: snowTex(THREE) });
     else if (look === 'seife') m = new THREE.MeshPhongMaterial({ map: soapTex(THREE), shininess: 100, specular: 0xffffff });
     else if (look === 'platform') m = new THREE.MeshPhongMaterial({ color: COLORS.gelb, shininess: 40 });
     else if (look === 'seesaw') m = new THREE.MeshPhongMaterial({ color: COLORS.orange, shininess: 40 });

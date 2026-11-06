@@ -98,6 +98,19 @@ const solarTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
 });
 const lavaTex = THREE => dots(THREE, '#E8480C', ['#FF7A1A', '#FFB020', '#B8290A', '#FFD54A'], 160, 6, 22, 23);
 const hedgeTex = THREE => dots(THREE, '#2E7D32', ['#388E3C', '#1B5E20', '#43A047', '#4CAF50'], 260, 4, 11, 5, 128);
+// Winter: Piste mit den Rillen der Pistenraupe (längs), Mauer aus Schneeblöcken wie beim Iglu
+const pisteTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  x.fillStyle = '#CFE1F0'; x.fillRect(0, 0, w, h);
+  x.fillStyle = '#A3C1DC'; for (let i = 0; i < 16; i++) x.fillRect(i * 8 + 5, 0, 2, h);
+});
+const snowBlockTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  x.fillStyle = '#E6F0F8'; x.fillRect(0, 0, w, h);
+  x.strokeStyle = '#86A9C9'; x.lineWidth = 3;
+  for (let j = 0; j < 4; j++) {
+    x.beginPath(); x.moveTo(0, j * 32 + 1.5); x.lineTo(w, j * 32 + 1.5); x.stroke();
+    for (let i = 0; i < 2; i++) { const px = i * 64 + (j % 2) * 32 + 1.5; x.beginPath(); x.moveTo(px, j * 32); x.lineTo(px, j * 32 + 32); x.stroke(); }
+  }
+});
 
 // Riesige Gegenstände verstreut auf dem Untergrund (unter und neben der Bahn), fest je Welt
 function scatter(t, y, list, seed, n = 26) {
@@ -220,6 +233,46 @@ export const THEMES = {
       // Badvorleger
       const T = t.THREE, mat = new T.Mesh(new T.PlaneGeometry(30, 18), t.lambert(0xF48FB1)); mat.rotation.x = -Math.PI / 2; mat.position.set(-20, y + 0.05, -30); t.scene.add(mat);
       scatter(t, y, THEMES.badezimmer.props, 9);
+    }
+  },
+
+  winter: {
+    // Holzstege (eben) und gewalzte Pisten (Rampen) zwischen Schneemauern über einer Schneelandschaft, es schneit
+    sky: 0xBFDDF3, fog: [55, 135], hemi: [0xffffff, 0x8FA9C4, 0.7], sun: 0.7,
+    walls: ['schneeblock'],
+    floor: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#B98A5A', '#5E3B1E') }),
+    ramp: t => t.lambert(0xffffff, { map: pisteTex(t.THREE) }),
+    pillars: ['stamm'],
+    bank: 0xDCEAF4,
+    props: [['tanne'], ['schneemann'], ['tanne'], ['iglu'], ['schlitten'], ['huette'], ['tanne'], ['muetze'], ['pinguin'], ['tasse', 0xE53935], ['schlitten', 0x1E88E5], ['muetze', 0x1E88E5]],
+    look(t, look) {
+      if (look === 'schneeblock') return t.lambert(0xffffff, { map: snowBlockTex(t.THREE) });
+      if (look === 'stamm') return t.lambert(0x6B4A2E);
+      if (look === 'platform') return phong(t.THREE, 0xD32F2F, { shininess: 60 }); // Plattform = rote Gondel des Skilifts
+      if (look === 'eisblock') return phong(t.THREE, 0xBFE6FA, { shininess: 120, specular: 0xffffff, transparent: true, opacity: 0.8 });
+      return null;
+    },
+    ground(t, y) {
+      const tex = dots(t.THREE, '#CADDED', ['#B9D0E4', '#DCE9F4', '#AFC8DF'], 300, 3, 9, 27); tex.repeat.set(40, 40);
+      t.plane(tex, y);
+      scatter(t, y, THEMES.winter.props, 13, 30);
+      // Schneeflocken fallen rund um die Kamera
+      const T = t.THREE, n = 140, r = rnd(33), H = 26, im = new T.InstancedMesh(new T.OctahedronGeometry(0.09), new T.MeshBasicMaterial({ color: 0xFFFFFF }), n);
+      const b = Array.from({ length: n }, () => ({ x: (r() - 0.5) * 50, y: r() * H, z: (r() - 0.5) * 50, sp: 1.2 + r() * 1.3, ph: r() * 6.3 }));
+      const m = new T.Matrix4(), p = new T.Vector3(), q = new T.Quaternion(), sc = new T.Vector3(1, 1, 1);
+      im.frustumCulled = false; t.scene.add(im);
+      let time = 0;
+      return {
+        tick(dt, cam) {
+          time += dt;
+          b.forEach((o, i) => {
+            o.y -= o.sp * dt; if (o.y < 0) o.y += H;
+            p.set(cam.position.x + o.x + Math.sin(time * 0.8 + o.ph) * 0.6, cam.position.y - H / 2 + o.y, cam.position.z + o.z);
+            im.setMatrixAt(i, m.compose(p, q, sc));
+          });
+          im.instanceMatrix.needsUpdate = true;
+        }
+      };
     }
   },
 

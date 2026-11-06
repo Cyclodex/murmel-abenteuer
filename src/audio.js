@@ -58,6 +58,12 @@ export const SONGS = {
       81, 79, 77, 76, 74, null, 76, 77, 79, null, 72, null, 72, null, null, null],
     bass: [48, null, 55, null, 50, null, 55, null, 48, null, 55, null, 53, 55, 48, null]
   },
+  winter: { // Schlittenfahrt: Glöckchen, die Tss-Schläge klingen wie Schellen
+    bpm: 104, lead: 'box', drums: true,
+    melody: [79, null, 76, 79, 84, null, 79, null, 81, null, 77, 81, 79, null, null, null,
+      79, null, 76, 79, 84, 86, 88, null, 86, 84, 81, 83, 84, null, null, null],
+    bass: [48, 55, 52, 55, 53, 57, 55, 59, 48, 55, 52, 55, 53, 55, 48, null]
+  },
   vulkan: { // spannend, Moll, treibend
     bpm: 118, lead: 'pluck', drums: true,
     melody: [69, null, 72, 69, 76, null, 74, 72, 71, null, 74, 71, 77, 76, 74, null,
@@ -81,6 +87,7 @@ const ROLL = {
   sand: { f0: 1400, fv: 50, q: 0.5, vol: 0.12, rumble: 0.6 },
   seife: { f0: 2200, fv: 120, q: 3, vol: 0.12, rumble: 0.2 },
   handtuch: { f0: 160, fv: 20, q: 0.6, vol: 0.08, rumble: 0.5 },
+  schnee: { f0: 420, fv: 35, q: 0.5, vol: 0.13, rumble: 0.6 }, // dumpfes Knirschen
   flussbett: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 },
   keramik: { f0: 1300, fv: 140, q: 1.6, vol: 0.15, rumble: 0.3 },
   kunststoff: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 },
@@ -182,6 +189,11 @@ export function createAudio(opts = {}) {
     'cp-oktopus': t => { // Blubber-Blasen nach oben, Glockenspiel
       for (let i = 0; i < 6; i++) tone(260 + i * 90, t + i * 0.07, 0.07, 0.3, 'sine', 700 + i * 150);
       [79, 83, 86, 91].forEach((n, i) => bell(midi(n), t + 0.5 + i * 0.07, 0.14, 0.45));
+    },
+    'cp-schneemann': t => { // Schellen klingeln, der Hut ploppt hoch, Glöckchen
+      for (let i = 0; i < 4; i++) { hiss(t + i * 0.09, 0.05, 0.35, 'highpass', 6000); bell(midi(96 + (i % 2) * 4), t + i * 0.09, 0.1, 0.2); }
+      tone(300, t + 0.4, 0.1, 0.4, 'sine', 900);
+      [79, 84, 88, 91].forEach((n, i) => bell(midi(n), t + 0.55 + i * 0.08, 0.16, 0.45));
     },
     'cp-geysir': t => { // Grollen, Dampf zischt hoch, Pling
       tone(70, t, 0.5, 0.5, 'sine', 40); hiss(t, 0.3, 0.3, 'lowpass', 300, 150, 0.7);

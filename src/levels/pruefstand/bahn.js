@@ -101,12 +101,12 @@ export default [
     { type: 'weg', from: [0, -6, -20], to: [0, -6, -28], width: 4, walls: 0.8, caps: 'end' },
     { type: 'ziel', at: [0, -6, -25] }
   ], { killY: -12 }),
-  // Oberflächen hintereinander: Eis, Schlamm, Pfütze, Sand, Seife, Handtuch
+  // Oberflächen hintereinander: Eis, Schlamm, Pfütze, Sand, Seife, Handtuch, Schnee
   lv('oberflaechen', 'Oberflächen', [
     anlauf(-4),
-    ...['eis', 'schlamm', 'pfuetze', 'sand', 'seife', 'handtuch'].map((surface, k) =>
+    ...['eis', 'schlamm', 'pfuetze', 'sand', 'seife', 'handtuch', 'schnee'].map((surface, k) =>
       ({ type: 'weg', from: [0, 0, -4 - 4 * k], to: [0, 0, -8 - 4 * k], width: 5, walls: 0.8, surface })),
-    { type: 'weg', from: [0, 0, -28], to: [0, 0, -34], width: 5, walls: 0.8, caps: 'end' },
-    { type: 'ziel', at: [0, 0, -31] }
+    { type: 'weg', from: [0, 0, -32], to: [0, 0, -38], width: 5, walls: 0.8, caps: 'end' },
+    { type: 'ziel', at: [0, 0, -35] }
   ])
 ];
