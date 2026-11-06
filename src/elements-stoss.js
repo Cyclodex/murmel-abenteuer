@@ -330,5 +330,84 @@ export const STOSS = {
         }
       };
     }
+  },
+
+  // Besen: Arm am Boden, der um einen Pfosten hin- und herschwenkt (nicht rund wie balken) und an den Enden hält.
+  // Was im Weg liegt, wischt er weg. pos = Drehpunkt (Oberkante des Bodens), yaw, len = Armlänge, h = Armhöhe,
+  // takt = Liste [winkel, pause]: schwenkt zu winkel (Grad, 0 = Arm zeigt in Richtung yaw, 90 = nach links) und hält
+  // pause s, dann zum nächsten (zyklisch; Start beim letzten Winkel), speed = °/s (Zahl oder Array pro Schwenk), offset,
+  // gasse = Winkel, in dem der Arm über dem Weg liegt (Standard: Mitte der Winkel), gasseBreite = ± Grad (Standard 50),
+  // look: 'besen' (Werkstatt), 'wischer' (Scheibenwischer), 'kette' (Chilbi: Kettenkarussell-Arm), 'harfe' (Käseharfe), farbe
+  // Autopilot: wait: ['frei', ['besen', n, rest]] = die nächsten rest s bleibt der Arm aus der Gasse.
+  // {type:'besen', pos, yaw?, len?, h?, takt?, speed?, offset?, gasse?, gasseBreite?, look?, farbe?}
+  besen: {
+    init(el, g) {
+      const len = el.len ?? 3, hh = el.h ?? 0.5, list = el.takt ?? [[60, 1], [-60, 1]];
+      el.yw = (el.yaw || 0) * DEG;
+      let prev = list[list.length - 1][0];
+      el.segs = list.map(([a, p], i) => {
+        const s = { a0: prev * DEG, a1: a * DEG, tm: Math.abs(a - prev) / zyk(el.speed ?? 90, i), p };
+        prev = a; return s;
+      });
+      el.per = el.segs.reduce((s, x) => s + x.tm + x.p, 0);
+      el.gasseW = (el.gasse ?? list.reduce((s, x) => s + x[0], 0) / list.length) * DEG;
+      el.body = kinematicBody(g, [
+        { half: [0.15, hh / 2, len / 2], off: [0, hh / 2, -len / 2], look: 'stiel' },
+        { half: [0.3, 0.6, 0.3], off: [0, 0.6, 0], look: 'stiel' }
+      ]);
+      el.body.position.set(...el.pos); el.body.userData = {};
+      el.frei = rest => {
+        const u = el.t + (el.offset || 0), b = (el.gasseBreite ?? 50) * DEG;
+        for (let s = 0; s <= rest + 1e-6; s += 0.05) if (Math.abs(angleDiff(STOSS.besen.angleAt(el, u + s), el.gasseW)) < b) return false;
+        return true;
+      };
+    },
+    // Winkel (rad, relativ zu yaw) zur Zeit u
+    angleAt(el, u) {
+      let r = ((u % el.per) + el.per) % el.per;
+      for (const s of el.segs) {
+        if (r < s.tm) return s.a0 + (s.a1 - s.a0) * ease(r / s.tm);
+        r -= s.tm;
+        if (r < s.p) return s.a1;
+        r -= s.p;
+      }
+      return el.segs[el.segs.length - 1].a1;
+    },
+    reset(el) {
+      el.t = 0; el.a = STOSS.besen.angleAt(el, el.offset || 0);
+      el.body.quaternion.set(...quatYawPitch(el.yw + el.a, 0)); el.body.angularVelocity.set(0, 0, 0);
+    },
+    pre(el, g, h) {
+      el.t += h;
+      const a1 = STOSS.besen.angleAt(el, el.t + (el.offset || 0));
+      el.body.quaternion.set(...quatYawPitch(el.yw + el.a, 0));
+      el.body.angularVelocity.set(0, (a1 - el.a) / h, 0);
+      el.a = a1;
+    },
+    view(el, v) {
+      const T = v.THREE, len = el.len ?? 3, hh = el.h ?? 0.5, look = el.look || 'besen', grp = new T.Group();
+      const M = (color, extra) => new T.MeshPhongMaterial({ color, shininess: 40, ...extra });
+      const box = (w, h2, d, y, z, m) => { const b = new T.Mesh(new T.BoxGeometry(w, h2, d), m); b.position.set(0, y, z); grp.add(b); return b; };
+      if (look === 'wischer') { // Scheibenwischer: schwarzer Bügel, Gummilippe unten
+        box(0.12, 0.12, len, hh - 0.1, -len / 2, M(0x263238, { shininess: 90 }));
+        box(0.3, hh - 0.15, len * 0.95, (hh - 0.15) / 2, -len / 2 - len * 0.02, M(0x111111, { shininess: 10 }));
+      } else if (look === 'kette') { // Kettenkarussell: gestreifter Ausleger, Sitz am Ende
+        for (let i = 0; i < 6; i++) box(0.3, hh, len / 6, hh / 2, -(i + 0.5) * len / 6, M(i % 2 ? 0xFFFFFF : el.farbe ?? 0xE53935));
+        const sitz = box(0.7, 0.2, 0.7, hh + 0.6, -len + 0.35, M(0xFDD835));
+        for (const dx of [-0.3, 0.3]) { const k = new T.Mesh(new T.CylinderGeometry(0.03, 0.03, 1.2, 4), M(0xB0BEC5, { shininess: 120 })); k.position.set(dx, hh + 1.2, -len + 0.35); grp.add(k); }
+        sitz.castShadow = true;
+      } else if (look === 'harfe') { // Käseharfe: Stahlrahmen mit gespannten Drähten
+        const st = M(0xCFD8DC, { shininess: 140 });
+        box(0.1, 0.1, len, hh - 0.05, -len / 2, st); box(0.1, 0.1, len, 0.05, -len / 2, st);
+        for (let z = 0.3; z < len; z += 0.35) box(0.03, hh, 0.03, hh / 2, -z, st);
+      } else { // Strassenbesen: Holzrücken, Borsten bis zum Boden
+        box(0.32, hh * 0.35, len, hh * 0.82, -len / 2, M(el.farbe ?? 0x9C6B3C));
+        box(0.26, hh * 0.65, len * 0.98, hh * 0.33, -len / 2, M(0xD7B46A, { shininess: 5 }));
+      }
+      const post = new T.Mesh(new T.CylinderGeometry(0.28, 0.34, 1.6, 12), v.mats.pole); post.position.y = 0.4; grp.add(post);
+      grp.traverse(m => { if (m.isMesh) m.castShadow = true; });
+      v.scene.add(grp);
+      return { tick() { grp.position.copy(el.body.position); grp.quaternion.copy(el.body.quaternion); } };
+    }
   }
 };

@@ -33,5 +33,13 @@ export default [
     { type: 'fallend', from: [0, 6, -20], to: [0, -26], every: [1.5, 4.5], offset: 1, form: 'eiszapfen', quetscht: true, stellen: [0.2, 0.8, 0.5] },
     { type: 'weg', from: [0, 0, -28], to: [0, 0, -36], width: 5, walls: 0.8, caps: 'end' },
     { type: 'ziel', at: [0, 0, -33] }
+  ]),
+  // Besen: Steg ohne Rand, der Besen rechts schwenkt quer darüber und wischt nach links hinunter
+  lv('besen', 'Besen', 'werkstatt', [
+    anlauf(-6),
+    { type: 'weg', from: [0, 0, -6], to: [0, 0, -22], width: 3 },
+    { type: 'besen', pos: [3.2, 0, -14], len: 5, takt: [[90, 0.6], [180, 2.5], [90, 0.4], [180, 3.5]], speed: [90, 90, 140, 90], gasse: 90, gasseBreite: 60 },
+    { type: 'weg', from: [0, 0, -22], to: [0, 0, -30], width: 5, walls: 0.8, caps: 'end' },
+    { type: 'ziel', at: [0, 0, -27] }
   ])
 ];
