@@ -19,6 +19,12 @@ const eisrisse = [
   { x: 1.2, z: -65.2, speed: 1.5, r: 0.6 }, { x: -1.2, z: -67.6, speed: 1.5, r: 0.6 }
 ];
 
+// Skischanze: unter der Startschranke durch, solange sie offen ist
+const schranke = [
+  { x: 0, z: -1, speed: 2 }, { x: 0, z: -3.5, speed: 1.5, r: 0.5 },
+  { x: 0, z: -7, speed: 3, r: 0.8, wait: ['phase', ['schieber', 0, 0.5, 0.55]] }
+];
+
 export default {
   // Schlittelhang: auf den Schnee-Inseln bremsen und wenden, auf der Schneebrücke vor jeder Lawinenbahn warten, bis ihr Schneeball
   // vorbei ist, am Hang unten und auf dem Absatz links warten, bis der Schneeball vorbei ist
@@ -49,15 +55,21 @@ export default {
     // Abstecher zum Bonusstern auf dem Eiszipfel rechts
     [...bob, ...eisrisse.slice(0, 9), { x: 7.2, z: -62.8, speed: 1.2, r: 0.5 }, { x: 7.2, z: -65.2, speed: 1, r: 0.5 }]
   ],
-  // Skischanze: zwischen den Schneebällen durch, über den Grat, Schanze (im Flug nicht lenken),
-  // im Auslauf der Abstecher zum Bonusstern vor dem Iglu
+  // Skischanze: Startschranke im offenen Takt passieren, Anlauf, Tisch genau mittig, im Flug nicht lenken,
+  // über den Grat, Doppelschranke einzeln abwarten, im Eiskanal Tempo halten. Bonus: links oben am Anlauf
   wi3: [
-    { x: 0, z: -4 }, { x: 0, z: -9.5, speed: 1.5, r: 0.6 },
-    { x: 0, z: -14.5, speed: 4, r: 0.6, wait: ['phase', ['felsen', 0, 0.75, 0.9]] }, { x: 0, z: -19.5, speed: 4, r: 0.6, wait: ['phase', ['felsen', 1, 0.75, 0.9]] },
-    { x: 0, z: -24.5, speed: 4, r: 0.6, wait: ['phase', ['felsen', 2, 0.75, 0.9]] }, { x: 0, z: -28, speed: 3 },
-    { x: 0, z: -34, speed: 3 }, { x: 0, z: -38, speed: 3 }, { x: 0, z: -44, speed: 3 }, { x: 0, z: -48, speed: 3 },
-    { x: 0, z: -51, speed: 5 }, { x: 0, z: -62, speed: 12, r: 2 }, { x: 0, z: -72, speed: 12, r: 2 }, { x: 0, z: -79, speed: 12, r: 1.5 },
-    { x: 0, z: -92, free: true, r: 5 }, { x: 0, z: -123.5, speed: 6, r: 0.8 },
-    { x: 5, z: -127, speed: 3 }, { x: 8.4, z: -127, speed: 2, r: 0.6 }, { x: 4, z: -128, speed: 3 }, { x: 0, z: -133.5, speed: 3 }
+    [
+      ...schranke,
+      { x: 1.8, z: -14, speed: 4, r: 0.7 }, { x: 0, z: -22, speed: 5, r: 1.5 }, { x: 0, z: -27, speed: 5, r: 1 },
+      { x: 0, z: -30.2, speed: 6, r: 0.8 }, { x: 0, z: -45, free: true, r: 4 }, { x: 0, z: -70, speed: 5, r: 1 },
+      { x: 0, z: -77, speed: 3 }, { x: 0, z: -79, speed: 2 }, { x: 1.76, z: -84.24, speed: 2, r: 0.6 },
+      { x: 6, z: -86, speed: 2, r: 0.6 }, { x: 16, z: -86, speed: 2, r: 0.6 }, { x: 20.24, z: -87.76, speed: 2, r: 0.6 },
+      { x: 22, z: -92, speed: 2, r: 0.6 }, { x: 22, z: -95, speed: 2 }, { x: 22, z: -97.2, speed: 1.5, r: 0.5 },
+      { x: 22, z: -100, speed: 2.5, r: 0.5, wait: ['phase', ['schieber', 1, 0.5, 0.55]] },
+      { x: 22, z: -103.5, speed: 3, r: 0.6, wait: ['phase', ['schieber', 2, 0.5, 0.55]] },
+      { follow: true, bisY: -31, speed: 5 },
+      { x: 8.2, z: -113.5, speed: 2, r: 0.5 }, { x: 6, z: -116.5, speed: 2 }
+    ],
+    [...schranke, { x: -2.2, z: -9, speed: 2, r: 0.5 }]
   ]
 };
