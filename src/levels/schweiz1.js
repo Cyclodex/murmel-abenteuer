@@ -1,104 +1,88 @@
-// Schweiz 1: Käserei. Zwischen den Milchkannen durch, die Rampe hinauf ins kupferne Käsekessi (die Käseharfe rührt),
-// über den Emmentaler um die Löcher herum, die Kellertreppe hinunter in den Käsekeller: dort rollen Laibe aus dem
-// Regal quer über den Weg. Das Ziel liegt auf einem riesigen Stück Käse.
-const K = [0, 0, -20];   // Käsekessi: Mitte des Bodens
-const E = -31;           // Emmentaler: vordere Kante (z), 7 x 12 Kacheln zu 1.5 m
-const KY = -3, KZ = -58; // Käsekeller: Höhe des Bodens, Mitte des Gangs (führt nach +x)
-const rinde = (from, to) => ({ type: 'wand', from, to, height: 0.8, look: 'rinde' });
-// Laib rollt aus dem Regal über ein Brett hinunter und quer über den Gang (Lücke in beiden Wänden)
-const laib = (x, offset) => [
-  { type: 'weg', from: [x, 0, KZ - 8.5], to: [x, KY, KZ - 2.5], width: 2.8, walls: 0.6, caps: 'start', look: 'holz' },
-  { type: 'felsen', form: 'laib', from: [x, -0.1, KZ - 7.7], dir: [0, 1], speed: 0.5, every: 5, r: 1, offset }
-];
+// Schweiz 1: Käserei. Über einen schmalen Steg ohne Rand ins kupferne Käsekessi: die Käseharfe rührt schnell, man fährt
+// gleich hinter ihr her quer hinüber und durch die enge Lücke rechts hinaus, bevor das andere Ende kommt. Der Emmentaler
+// ist ein Labyrinth: ein Weg eine Kachel breit, daneben nur Löcher. Eine schmale Wendel ohne Rand führt in den Käsekeller.
+// Dort rollen Laibe in Fahrtrichtung durch den Gang, schneller als die Murmel: man wartet in den Fächern des Regals,
+// bis einer vorbei ist, und fährt zum nächsten Fach. Auf der anderen Seite hat der Gang keinen Rand.
+const K = [0, 0, -15];     // Käsekessi: Mitte des Bodens
+const E = [16, 0, -18];    // Emmentaler: Mitte der vorderen Kante (7 x 13 Kacheln zu 1.6 m)
+const KY = -3, KZ = -38;   // Käsekeller: Höhe des Bodens, Mitte des Gangs (führt nach +x)
+const FACH = [32, 38, 44]; // Fächer im Regal (x)
+// Regal an der linken Seite des Gangs: Bretter zwischen den Fächern, hinten eine Wand
+const regal = [[22, 26], [28.4, 30.8], [33.2, 36.8], [39.2, 42.8], [45.2, 47], [49.4, 51]];
 
 export default {
   id: 'sch1', name: 'Käserei', emoji: '🧀', theme: 'schweiz', variante: 'kaeserei',
   start: [0, 0, 2], killY: -11,
   parts: [
-    // Käserei: zwischen zwei Milchkannen durch
-    { type: 'weg', from: [0, 0, 6], to: [0, 0, -9], width: 6, walls: 0.8, caps: 'start' },
-    { type: 'deko', form: 'milchkanne', at: [-1, 0, -4], scale: 0.55, fest: true },
-    { type: 'deko', form: 'milchkanne', at: [1, 0, -7], scale: 0.55, yaw: 40, fest: true },
-    { type: 'wand', from: [-3.2, 0, -9], to: [-1.9, 0, -9] },
-    { type: 'wand', from: [1.9, 0, -9], to: [3.2, 0, -9] },
+    // Käserei: Start zwischen den Milchkannen, dann ein schmaler Steg ohne Rand zum Kessi
+    { type: 'weg', from: [0, 0, 6], to: [0, 0, -3], width: 4, walls: 0.8, caps: 'start' },
+    { type: 'deko', form: 'milchkanne', at: [-3.2, 0, 0], scale: 0.55, fest: true },
+    { type: 'deko', form: 'milchkanne', at: [3.2, 0, -2], scale: 0.55, yaw: 40, fest: true },
+    { type: 'weg', from: [0, 0, -3], to: [0, 0, -11], width: 1.6 },
 
-    // Rampe hinauf auf den Rand des Käsekessis, drinnen rührt die Käseharfe, hinten hinaus durch die Lücke
-    { type: 'weg', from: [0, 0, -9], to: [0, 1.4, -13.5], width: 3, walls: 0.6 },
-    { type: 'schuessel', at: K, r: 4, R: 6, h: 1.4, rim: 0.5, art: 'kessi', offen: [0] },
-    { type: 'balken', at: K, length: 5, speed: 25, form: 'kaeseharfe', farbe: 'holz' },
-    { type: 'weg', from: [0, 0, -23.8], to: [0, 0, -28], width: 2.6, walls: 0.8 },
-    { type: 'wand', from: [-2.7, 0, -28], to: [-1.7, 0, -28] },
-    { type: 'wand', from: [1.7, 0, -28], to: [2.7, 0, -28] },
-    { type: 'weg', from: [0, 0, -28], to: [0, 0, E], width: 5, walls: 0.8 },
-    { type: 'checkpoint', at: [0, 0, -29.5], size: [5, 3, 2] },
+    // Käsekessi: die Harfe rührt schnell, vorne hinein, rechts durch die enge Lücke hinaus
+    { type: 'schuessel', at: K, r: 4.5, R: 6, h: 1.2, rim: 0.5, art: 'kessi', offen: [180, -90], luecke: 1.6 },
+    { type: 'balken', at: K, length: 8.4, speed: 60, form: 'kaeseharfe', farbe: 'holz' },
+    { type: 'weg', from: [4.2, 0, K[2]], to: [9, 0, K[2]], width: 1.4 },
+    { type: 'weg', from: [9, 0, K[2]], to: [13, 0, K[2]], width: 3, walls: 0.8 },
+    { type: 'checkpoint', at: [11, 0, K[2]], yaw: -90, size: [3, 3, 2] },
+    { type: 'kurve', at: [13, 0, K[2]], yaw: -90, turn: -90, radius: 3, width: 3, walls: 0.8 },
 
-    // Emmentaler: um die Löcher herum (erst rechts, dann links), links in der Rinde eine Nische mit dem Bonusstern
-    { type: 'feld', at: [0, 0, E], cell: 1.5, look: 'kaese', map: [
-      '#######',
-      '#######',
-      '.##.###',
-      '###..##',
-      '###.#.#',
-      '######.',
-      '#######',
-      '.#.###.',
-      '##..###',
-      '#.#.##.',
-      '#######',
-      '#######'
+    // Emmentaler-Labyrinth: ein Weg eine Kachel breit, zwei Sackgassen (links vorne ein Stern, links hinten der Bonus)
+    { type: 'feld', at: E, cell: 1.6, look: 'kaese', map: [
+      '.....#.',
+      '.....#.',
+      '.#####.',
+      '.#.....',
+      '####...',
+      '#..#...',
+      '...###.',
+      '.....#.',
+      '.#####.',
+      '.#.....',
+      '####...',
+      '...#...',
+      '...#...'
     ] },
-    rinde([-5.65, 0, E + 0.2], [-2.9, 0, E + 0.2]),
-    rinde([2.9, 0, E + 0.2], [5.65, 0, E + 0.2]),
-    rinde([5.45, 0, E], [5.45, 0, E - 18]),
-    rinde([-5.45, 0, E], [-5.45, 0, E - 7.75]),
-    rinde([-5.45, 0, E - 10.25], [-5.45, 0, E - 18]),
-    rinde([-5.65, 0, E - 18.2], [-2.9, 0, E - 18.2]),
-    rinde([2.9, 0, E - 18.2], [5.65, 0, E - 18.2]),
-    { type: 'nische', at: [-5.25, 0, E - 9], yaw: 90, look: 'kaese' },
-    { type: 'weg', from: [0, 0, E - 18], to: [0, 0, -53], width: 5, walls: 0.8 },
-    { type: 'checkpoint', at: [0, 0, -51], size: [5, 3, 2] },
+    { type: 'checkpoint', at: [16, 0, -30], size: [1.6, 3, 1.6] },
+    { type: 'weg', from: [19.2, 0, -38.8], to: [19.2, 0, -42.8], width: 3, walls: 0.8 },
+    { type: 'checkpoint', at: [19.2, 0, -41], size: [3, 3, 2] },
 
-    // um die Ecke und die Kellertreppe hinunter
-    { type: 'kurve', at: [0, 0, -53], yaw: 0, turn: 90, radius: 5, width: 5, walls: 0.8 },
-    { type: 'weg', from: [5, 0, KZ], to: [15, KY, KZ], width: 5, walls: 0.8 },
-    { type: 'weg', from: [15, KY, KZ], to: [19, KY, KZ], width: 5, walls: 0.8 },
-    { type: 'checkpoint', at: [17, KY, KZ], yaw: -90, size: [5, 3, 2] },
+    // Kellerabgang: schmale Wendel ohne Rand hinunter, unten ins Regal hinein
+    { type: 'kurve', at: [19.2, 0, -42.8], yaw: 0, turn: 180, radius: 4, width: 1.6, rise: KY },
+    { type: 'weg', from: [27.2, KY, -42.8], to: [27.2, KY, KZ - 1.1], width: 2.4, walls: 0.8 },
+    { type: 'checkpoint', at: [27.2, KY, -42], size: [2.4, 3, 1.4] },
 
-    // Käsekeller: zwei Laibe rollen aus dem Regal quer über den Gang und fallen vorne hinunter
-    { type: 'weg', from: [19, KY, KZ], to: [32, KY, KZ], width: 5 },
-    ...[-1, 1].flatMap(k => [[19, 20.9], [24.1, 26.9], [30.1, 32]].map(([a, b]) => ({ type: 'wand', from: [a, KY, KZ + k * 2.7], to: [b, KY, KZ + k * 2.7] }))),
-    ...laib(22.5, 4.4),
-    ...laib(28.5, 2.5),
-    { type: 'deko', form: 'kaeseregal', at: [25.5, -4.5, KZ - 10.2], scale: 1.4 },
-    { type: 'weg', from: [32, KY, KZ], to: [35, KY, KZ], width: 5, walls: 0.8 },
-    { type: 'checkpoint', at: [33.5, KY, KZ], yaw: -90, size: [5, 3, 2] },
+    // Käsekeller: Gang ohne Rand rechts, links das Regal mit Fächern; die Laibe rollen vom hinteren Ende her mit
+    { type: 'weg', from: [22, KY, KZ], to: [51, KY, KZ], width: 2.2 },
+    { type: 'klotz', at: [36.5, KY - 0.5, KZ - 2.1], size: [29, 1, 2], look: 'holz' },
+    ...regal.map(([a, b]) => ({ type: 'klotz', at: [(a + b) / 2, KY + 0.7, KZ - 2.1], size: [b - a, 1.4, 2], look: 'holz' })),
+    ...FACH.map(x => ({ type: 'klotz', at: [x, KY + 0.7, KZ - 3.3], size: [2.4, 1.4, 0.4], look: 'holz' })),
+    { type: 'deko', form: 'kaeseregal', at: [20.5, KY, KZ], yaw: 90, scale: 1.2 },
+    { type: 'felsen', form: 'laib', from: [23, KY, KZ], dir: [1, 0], speed: 7, every: 8, r: 0.8 },
+    { type: 'felsen', form: 'laib', from: [23, KY, KZ], dir: [1, 0], speed: 7, every: 8, r: 0.8, offset: 4 },
 
-    // Ziel auf einem riesigen Stück Käse mit Rinde
-    { type: 'weg', from: [35, KY, KZ], to: [43, KY, KZ], width: 8, thick: 2.5, look: 'kaese' },
-    rinde([35.2, KY, KZ - 4.4], [35.2, KY, KZ - 2.9]),
-    rinde([35.2, KY, KZ + 2.9], [35.2, KY, KZ + 4.4]),
-    rinde([35, KY, KZ - 4.2], [43, KY, KZ - 4.2]),
-    rinde([35, KY, KZ + 4.2], [43, KY, KZ + 4.2]),
-    rinde([43.2, KY, KZ - 4.4], [43.2, KY, KZ + 4.4]),
-    { type: 'ziel', at: [39.5, KY, KZ] },
+    // Ziel: im letzten Fach links hinaus, auf ein riesiges Stück Käse
+    { type: 'weg', from: [48.2, KY, KZ - 3.1], to: [48.2, KY, KZ - 10], width: 2.4, walls: 0.8, caps: 'end', look: 'kaese' },
+    { type: 'ziel', at: [48.2, KY, KZ - 7.5] },
 
     // Käserei und Keller rundherum
     { type: 'deko', form: 'kaeseregal', at: [-8.5, -2, -2], yaw: 90 },
     { type: 'deko', form: 'milchkanne', at: [6, -2, -5], yaw: -30 },
-    { type: 'deko', form: 'milchkanne', at: [8.6, -2, -2.5], yaw: 60, scale: 0.8 },
-    { type: 'deko', form: 'laib', at: [-9.5, -3, -22], yaw: 20 },
-    { type: 'deko', form: 'laib', at: [-9.5, -1.4, -22], yaw: 50, scale: 0.8 },
-    { type: 'deko', form: 'kaeseregal', at: [12, -3, -40], yaw: -90, scale: 1.2 },
-    { type: 'deko', form: 'laib', at: [22.3, -10, KZ + 6.5], yaw: 10 },
-    { type: 'deko', form: 'laib', at: [28.8, -10, KZ + 7], yaw: 70 },
-    { type: 'deko', form: 'laib', at: [26, -8.4, KZ + 6.6], yaw: 35, scale: 0.9 },
-    { type: 'deko', form: 'milchkanne', at: [10, -7, KZ + 6], yaw: 15 },
+    { type: 'deko', form: 'laib', at: [-9.5, -3, -16], yaw: 20 },
+    { type: 'deko', form: 'laib', at: [-9.5, -1.4, -16], yaw: 50, scale: 0.8 },
+    { type: 'deko', form: 'kaeseregal', at: [7, -3, -30], yaw: -90, scale: 1.2 },
+    { type: 'deko', form: 'laib', at: [30, -9, KZ + 6], yaw: 10 },
+    { type: 'deko', form: 'laib', at: [40, -9, KZ + 6.5], yaw: 70 },
+    { type: 'deko', form: 'milchkanne', at: [54, -7, KZ], yaw: 15 },
 
-    { type: 'stern', at: [1.4, 0.9, -4] },
-    { type: 'stern', at: [3.6, 0.9, -20] },
-    { type: 'stern', at: [2.25, 0.9, E - 5.25] },
-    { type: 'stern', at: [-2.25, 0.9, E - 12.75] },
-    { type: 'stern', at: [25.5, KY + 0.9, KZ] },
-    { type: 'stern', at: [-7.75, 0.9, E - 9], bonus: true }
+    // Sterne: im Kessi neben der Linie, in der vorderen Sackgasse, in zwei Fächern, am offenen Rand des Gangs;
+    // Bonus in der hinteren Sackgasse des Labyrinths
+    { type: 'stern', at: [1.8, 0.9, -13.4] },
+    { type: 'stern', at: [11.2, 0.9, -22] },
+    { type: 'stern', at: [FACH[0], KY + 0.9, KZ - 2.6] },
+    { type: 'stern', at: [41, KY + 0.9, KZ + 0.8] },
+    { type: 'stern', at: [FACH[2], KY + 0.9, KZ - 2.6] },
+    { type: 'stern', at: [11.2, 0.9, -30], bonus: true }
   ]
 };
