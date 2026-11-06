@@ -3,8 +3,10 @@
 // es nur dort, wo Zahn auf Zahn steht. Die Zugfeder führt schmal und ohne Rand eine Runde hinunter. Auf dem Zifferblatt
 // ohne Rand kreuzen Minuten- und Stundenzeiger mit verschiedenem
 // Tempo: in den Ecken ist man sicher, an den Kanten entlang nur, wenn beide Zeiger eben vorbei sind. Drei Uhrgewichte
-// steigen und sinken nacheinander, man geht von Gewicht zu Gewicht, solange sie oben sind. Zuletzt schlagen Pendel und
-// Glockenhammer im selben Takt auf den schmalen Steg, und ein zweites Pendel schwingt in einem anderen Takt.
+// steigen und sinken nacheinander wie eine Welle, mal schnell, mal langsam, oben bleiben sie mal kurz, mal länger: man geht
+// von Gewicht zu Gewicht, solange sie oben sind. Zuletzt der schmale Steg ohne Rand: ein Pendel, das mal rasch schwingt,
+// mal an der Seite verharrt, gleich dahinter der Glockenhammer, der mal zweimal schnell schlägt und mal lange oben bleibt
+// (zwischen den beiden ist gerade Platz für eine Murmel), dann ein zweites Pendel in einem eigenen, unregelmässigen Takt.
 const D = 6.85 / Math.SQRT2;                        // Zahnräder: Versatz der Mitten (r 4 + r 3, Zähne greifen leicht ein)
 const G = [[0, -8.2], [-D, -8.2 - D], [0, -8.2 - 2 * D], [-D, -8.2 - 3 * D]];
 const X = -D;                                      // Ausfahrt vom letzten Zahnrad, Steg zum Zifferblatt
@@ -52,18 +54,18 @@ export default {
     { type: 'checkpoint', at: [XS, Y, -47.8], size: [3, 3, 1.6] },
 
     // Drei Uhrgewichte steigen und sinken nacheinander; oben liegen sie bündig mit dem Steg
-    ...GEW.map((z, k) => ({ type: 'plattform', from: [XS, Y - 5, z], to: [XS, Y, z], size: [2.2, 2.2], rim: 0, time: 1.5, pause: 3, offset: -1.5 * k })),
+    ...GEW.map((z, k) => ({ type: 'plattform', from: [XS, Y - 5, z], to: [XS, Y, z], size: [2.2, 2.2], rim: 0, time: [1.5, 1.1, 1.9], pause: [3, 2.7, 3.6, 2.8], offset: -1.5 * k })),
     ...GEW.flatMap(kette),
     { type: 'weg', from: [XS, Y, -56.1], to: [XS, Y, -60], width: 3, walls: 0.8 },
     { type: 'checkpoint', at: [XS, Y, -58], size: [3, 3, 2] },
 
-    // Pendel und Glockenhammer im selben Takt, dann ein zweites Pendel in einem anderen; Steg ohne Rand
+    // Pendel, gleich dahinter der Glockenhammer, dann ein zweites Pendel; jedes in seinem eigenen Takt; Steg ohne Rand
     { type: 'weg', from: [XS, Y, -60], to: [XS, Y, -72], width: 1.6 },
-    { type: 'pendel', at: [XS, Y, -62], time: 3.88, r: 0.7 },
-    { type: 'hammer', at: [XS, Y, -64.6], side: 1, length: 4, size: [3.2, 1.4, 1.6], up: 2, down: 0.5, offset: 2.46, farbe: 'gelb' },
-    { type: 'klotz', at: [XS - 3.5, Y - 6, -64.6], size: [4, 12, 4], look: 'holz-dunkel' },
-    { type: 'deko', form: 'glocke', at: [XS - 3.5, Y, -64.6], fest: true },
-    { type: 'pendel', at: [XS, Y, -69], time: 4.4, offset: 1, r: 0.7 },
+    { type: 'pendel', at: [XS, Y, -61.5], time: [3.9, 2.8, 4.6, 3.2], pause: [0, 0.8, 0.2, 1.4], r: 0.7 },
+    { type: 'hammer', at: [XS, Y, -65], side: 1, length: 4, size: [3.2, 1.4, 1.6], up: [2, 0.7, 0.6, 2.6], down: [0.5, 0.35, 0.6], pause: [0.3, 0, 1.8, 0.6], offset: 2.46, farbe: 'gelb' },
+    { type: 'klotz', at: [XS - 3.5, Y - 6, -65], size: [4, 12, 4], look: 'holz-dunkel' },
+    { type: 'deko', form: 'glocke', at: [XS - 3.5, Y, -65], fest: true },
+    { type: 'pendel', at: [XS, Y, -69.5], time: [4.4, 3.4, 5.2], pause: [0.4, 0, 1.2, 0.2], offset: 1, r: 0.7 },
     { type: 'weg', from: [XS, Y, -72], to: [XS, Y, -80], width: 5, walls: 0.8, caps: 'end' },
     { type: 'ziel', at: [XS, Y, -77] },
 
@@ -72,7 +74,7 @@ export default {
     { type: 'stern', at: [-3.5, 0.9, G[2][1]] },
     { type: 'stern', at: [X + 0.3, Y + 0.9, ZF] },
     { type: 'stern', at: [XS, Y + 0.9, GEW[2]] },
-    { type: 'stern', at: [XS, Y + 0.9, -64.6] },
+    { type: 'stern', at: [XS, Y + 0.9, -65] },
     { type: 'stern', at: [XS + 0.5, Y + 0.9, -66.4] },
     { type: 'stern', at: [5.2, 0.9, G[0][1]], bonus: true }
   ]

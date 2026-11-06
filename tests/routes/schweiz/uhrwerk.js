@@ -10,7 +10,7 @@ const hinueber = (n, m, dx, dz) => {
   const [ax, az] = ring(n, dx, dz), [bx, bz] = ring(m, -dx, -dz);
   return { x: bx, z: bz, speed: 2, r: 0.5, wait: ['nahe', [ax, az, 0.7]] };
 };
-const gewicht = (n, a = 0.5, b = 0.58) => ['phase', ['plattform', n, a, b]];
+const gewicht = n => ['platAtTo', n];
 const anfang = [{ x: 0, z: -2, speed: 3 }, { x: 0, z: -5, speed: 2, r: 0.5 }];
 
 export default {
@@ -33,16 +33,18 @@ export default {
       { x: XF - 3.7, z: ZF - 5, speed: 4, r: 0.6, wait: ['balkenWeg', [XF + 3.73, ZF - 4.95]] },
       { x: XS, z: ZF - 5, speed: 1.5, r: 0.4 },
       { x: XS, z: -48.4, speed: 3, r: 0.5 },
-      // Uhrgewichte: auf jedes, sobald es oben angekommen ist
+      // Uhrgewichte: auf jedes, sobald es oben angekommen ist (jedes folgt dem vorigen 1.5 s später)
       { x: XS, z: -50.2, speed: 2.5, r: 0.5, wait: gewicht(0) },
       { x: XS, z: -52.6, speed: 2.5, r: 0.5, wait: gewicht(1) },
       { x: XS, z: -55, speed: 2.5, r: 0.5, wait: gewicht(2) },
       { x: XS, z: -57.5, speed: 2.5, r: 0.6 },
-      // Pendel und Glockenhammer in einem Zug, dann vor dem zweiten Pendel warten
+      // vor dem Pendel warten, bis es lange an der Seite bleibt, zwischen Pendel und Hammer warten, bis der Hammer lange
+      // oben bleibt, unter ihm hindurch, vor dem zweiten Pendel wieder warten
       { x: XS, z: -60.2, speed: 2, r: 0.4 },
-      { x: XS, z: -66.4, speed: 4.5, r: 0.5, wait: ['phase', ['pendel', 0, 0.03, 0.08]] },
-      { x: XS, z: -67.2, speed: 1, r: 0.3 },
-      { x: XS, z: -72, speed: 4.5, r: 0.6, wait: ['phase', ['pendel', 1, 0.04, 0.08]] },
+      { x: XS, z: -63.2, speed: 3, r: 0.35, wait: ['frei', 'pendel', 0, 1.4] },
+      { x: XS, z: -66.4, speed: 4, r: 0.5, wait: ['frei', 'hammer', 0, 1.6] },
+      { x: XS, z: -67.6, speed: 1, r: 0.3 },
+      { x: XS, z: -72, speed: 4.5, r: 0.6, wait: ['frei', 'pendel', 1, 1.6] },
       { x: XS, z: -77 }
     ],
     // Bonusstern: auf dem ersten Rad die Runde andersherum bis rechts, hinüber auf die Schraube
