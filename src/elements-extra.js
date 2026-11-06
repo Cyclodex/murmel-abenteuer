@@ -201,9 +201,10 @@ export const EXTRA = {
     }
   },
 
-  // Drehender Balken, der die Murmel sanft schubst. form = Gegenstand aus props.js, der an beiden Enden mitfährt
-  // (z. B. 'pferd' für ein Karussell, nur Grafik), scale = dessen Grösse.
-  // {type:'balken', at (Drehpunkt am Boden), length?, speed?:Grad/s, height?, farbe?, form?, scale?}
+  // Drehender Balken, der die Murmel sanft schubst. form = Gegenstand aus src/props.js, der sich mitdreht (bekommt laenge = length,
+  // hoehe = height; z. B. 'kaeseharfe', 'zeiger'); mit enden: true steht je eine Figur an beiden Enden, Gesicht in Drehrichtung
+  // (z. B. 'pferd' für ein Karussell), scale = deren Grösse. Alles nur Grafik.
+  // {type:'balken', at (Drehpunkt am Boden), length?, speed?:Grad/s, height?, farbe?, form?, enden?, scale?}
   balken: {
     init(el, g) {
       const L = el.length ?? 6, hh = el.height ?? 0.6;
@@ -222,11 +223,11 @@ export const EXTRA = {
       const T = v.THREE, hub = new T.Mesh(new T.CylinderGeometry(0.35, 0.45, (el.height ?? 0.6) + 0.3, 16), v.mats.pole);
       hub.position.set(el.at[0], el.at[1] + ((el.height ?? 0.6) + 0.3) / 2, el.at[2]); v.scene.add(hub);
       const bg = v.bodyGroup(el.body);
-      if (el.form) for (const k of [-1, 1]) { // Figuren an den Enden, Gesicht in Drehrichtung
+      if (el.form && el.enden) for (const k of [-1, 1]) { // Figuren an den Enden, Gesicht in Drehrichtung
         const p = buildProp(T, el.form, el);
         p.scale.setScalar(el.scale ?? 0.6); p.position.set(k * ((el.length ?? 6) / 2 - 0.8), (el.height ?? 0.6) + 0.05, 0);
         p.rotation.y = k * Math.sign(el.speed ?? 40) > 0 ? 0 : Math.PI; bg.grp.add(p);
-      }
+      } else if (el.form) bg.grp.add(buildProp(T, el.form, { laenge: el.length ?? 6, hoehe: el.height ?? 0.6 }));
       return bg;
     }
   },

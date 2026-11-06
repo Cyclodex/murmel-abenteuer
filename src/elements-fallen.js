@@ -180,12 +180,13 @@ export const FALLEN = {
 
   // Fluss: Rinne mit Wasser, die Strömung trägt die Murmel mit (auch bergab). Leichte Murmeln (dichte < 1, siehe skins.js)
   // schwimmen oben und treiben schnell mit, schwere rollen über den Grund. from/to = Wasseroberfläche (Mitte),
-  // width, depth = Wassertiefe, speed = Strömung m/s, banks = Ufer über dem Wasser
-  // {type:'fluss', from, to, width?, depth?, speed?, banks?}
+  // width, depth = Wassertiefe, speed = Strömung m/s, banks = Ufer über dem Wasser, farbe = Farbe statt Wasserblau,
+  // dreck = macht die Murmel dreckig statt sie zu waschen (pro Sekunde, z. B. flüssige Schoggi)
+  // {type:'fluss', from, to, width?, depth?, speed?, banks?, farbe?, dreck?}
   fluss: {
     solids(d) {
       const dp = d.depth ?? 0.7, down = [0, -dp, 0];
-      const out = TYPES.weg.solids({ from: add(d.from, down), to: add(d.to, down), width: d.width ?? 4, walls: dp + (d.banks ?? 0.5), look: 'flussbett', surface: 'flussbett' });
+      const out = TYPES.weg.solids({ from: add(d.from, down), to: add(d.to, down), width: d.width ?? 4, walls: dp + (d.banks ?? 0.5), look: 'flussbett', surface: d.dreck ? 'schoggi' : 'flussbett' });
       for (const o of out.slice(1)) o.look = 'ufer';
       return out;
     },
@@ -211,17 +212,17 @@ export const FALLEN = {
       const va2 = va + dv, qx = v.x - el.dir[0] * va2, qy = v.y - el.dir[1] * va2, qz = v.z - el.dir[2] * va2;
       const fq = Math.min(1, kw * (Math.hypot(qx, qy, qz) + 1) * h);
       v.x -= qx * fq; v.y -= qy * fq; v.z -= qz * fq;
-      g.washK += 2;
+      if (el.dreck) g.dirt = Math.min(1, g.dirt + el.dreck * h); else g.washK += 2; // auch wer oben schwimmt, wird dreckig
     },
     view(el, v) {
       const T = v.THREE, w = el.width ?? 4, s = el.seg;
       const tex = v.canvasTex(64, 64, (x, W, H) => {
-        x.fillStyle = '#3FA3E6'; x.fillRect(0, 0, W, H);
-        x.strokeStyle = 'rgba(255,255,255,0.55)'; x.lineWidth = 2;
+        x.fillStyle = el.farbe === undefined ? '#3FA3E6' : '#' + el.farbe.toString(16).padStart(6, '0'); x.fillRect(0, 0, W, H);
+        x.strokeStyle = el.farbe === undefined ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.25)'; x.lineWidth = 2;
         for (let i = 0; i < 6; i++) { const y = i * 11 + 3; x.beginPath(); x.moveTo(8 + (i % 2) * 20, y); x.quadraticCurveTo(24 + (i % 2) * 20, y + 5, 40 + (i % 2) * 20, y); x.stroke(); }
       });
       tex.repeat.set(Math.max(1, Math.round(w / 2)), s.L / 2);
-      const m = new T.Mesh(new T.PlaneGeometry(w, s.L), new T.MeshPhongMaterial({ map: tex, transparent: true, opacity: 0.7, shininess: 90, depthWrite: false }));
+      const m = new T.Mesh(new T.PlaneGeometry(w, s.L), new T.MeshPhongMaterial({ map: tex, transparent: true, opacity: el.farbe === undefined ? 0.7 : 0.93, shininess: 90, depthWrite: false }));
       m.quaternion.set(...s.q); m.rotateX(-Math.PI / 2);
       m.position.set(...add(s.mid, scale(s.up, -0.1))); v.scene.add(m);
       return { tick(dt) { tex.offset.y = (tex.offset.y - dt * (el.speed ?? 3) / 2) % 1; } };
@@ -292,8 +293,9 @@ export const FALLEN = {
   },
 
   // Rollende Felsen: kommen alle `every` Sekunden bei from herunter und rollen in Richtung dir (bergab).
-  // dir = Richtung [x, z] (Standard vorwärts -z), speed = Anfangstempo, r = Grösse, farbe (z. B. Kartoffeln, Äpfel)
-  // {type:'felsen', from, dir?:[x,z], speed?, every?, r?, offset?, farbe?}
+  // dir = Richtung [x, z] (Standard vorwärts -z), speed = Anfangstempo, r = Grösse, farbe (z. B. Kartoffeln, Äpfel),
+  // form: 'laib' = rollender Käselaib (nur Grafik: ein Rad, das in Fahrtrichtung rollt; die Physik bleibt die Kugel)
+  // {type:'felsen', from, dir?:[x,z], speed?, every?, r?, offset?, farbe?, form?}
   felsen: {
     init(el, g) {
       const C = g.C, r = el.r ?? 0.9;
@@ -323,9 +325,32 @@ export const FALLEN = {
       if (el.body.position.y < (g.level.killY ?? -8)) TYPES.felsen.park(el);
     },
     view(el, v) {
+      if (el.form === 'laib') return laibView(el, v);
       const T = v.THREE, m = new T.Mesh(new T.DodecahedronGeometry(el.r ?? 0.9, 1), new T.MeshLambertMaterial({ color: el.farbe ?? 0x8A7F72, flatShading: true }));
       m.castShadow = true; v.scene.add(m);
       return { tick() { m.position.copy(el.body.position); m.quaternion.copy(el.body.quaternion); } };
     }
   }
 };
+
+// Käselaib statt Felsen: Rad mit Rinde, steht aufrecht und rollt in Fahrtrichtung (Drehung aus dem zurückgelegten Weg)
+function laibView(el, v) {
+  const T = v.THREE, r = el.r ?? 0.9, grp = new T.Group();
+  const tex = v.canvasTex(128, 128, (x, w, h) => {
+    x.fillStyle = '#F2C230'; x.fillRect(0, 0, w, h); x.fillStyle = '#D99A1C';
+    for (let i = 0; i < 9; i++) { x.beginPath(); x.arc((i * 53 + 20) % w, (i * 89 + 30) % h, 5 + (i % 3) * 3, 0, 7); x.fill(); }
+  });
+  const rinde = new T.MeshLambertMaterial({ color: el.farbe ?? 0xC98A2B }), teig = new T.MeshLambertMaterial({ map: tex });
+  const rad = new T.Mesh(new T.CylinderGeometry(r, r, r * 0.9, 28).rotateZ(Math.PI / 2), [rinde, teig, teig]);
+  rad.castShadow = true; grp.add(rad); v.scene.add(grp);
+  let lx = 0, lz = 0, a = 0;
+  return {
+    tick() {
+      const p = el.body.position, w = el.body.velocity, d = Math.hypot(p.x - lx, p.z - lz);
+      grp.position.copy(p);
+      if (Math.hypot(w.x, w.z) > 0.3) grp.rotation.y = Math.atan2(w.x, w.z);
+      if (d < 2) a += d / r; // nicht beim Einsetzen eines neuen Laibs
+      rad.rotation.x = a; lx = p.x; lz = p.z;
+    }
+  };
+}

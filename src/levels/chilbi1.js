@@ -46,7 +46,7 @@ export default {
     { type: 'weg', from: [0, 0, -25], to: [0, 0, -29.9], width: 5, walls: 0.8 },
     { type: 'checkpoint', at: [0, 0, -27], size: [5, 3, 3] },
     { type: 'schuessel', art: 'karussell', at: K, r: 6.5, R: 7, h: 1, rim: 0.4, offen: [180, -90], luecke: 3.5 },
-    { type: 'balken', form: 'pferd', at: K, length: 10, speed: 28 },
+    { type: 'balken', form: 'pferd', enden: true, at: K, length: 10, speed: 28 },
     { type: 'deko', form: 'herz', at: [-9.6, 0, -33], yaw: -60 },
     { type: 'deko', form: 'popcorn', at: [-7.4, 0, -43.6], scale: 0.9 },
     { type: 'deko', form: 'lukas', at: [9.6, 0, -30.6], yaw: 180 },

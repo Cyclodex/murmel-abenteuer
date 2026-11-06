@@ -15,7 +15,9 @@ const BOWL = {
   sandkuchen: { inner: 0xE6C27A, outer: 0xD9B56C, shine: 5 },
   kessel: { inner: 0x8E9AA3, outer: 0x7B8790, shine: 120 }, // Rinnenkessel am Ende der Dachrinne (Zink)
   tonne: { inner: 0x2F7D5C, outer: 0x2A6E51, shine: 30 },   // Regentonne
-  karussell: { inner: 0xF3E2B8, outer: 0xD32F2F, shine: 40 }
+  karussell: { inner: 0xF3E2B8, outer: 0xD32F2F, shine: 40 },
+  kessi: { inner: 0xE09A5B, outer: 0xB8692F, shine: 130 },      // Käsekessi aus Kupfer
+  giessform: { inner: 0x6B3A1E, outer: 0xC9CED6, shine: 70 }   // Giessform für Pralinen: innen Schoggi, aussen Stahl
 };
 
 // Richtung eines Segments (Winkel a in der x/z-Ebene)
@@ -24,7 +26,7 @@ const dirOf = a => [Math.cos(a), 0, Math.sin(a)];
 export const WELT = {
   // Schüssel: runder Boden, schräge Wand, flacher Rand (und aussen eine Wand bis zum Boden).
   // at = Mitte des Bodens (Oberkante), r = Bodenradius, R = Radius oben, h = Randhöhe, rim = Randbreite,
-  // art = 'pfanne' | 'topf' | 'lavabo' | 'schuessel' | 'sandkuchen' | 'kessel' | 'tonne' | 'karussell' (Drehscheibe der Chilbi), offen = Liste von yaw (Grad): dort ist eine Lücke
+  // art = 'pfanne' | 'topf' | 'lavabo' | 'schuessel' | 'sandkuchen' | 'kessel' | 'tonne' | 'karussell' (Drehscheibe der Chilbi) | 'kessi' | 'giessform', offen = Liste von yaw (Grad): dort ist eine Lücke
   // (z. B. für eine Rampe hinein/hinaus), luecke = Breite der Lücke, aussen:false = keine Aussenwand (z. B. in einer Ablage),
   // griff = yaw des Pfannenstiels, hahn = yaw des Wasserhahns (Lavabo), abfluss:true = echtes Loch in der Mitte
   // (Radius 0.7 wie das Rohr darunter) mit steilem, abgesenktem Rand: die Murmel fällt hinein, dazu eine roehre mit down:true bei at

@@ -14,6 +14,7 @@ import winter from './routes/winter.js';
 import vulkan from './routes/vulkan.js';
 import chilbi from './routes/chilbi.js';
 import werkstatt from './routes/werkstatt.js';
+import schweiz from './routes/schweiz.js';
 import pruefstand from './routes/pruefstand/index.js';
 
 const WAITS = {
@@ -27,6 +28,8 @@ const WAITS = {
   // die Murmel ist durchs Loch in den n-ten Abfluss (roehre mit down) gefallen und rollt im Rohr
   abfluss: (g, n = 0) => g.els.filter(x => x.type === 'roehre' && x.down)[n].drin,
   amBoden: g => !!g.groundBody && Math.abs(g.ball.velocity.y) < 0.3,
+  // die Murmel ist höchstens r von [x, z] entfernt (z. B. auf dem Zahnrad mitfahren, bis die Ausfahrt da ist)
+  nahe: (g, [x, z, r = 1]) => Math.hypot(g.ball.position.x - x, g.ball.position.z - z) < r,
   // Takt eines bewegten Teils: wait: ['phase', [type, n, a, b]] = n-tes Teil vom Typ type ist in der Phase a..b (0..1) seines Takts
   // (Plattform/Schieber: 0 = Pause bei from, Hammer: 0 = oben, zuschlagen ab up/per, Felsen: 0 = neuer Felsen)
   phase: (g, [type, n, a, b]) => {
@@ -75,7 +78,8 @@ export function createPilot(g, wps) {
         ix = clamp((fx * sp - v.x) * 0.8 + rx * lat); iz = clamp((fz * sp - v.z) * 0.8 + rz * lat);
         if (p.y < w.bisY) pilot.i++;
       } else if (waiting && onKin) { // mitfahren: relativ zur Plattform stillhalten
-        const pv = g.groundBody.velocity;
+        // drehendes Teil (Zahnrad): Tempo der Fläche unter der Murmel
+        const gb = g.groundBody, pv = gb.userData && gb.userData.dreht ? gb.getVelocityAtWorldPoint(p, new g.C.Vec3()) : gb.velocity;
         ix = clamp(-(v.x - pv.x) * 0.5); iz = clamp(-(v.z - pv.z) * 0.5);
       } else if (!tgt.free || waiting) {
         const sp = waiting ? Math.min(2, d * 2) : Math.min(w.speed ?? 4, d * 1.5 + 1);
@@ -252,4 +256,4 @@ export const ROUTES = {
 };
 
 // Routen der schweren Level und der Badezimmer-Welt liegen je Welt in tests/routes/
-Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, dach, weltraum, unterwasser, winter, chilbi, werkstatt, vulkan, pruefstand);
+Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, dach, weltraum, unterwasser, winter, chilbi, werkstatt, schweiz, vulkan, pruefstand);

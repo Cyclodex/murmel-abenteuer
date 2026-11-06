@@ -4,6 +4,7 @@
 //   PROP_SIZE[form]      -> ungefähre Grösse [b, h, t] für einen Kollisions-Klotz (deko mit fest:true)
 // opts.farbe überschreibt die Hauptfarbe.
 import { werkstattProps, WERKSTATT_SIZE } from './props-werkstatt.js';
+import { PROPS_SCHWEIZ, SIZE_SCHWEIZ } from './props-schweiz.js';
 
 export const mat = (T, color, extra = {}) => new T.MeshPhongMaterial({ color, shininess: 40, ...extra });
 export const mesh = (T, geo, m, x = 0, y = 0, z = 0) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
@@ -348,6 +349,10 @@ export const PROPS = {
     return g;
   }
 };
+
+// Gegenstände der Welt Schweiz (src/props-schweiz.js)
+Object.assign(PROPS, PROPS_SCHWEIZ);
+Object.assign(PROP_SIZE, SIZE_SCHWEIZ);
 
 // Gegenstand bauen (unbekannte Form: Klotz als Platzhalter)
 export function buildProp(T, form, opts = {}) {

@@ -6,12 +6,13 @@
 // Figur-Koordinaten: steht auf y = 0, Gesicht nach -z (wie in props.js).
 import { DEG, rotate, add, sub, scale, rightOf, toLocal, ease } from './math.js';
 import { PROPS, PROP_SIZE, mat, mesh, group, cyl } from './props.js';
+import { murmeltier } from './figur-murmeltier.js';
 
 const R = 0.5;          // Murmel-Radius
 const JUBEL = 1.8;      // s Jubel nach dem Erreichen, danach winken
 const GRAU = 0xBBBBBB, GRUEN = 0x3BB273;
 const FIG_R = 1.1, FIG_H = 3.2; // Platzbedarf der Figur (Radius, Höhe)
-export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', winter: 'schneemann', chilbi: 'lukas', werkstatt: 'schraube', vulkan: 'geysir' };
+export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', winter: 'schneemann', chilbi: 'lukas', werkstatt: 'schraube', schweiz: 'murmeltier', vulkan: 'geysir' };
 // Figur eines Checkpoints: el.figur oder die der Welt (bestimmt auch den Jubel-Klang 'cp-' + Figur in audio.js)
 export const figurVon = (el, theme) => FIGUREN[el.figur] ? el.figur : FIGUR_JE_WELT[theme] || 'zwerg';
 
@@ -432,6 +433,9 @@ export const FIGUREN = {
     };
   }
 };
+
+// Murmeltier der Welt Schweiz (src/figur-murmeltier.js)
+FIGUREN.murmeltier = murmeltier;
 
 // ---------- Zielband: zwei Pfosten am Wegrand, das Band beult sich mit der Murmel aus und reisst ----------
 function zielband(T, v, hw, root) {

@@ -7,6 +7,7 @@
 //   pillars         = Looks für Säulen unter flachen Bahnstücken (null = keine)
 //   props           = riesige Gegenstände (src/props.js) auf dem Untergrund rund um die Bahn: [[form, farbe?], ...]
 import { buildProp, PROP_SIZE } from './props.js';
+import { schweiz } from './themes-schweiz.js';
 
 export const COLORS = { rot: 0xE53935, blau: 0x1E88E5, gelb: 0xFDD835, gruen: 0x43A047, orange: 0xFB8C00, lila: 0x8E24AA };
 const PASTELL = { rosa: 0xF8BBD0, mint: 0xB2DFDB, hellblau: 0xBBDEFB, gelb: 0xFFF59D, lila: 0xD1C4E9, weiss: 0xFAFAFA };
@@ -133,7 +134,7 @@ const snowBlockTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
 });
 
 // Riesige Gegenstände verstreut auf dem Untergrund (unter und neben der Bahn), fest je Welt
-function scatter(t, y, list, seed, n = 26) {
+export function scatter(t, y, list, seed, n = 26) {
   if (!list || !list.length) return;
   const r = rnd(seed);
   for (let i = 0; i < n; i++) {
@@ -532,3 +533,5 @@ export const THEMES = {
   }
 };
 
+// Welt Schweiz: ein Thema mit Varianten je Level (src/themes-schweiz.js)
+THEMES.schweiz = schweiz;
