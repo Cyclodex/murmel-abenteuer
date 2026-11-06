@@ -44,12 +44,15 @@ Folgen (berechnet):
 
 ## 3. Technik
 
-### 3.1 `level.ort` statt `level.haus`
-- Neues Modul `src/orte.js` mit Bauern je Art: `haus` (aus #78 übernommen), `raum`, `tisch`.
-- Level beschreibt den Ort als Daten in echten cm, der Bauer rechnet in Einheiten um, z. B.
-  `ort: { art: 'raum', cm: [400, 250, 350], tisch: { cm: [120, 75, 80], at: [...] }, fenster: [...], moebel: [...] }`.
-- `view.js` ruft `ort` nach `theme.ground` auf; ein Level mit `ort` braucht kein `scatter`.
+### 3.1 `ort` an der Welt
+- Neues Modul `src/orte.js` mit Bauern je Art: `raum`, `haus`, `tisch` (alle neu, `level.haus` aus #78 nur als Vorlage).
+- Die Welt beschreibt den Ort als Daten in echten cm, der Bauer rechnet in Einheiten um, z. B.
+  `ort: { art: 'raum', cm: [400, 250, 350], moebel: [{ art: 'tisch', cm: [120, 75, 80], at: [...] }, ...], fenster: [...] }`.
+- Jedes Level sagt, wo sein Nullpunkt im Raum liegt (`bereich: { at: [x, y, z] in cm, yaw }`); Strecke und Start bleiben in
+  Level-Koordinaten wie heute, der Raum wird darum herum verschoben.
+- `view.js` baut den Ort statt `theme.ground`; kein `scatter`.
 - Nur Grafik. Was die Murmel berührt, bleibt in `parts` (Physik, Autopilot, `pruefe-level.mjs` laufen headless ohne Grafik).
+  Liegt die Strecke auf einem Möbel, steht dieses Möbel als Körper in `parts`, die übrigen Möbel sind Kulisse.
 
 ### 3.2 Kamera im geschlossenen Raum
 - **Wände und Decke einseitig, nach innen** (three.js Standard `FrontSide`): von aussen unsichtbar. Steht die Kamera hinter
@@ -60,10 +63,11 @@ Folgen (berechnet):
   Problem; unter Möbeln (Tisch, Bett) prüfen.
 
 ### 3.3 Abstürze im Raum
-- Bleibt wie heute: unter `killY` = runtergefallen, zurück zum Checkpoint. Der Zimmerboden liegt bei `killY - 1`
-  (wie der Untergrund heute), die Murmel wird kurz vor dem Boden zurückgesetzt.
-- Der Boden ist damit «Lava»: Die Strecke führt über Möbel. Ein befahrbarer Boden (Teppich als Strecke) wäre eine eigene
-  Entscheidung, siehe Fragen.
+- Wie heute: unter `killY` = runtergefallen, zurück zum Checkpoint.
+- Pro Level entschieden, je nach Bereich (siehe 3.5):
+  - Strecke auf einem Möbel (Tisch, Regal, Bett): Der Zimmerboden liegt bei `killY - 1`, runter vom Möbel = Absturz.
+  - Strecke auf dem Boden (z. B. unter dem Bett): Der Boden ist Teil der Strecke (`parts`), `killY` liegt darunter.
+    Abstürze nur durch Löcher, die es dort gibt (Heizungsgitter, Treppenabgang).
 
 ### 3.4 Licht
 - Draussen wie heute (Sonne). Drinnen: `ort.licht` mit Fensterlicht und Deckenlampe, Nebel weiter weg als der Raum
@@ -78,30 +82,39 @@ Folgen (berechnet):
 - Sterne, Bestzeiten, Rangliste, Geister und Sticker laufen pro Level bzw. pro Welt und brauchen nichts Neues.
 - Bisherige Level und Welten bleiben unverändert, auch Themen und `scatter`.
 
+### 3.6 Welt = ein Ort, Level = ein Bereich darin
+**Entscheid (Benutzer):** Räume dürfen auf mehrere Level aufgeteilt werden, alles wird neu gebaut.
+- Eine Welt der Kategorie ist ein Ort (z. B. Kinderzimmer). Der Ort steht einmal als Daten an der Welt (`world.ort`),
+  alle Level der Welt zeigen denselben Raum.
+- Jedes Level ist ein Bereich dieses Orts (`level.bereich`, z. B. Schreibtisch, Regal, Bett, Boden unter dem Bett) mit
+  eigener Strecke. Die Kamera sieht den Raum jedes Mal von einer anderen Stelle.
+- Vorschlag: Das Ziel eines Levels liegt dort, wo das nächste beginnt (Ziel Schreibtisch = Schublade, nächstes Level
+  beginnt beim Fallen aus der Schublade). So ergibt die Welt einen Weg durch den ganzen Raum.
+- Nichts wird aus den bisherigen Leveln, Themen oder Props übernommen; auch `d1` aus #78 dient nur als Vorlage.
+
 ## 4. Schritte (je ein PR)
 
 0. **Kategorie auf der Karte**: `kategorie` an den Welten, zwei Abschnitte in `showMap()`. Test: Karte zeigt beide
    Abschnitte, bisherige Welten unverändert in «Bahnen».
-1. **`level.ort` + Massstab**: `src/orte.js`, Masse in cm, `far`/Nebel aus der Grösse des Orts, Bauer `tisch`.
+1. **`ort` + Massstab**: `src/orte.js`, `world.ort` und `level.bereich`, Masse in cm, `far`/Nebel aus der Grösse des Orts.
 2. **`raum` + Kamera**: Bauer für Wände, Boden, Decke, Fenster, Tür, einfache Möbel (Kisten-Formen); einseitige Wände;
    `kulisse` mit `fade()`. Neuer Test «Kamera im Raum»: auf der Route des Levels in Abständen prüfen, dass der Strahl
    Kamera → Murmel keine undurchsichtige Kulisse trifft.
-3. **Pilot-Level Schreibtisch im Kinderzimmer** (Stufe 1): Die Strecke liegt auf der Tischplatte (75 × 50 Einheiten),
-   ringsum das ganze Zimmer als Kulisse. Start auf dem Bücherstapel → Bücher als Treppe hinunter → am Stiftebecher
-   vorbei → Lineal als Brücke über die Lücke zwischen Heft und Federmäppchen → Ziel in der offenen Schublade.
-   Runter vom Tisch = Absturz. Richtzeit messen (`richtzeiten.mjs`).
-3b. **`d1` im echten Massstab** (nach Merge von #78): `haus` aus `themes.js` nach `src/orte.js`, Masse in cm, Strecke neu
-   auf einem Stück Dach. `pruefe-level.mjs d1` 16/16.
+3. **Pilot-Welt Kinderzimmer, Level 1 Schreibtisch** (Stufe 1): Die Strecke liegt auf der Tischplatte (75 × 50
+   Einheiten), ringsum das ganze Zimmer als Kulisse. Start auf dem Bücherstapel → Bücher als Treppe hinunter → am
+   Stiftebecher vorbei → Lineal als Brücke über die Lücke zwischen Heft und Federmäppchen → Ziel in der offenen
+   Schublade. Runter vom Tisch = Absturz. Richtzeit messen (`richtzeiten.mjs`).
 4. **Bauteile aus echten Dingen** (Stufe 2): `buch` (Klotz mit Buchrücken, stapelbar), `lineal` (schmaler Weg mit
    Zentimetern), `bett` (Matratze + Decke), `tisch` (Platte + Beine als Körper). Je ein Prüfstand-Level `p-<name>`, 16/16.
-5. **Echte Wege in weiteren Orten** (Stufe 3), als neue Level der Kategorie. Die Welt-PRs #79, #80, #82, #83 bleiben
-   Bahn-Welten; ihre Themen können als echte Orte neu entstehen:
-   - Werkbank als `tisch`, Werkzeug in echter Grösse liegt auf der Platte.
-   - Käserei und Schoggifabrik als `raum` (Halle), Uhrwerk als Gehäuse.
-   - Schlittelhang: Gelände folgt der Piste, Hütte als Ziel.
-   - Chilbi-Platz mit Buden ringsum.
-6. **Mehr Orte im Haus**: Treppe (eine Stufe 17 cm = 10.6 Einheiten), Keller, Küchenablage. Zusammen mit `d1` und dem Kinderzimmer eine Welt
-   «Zuhause».
+5. **Weitere Bereiche im Kinderzimmer** (Stufe 3, echte Wege): Regal (Bretter, Spielzeug), Bett (Matratze federt, neue
+   Oberfläche `matratze`), Boden unter dem Bett (Teppich bremst, Staubflusen), Fensterbank. Jeder Bereich ein Level.
+6. **Weitere Orte, alles neu gebaut**, je eine Welt mit mehreren Bereichen, z. B.:
+   - Dach: Ziegel, Dachrinne, Fallrohr → Regentonne (Ideen aus #78, neu im echten Massstab).
+   - Küche: Ablage, Spüle, Herd.
+   - Badezimmer: Lavabo, Badewannenrand.
+   - Werkstatt: Werkbank, Werkzeugwand.
+   - Treppenhaus: eine Stufe 17 cm = 10.6 Einheiten.
+   Die Bahn-Welten (auch die offenen PRs #79, #80, #82, #83) bleiben, wie sie sind.
 
 ## 5. Woran wir es erkennen
 
@@ -114,6 +127,6 @@ Folgen (berechnet):
 ## 6. Offene Fragen an den Benutzer
 
 1. Zeitlupe durch den echten Massstab (Abschnitt 2) so lassen?
-2. Boden im Raum: Absturz wie heute, oder befahrbar (dann braucht es eine andere Regel für «runtergefallen»)?
+2. Sollen die Level einer Welt aneinander anschliessen (Ziel des einen = Start des nächsten)?
 3. Kategorie «Echte Orte» von Anfang an offen, oder erst ab einer Anzahl Sterne (wie Vulkan mit `need`)?
 4. Karte: zwei Abschnitte untereinander (Vorschlag) oder Umschalter «Bahnen / Echte Orte»?
