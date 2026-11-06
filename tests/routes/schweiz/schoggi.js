@@ -1,20 +1,35 @@
-// Autopilot-Route für src/levels/schweiz3.js (Schoggifabrik), siehe tests/autopilot.js.
-const Z1 = -57.2;                 // Mittellinie der Halle unten
-const T = [65.2, -67.7];          // Abfülltrichter (x, z)
+// Autopilot-Routen für src/levels/schweiz3.js (Schoggifabrik), siehe tests/autopilot.js.
+const SY = -4, KZ = -65, T = [28.2, -9.35, -75.5], GX = 47;
+// Kachel des Giessblechs: Reihe n (0 vorne), Spalte c (0 links)
+const blech = (n, c, speed = 2, r = 0.4) => ({ x: GX + (n + 0.5) * 1.6, z: T[2] + (c - 2) * 1.6, speed, r });
+// Stössel n ist eben zurück in der Wand
+const stoessel = n => ['phase', ['schieber', n, 0.95, 0.03]];
+
 export default {
   sch3: [
-    // Band, vor dem Stempel anhalten und durch, wenn er hochgeht; gegen das Band, in die Nische zum Bonusstern
-    { x: 0, z: -5, speed: 4 }, { x: 0, z: -14, speed: 5 }, { x: 0, z: -18.8, speed: 2, r: 0.5 },
-    { x: 0, z: -24.2, speed: 5, wait: ['phase', ['hammer', 0, 0.72, 0.85]] }, { x: 0, z: -35, speed: 4 },
-    { x: -1, z: -40.5, speed: 3 }, { x: -4.4, z: -40.5, speed: 2, r: 0.5 }, { x: -0.5, z: -40.7, speed: 3 },
-    // Schoggifluss, Schoggifall, Querfluss, Kühltunnel
-    { x: 0, z: -44, speed: 3 }, { x: 0, z: -53, speed: 5 }, { x: 5, z: Z1, speed: 5 }, { x: 10, z: Z1, speed: 5 },
-    { x: 13, z: Z1, speed: 3 }, { x: 22, z: Z1, speed: 5 }, { x: 25, z: Z1, speed: 3 },
-    // Giessblech in Schlangenlinie: links, rechts, links an den leeren Formen vorbei
-    { x: 27.5, z: Z1 - 0.7, speed: 3 }, { x: 30.2, z: Z1 - 0.7, speed: 3, r: 0.7 }, { x: 32.2, z: Z1 + 2.5, speed: 3, r: 0.7 },
-    { x: 34.2, z: Z1 + 2.5, speed: 3, r: 0.7 }, { x: 36.2, z: Z1 - 0.7, speed: 3, r: 0.7 }, { x: 38.2, z: Z1 - 0.7, speed: 3, r: 0.7 }, { x: 42, z: Z1, speed: 3 },
-    // Band hoch, Anlauf, schräg in den Trichter, unten aus der Pralinenform hinaus in die Schachtel (wie Küche 3)
-    { x: 44, z: Z1 }, { x: 56, z: Z1 }, { x: 59, z: Z1, speed: 5 }, { x: T[0], z: Z1 - 3, speed: 6, r: 1.5 }, { x: T[0], z: T[1], free: true, r: 0.6 },
-    { x: T[0], z: T[1], speed: 1, wait: ['tiefer', -10.7] }, { x: T[0] + 2.8, z: T[1], speed: 2 }, { x: T[0] + 11, z: T[1] }
+    [
+      // Sortierbänder: gegen den Schub gerade hindurch, links am Rand zum Stern
+      { x: 0, z: -2.5, speed: 3 }, { x: 0, z: -6, speed: 2.5, r: 0.6 }, { x: 0, z: -9, speed: 2.5, r: 0.6 },
+      { x: -0.4, z: -11.4, speed: 2.5, r: 0.6 }, { x: 0, z: -15.5, speed: 2.5, r: 0.6 },
+      // Tafelband: warten, bis der erste Schieber zurückkommt, dann in einem Zug an beiden vorbei
+      { x: 0, z: -18.4, speed: 1.5, r: 0.4 },
+      { x: 0, z: -22, speed: 4, r: 0.6, wait: ['phase', ['schieber', 0, 0.8, 0.95]] }, { x: -0.3, z: -27.5, speed: 4, r: 0.6 },
+      // Schoggifluss, Schoggifall auf das Sims, vor jedem Stössel warten
+      { x: 0, z: -31, speed: 2 }, { x: 0, z: -33, speed: 2 }, { x: 0, z: -40.5, speed: 3 },
+      { x: 0, z: -47.5, speed: 1.5, r: 0.4 },
+      { x: 0, z: -52, speed: 3, r: 0.4, wait: stoessel(2) },
+      { x: 0, z: -56.5, speed: 3, r: 0.5, wait: stoessel(3) },
+      // um die Kurve und durch den Kühltunnel
+      { x: 0, z: -61.5, speed: 2.5, r: 0.6 }, { x: 0.9, z: -64.1, speed: 2.5, r: 0.6 }, { x: 3, z: KZ, speed: 2.5, r: 0.6 },
+      { x: 9, z: KZ + 0.3, speed: 2.5, r: 0.6 }, { x: 15, z: KZ, speed: 2.5, r: 0.6 },
+      // Anlauf, schräg in den Trichter, unten durch den Abfluss aufs Giessblech
+      { x: T[0] - 7.2, z: KZ, speed: 5 }, { x: T[0], z: T[2] + 7.5, speed: 6, r: 1.5 }, { x: T[0], z: T[2], free: true, r: 0.6 },
+      { x: GX - 4, z: T[2], speed: 1.5, r: 0.6, wait: ['tiefer', -15.5] }, { x: GX - 0.5, z: T[2], speed: 1.5, r: 0.4 },
+      // Giessblech: durch die Lücken zwischen den Formen, im Zickzack
+      blech(0, 2), blech(1, 3, 1.5, 0.5), blech(3, 2, 1.5, 0.5), blech(5, 1, 1.5, 0.5), blech(7, 2, 1.5, 0.5),
+      blech(8, 2), { x: GX + 17.4, z: T[2] }
+    ],
+    // Bonusstern: am rechten Rand des Sortierbands, das nach rechts hinausschiebt
+    [{ x: 0, z: -2.5, speed: 3 }, { x: 0, z: -6, speed: 2.5, r: 0.6 }, { x: 0.85, z: -9, speed: 1, r: 0.3 }]
   ]
 };
