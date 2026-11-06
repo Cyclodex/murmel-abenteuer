@@ -1,26 +1,26 @@
 // Autopilot-Routen für ws3 «Schraubstock» (Wegpunkte, siehe tests/autopilot.js).
-// Schraubstock: 2.7 m vor der Mitte warten, bis er gerade aufgeht (Takt: offen bis 0.34, zu ab 0.5, wieder auf ab 0.84).
-const auf = n => ['phase', ['schraubstock', n, 0.94, 0.03]];
-// Start, Klötzchen, erster Schraubstock
+// Schraubstock-Gasse: vor jedem Schraubstock 2.7 m vor der Mitte halten und losfahren, wenn er gerade aufgeht
+// (0.7 s vor ganz offen; jeder hat einen anderen Takt). Magnetleiste: am Rand gegen den Zug halten, vor dem Hammer warten.
+const STOCK = [[1.2, 2.5], [1.0, 1.8], [0.7, 1.5]]; // [time, pause] wie im Level
+const auf = n => { const [time, pause] = STOCK[n], per = 2 * (time + pause); return ['phase', ['schraubstock', n, 1 - 0.7 / per, 0.1 / per]]; };
+const ZW = -41;
+
 const anfang = [
-  { x: 0, z: -8, speed: 4 }, { x: 0, z: -16.5 }, { x: 0, z: -19.5, speed: 2 }, { x: 0, z: -21.3, speed: 1.5, r: 0.6 }
+  { x: 0, z: -3, speed: 3 }, { x: 0.8, z: -8, speed: 2.5, r: 0.8 }, { x: 0, z: -10.8, speed: 1.5, r: 0.5 },
+  { x: 0, z: -15.5, speed: 4, wait: auf(0) }, { x: 0, z: -17.8, speed: 1.5, r: 0.5 },
+  { x: 0, z: -22.5, speed: 4, wait: auf(1) }, { x: 0.4, z: -24.8, speed: 1.5, r: 0.5 },
+  { x: 0, z: -30, speed: 4, wait: auf(2) }, { x: 0, z: -34, speed: 2.5 }
 ];
 
 export default [
-  // Hauptweg
+  // Hauptweg: Kurve ohne Rand, Wasserwaage, Magnetleiste, Holzhammer, Kurve und Brett hinunter
   [
-    ...anfang, { x: 0, z: -27, speed: 4, wait: auf(0) },
-    // Brett hinunter, Sägemehl, Kurve nach rechts
-    { x: 0, z: -30, speed: 3 }, { x: 0, z: -38.5, speed: 3 }, { x: 0, z: -44.5, speed: 3 }, { x: 1.46, z: -48.54, speed: 3 }, { x: 5, z: -50, speed: 3 },
-    // Hammer: 3 m davor warten, bis er gerade hochgeht
-    { x: 8, z: -50, speed: 3 }, { x: 11, z: -50, speed: 2, r: 0.5 }, { x: 16.5, z: -50, speed: 5, wait: ['phase', ['hammer', 0, 0.72, 0.85]] },
-    // zweiter Schraubstock
-    { x: 20, z: -50, speed: 2.5 }, { x: 23.3, z: -50, speed: 1.5, r: 0.6 }, { x: 28.6, z: -50, speed: 4, wait: auf(1) },
-    // Schalter rechts, links neben dem Rollmeter aufs Band, über die Lücke ins Ziel
-    // (bei jedem Checkpoint liegt ein Wegpunkt ohne wait am nächsten: dort macht der Autopilot nach einem Absturz weiter)
-    { x: 30.5, z: -49.5, speed: 3 }, { x: 34, z: -47.5, speed: 2, r: 0.6 }, { x: 36.5, z: -52.3, speed: 2 },
-    { x: 47, z: -52.3, speed: 3, wait: 'bridgeUp' }, { x: 49.5, z: -52.3, speed: 3 }, { x: 53, z: -52.3 }
+    ...anfang, { x: 0, z: -36.5, speed: 2 }, { x: 1.17, z: -39.83, speed: 2, r: 0.6 }, { x: 4, z: ZW, speed: 2 },
+    { x: 13, z: ZW, speed: 2.5 }, { x: 17, z: ZW, speed: 2.5 }, { x: 25, z: ZW - 0.3, speed: 2, r: 0.6 },
+    { x: 34, z: ZW, speed: 2, r: 0.5 }, { x: 40.5, z: ZW, speed: 5, wait: ['phase', ['hammer', 0, 0.72, 0.85]] },
+    { x: 43, z: ZW, speed: 3 }, { x: 46, z: ZW, speed: 2 }, { x: 49.12, z: ZW - 0.88, speed: 2, r: 0.5 }, { x: 50, z: ZW - 3, speed: 2 },
+    { x: 50, z: ZW - 10, speed: 2.5 }, { x: 50, z: ZW - 21, speed: 3 }
   ],
-  // nach dem ersten Schraubstock links in die Nische zum Bonusstern
-  [...anfang, { x: 0, z: -27.5, speed: 3, wait: auf(0) }, { x: -1.5, z: -28.5, speed: 2 }, { x: -5, z: -28.5, speed: 1.5, r: 0.5 }]
+  // vom Podest nach der Gasse links über den ganz schmalen Steg zum Bonusstern
+  [...anfang, { x: 0, z: -35, speed: 1.5, r: 0.5 }, { x: -7.5, z: -35, speed: 1.5, r: 0.5 }]
 ];
