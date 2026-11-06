@@ -49,7 +49,7 @@ export const RICHTZEIT = {
   ws2: 64.5,
   ws3: 85.9,
   sch1: 98.6,
-  sch2: 49.2,
+  sch2: 73.3,
   sch3: 71.3,
   v1: 42.4,
   v2: 40.6,
