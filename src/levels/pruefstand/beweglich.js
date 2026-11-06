@@ -100,5 +100,24 @@ export default [
     { type: 'riesenrad', at: [0, 0, -8], radius: 5, gondeln: 6, size: [3.2, 4] },
     { type: 'weg', from: [0, 10, -10], to: [0, 10, -20], width: 4, walls: 0.8, caps: 'end' },
     { type: 'ziel', at: [0, 10, -17] }
+  ], { theme: 'chilbi' }),
+  // Takte als Listen (src/takt.js): Hammer mit unregelmässigen Schlägen, Putschauto auf einem Pfad (dreht in Fahrtrichtung),
+  // Felsen in Salven mit Grössenwechsel und Versatz, Wind in Böen. Jeder Start läuft gleich ab.
+  lv('takt', 'Unregelmässige Takte', [
+    anlauf(-6),
+    { type: 'weg', from: [0, 0, -6], to: [0, 0, -15], width: 3 },
+    { type: 'hammer', at: [0, 0, -10.5], side: -1, length: 4, size: [3.2, 1.4, 1.6], farbe: 'orange', up: [2.4, 0.6, 2.0], down: [0.6, 0.3] },
+    { type: 'weg', from: [0, 0, -15], to: [0, 0, -19], width: 5, walls: 0.8 },
+    ...teller(-25),
+    { type: 'schieber', pfad: [[0, -21.5], [0, -27.5], [3.5, -27.5], [3.5, -21.5]], speed: [3, 2.5, 3.5, 2], pause: [0.8, 0.4, 1.2],
+      form: 'putschauto', size: [2.4, 1.4, 3.4], farbe: 0x1E88E5 },
+    { type: 'weg', from: [0, 0, -31], to: [0, -3, -43], width: 5 },
+    { type: 'weg', from: [14, 2.5, -39], to: [2.5, -2, -39], width: 3, walls: 0.6, caps: 'start' },
+    { type: 'felsen', from: [13, 2.4, -39], dir: [-1, 0], every: [1.4, 1.4, 4.6], speed: [3, 4.5, 3.5], r: [0.9, 0.6, 0.75], wobble: 0.4 },
+    { type: 'weg', from: [0, -3, -43], to: [0, -3, -49], width: 5, walls: 0.8 },
+    { type: 'weg', from: [0, -3, -49], to: [0, -3, -58], width: 3 },
+    { type: 'wind', at: [0, -3, -53.5], yaw: -90, size: [5, 3, 7], strength: 7, takt: [[3.5, 0], [1.2, 1], [2.4, 0.1], [1, 1]] },
+    { type: 'weg', from: [0, -3, -58], to: [0, -3, -68], width: 5, walls: 0.8, caps: 'end' },
+    { type: 'ziel', at: [0, -3, -64] }
   ], { theme: 'chilbi' })
 ];
