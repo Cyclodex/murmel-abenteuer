@@ -19,16 +19,16 @@ export default {
   bereich: { at: [150, 75, 50], yaw: 90, strecke: ['schreibtisch'] },
   start: [10, 3 * BUCH[1], 3], killY: -75 / U + 1,
   parts: [
-    // Tischplatte (4 cm)
+    // Tischplatte (4 cm), ohne richtung: der Blick folgt der Rollrichtung (Kurve zur Schublade)
     { type: 'klotz', at: [0, -1.25, -31.25], size: [50, 2.5, 75], look: 'holz' },
 
     // Bücherstapel am Start: drei Bücher versetzt wie eine Treppe
-    { type: 'klotz', at: [10, BUCH[1] / 2, -9], size: BUCH, look: 'buch-blau' },
-    { type: 'klotz', at: [10.5, BUCH[1] * 1.5, -5], size: BUCH, look: 'buch-gruen' },
-    { type: 'klotz', at: [9.5, BUCH[1] * 2.5, -1], size: BUCH, look: 'buch-rot' },
+    { type: 'klotz', at: [10, BUCH[1] / 2, -9], size: BUCH, look: 'buch-blau', richtung: 0 },
+    { type: 'klotz', at: [10.5, BUCH[1] * 1.5, -5], size: BUCH, look: 'buch-gruen', richtung: 0 },
+    { type: 'klotz', at: [9.5, BUCH[1] * 2.5, -1], size: BUCH, look: 'buch-rot', richtung: 0 },
 
     // Heft A4 mit zwei Farbstiften quer: Slalom
-    { type: 'klotz', at: [10, HEFT_Y / 2, -29], size: [18.56, HEFT_Y, 13.13], look: 'papier' }, // quer
+    { type: 'klotz', at: [10, HEFT_Y / 2, -29], size: [18.56, HEFT_Y, 13.13], look: 'papier', richtung: 0 }, // quer
     { type: 'klotz', at: [13, HEFT_Y + STIFT[1] / 2, -24], size: STIFT, look: 'stift-gelb' },
     { type: 'klotz', at: [7, HEFT_Y + STIFT[1] / 2, -33], size: STIFT, look: 'stift-blau' },
 
@@ -48,7 +48,7 @@ export default {
     { type: 'klotz', at: [-10, BUCH[1] / 2, -10], size: BUCH, look: 'buch-gruen', yaw: 20 },
 
     // Schublade: Boden, Front und Seiten (hinten schliesst die Tischplatte ab)
-    { type: 'klotz', at: [(SB.x0 + SB.x1) / 2, -9.69, (SB.z0 + SB.z1) / 2], size: [SB.x1 - SB.x0, 0.63, SB.z1 - SB.z0], look: 'schublade' },
+    { type: 'klotz', at: [(SB.x0 + SB.x1) / 2, -9.69, (SB.z0 + SB.z1) / 2], size: [SB.x1 - SB.x0, 0.63, SB.z1 - SB.z0], look: 'schublade', richtung: 90 },
     { type: 'wand', from: [SB.x0, -9.375, SB.z1], to: [SB.x0, -9.375, SB.z0], height: 6.88, thick: 0.63, look: 'schublade' },
     { type: 'wand', from: [SB.x0, -9.375, SB.z1], to: [SB.x1, -9.375, SB.z1], height: 6.88, thick: 0.63, look: 'schublade' },
     { type: 'wand', from: [SB.x0, -9.375, SB.z0], to: [SB.x1, -9.375, SB.z0], height: 6.88, thick: 0.63, look: 'schublade' },

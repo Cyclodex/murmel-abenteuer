@@ -21,7 +21,7 @@ const inv = (q, v) => rotate([-q[0], -q[1], -q[2], q[3]], v);
 export function cpRahmen(el, solids) {
   const p = add(el.at, [0, -0.05, 0]);
   for (const s of solids) {
-    if (!s.track || s.deko) continue;
+    if (!s.track || s.track.blick || s.deko) continue;
     const l = inv(s.quat, sub(p, s.pos));
     if (Math.abs(l[0]) <= s.half[0] + 0.01 && Math.abs(l[1]) <= s.half[1] + 0.1 && Math.abs(l[2]) <= s.half[2] + 0.01) return { yaw: s.track.yaw, halfW: s.half[0] };
   }
@@ -41,7 +41,7 @@ export function figurPlatz(el, rahmen, solids, els, types) {
   // zuletzt ganz nah am Rand (ohne Wände, z. B. Schiffchen in der Badewanne), dafür schlanker gerechnet
   for (const side of sides) { const x = side * (rahmen.halfW + 1.2); cands.push({ side, x, lz: 0, pos: add(el.at, scale(right, x)), eng: true }); }
   const frei = (pos, fr) => {
-    for (const s of solids) for (const y of s.track ? [-0.1, 0.35, 1.2, 2.1, 3] : [0.35, 1.2, 2.1, 3]) { // Bahnen auch knapp darunter
+    for (const s of solids) for (const y of s.track && !s.track.blick ? [-0.1, 0.35, 1.2, 2.1, 3] : [0.35, 1.2, 2.1, 3]) { // Bahnen auch knapp darunter
       const l = inv(s.quat, sub(add(pos, [0, y, 0]), s.pos));
       if (Math.abs(l[0]) < s.half[0] + fr && Math.abs(l[1]) < s.half[1] && Math.abs(l[2]) < s.half[2] + fr) return false;
     }

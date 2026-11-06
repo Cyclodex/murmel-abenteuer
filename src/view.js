@@ -272,7 +272,7 @@ export function createView(THREE, renderer, game) {
       }
     }
     // Säulen unter flachen Bahnstücken (nur Optik)
-    if (theme.pillars && s.track && !s.deko && Math.abs(s.quat[0]) < 1e-3 && Math.abs(s.quat[2]) < 1e-3 && s.half[2] >= 2) pillars.push(s);
+    if (theme.pillars && s.track && !s.track.blick && !s.deko && Math.abs(s.quat[0]) < 1e-3 && Math.abs(s.quat[2]) < 1e-3 && s.half[2] >= 2) pillars.push(s);
   }
   const studGeo = new THREE.CylinderGeometry(STUD_R, STUD_R, STUD_H, 16);
   for (const [col, list] of Object.entries(studs)) {
