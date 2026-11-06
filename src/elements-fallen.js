@@ -2,6 +2,7 @@
 // Treppe, Fluss, rollende Felsen. Gleiche Schnittstelle wie in elements.js.
 import { DEG, quatYawPitch, rotate, add, sub, dot, scale, lerp3, toLocal, fwdOf, rightOf, ease, mulQ } from './math.js';
 import { TYPES, segment, track, kinematicBody, driveTo, ballPos, norm } from './elements.js';
+import { buildProp, PROP_SIZE } from './props.js';
 
 const R = 0.5;
 const WATER_DRAG = 2; // Wasserwiderstand im Fluss (siehe fluss.step)
@@ -82,7 +83,8 @@ export const FALLEN = {
 
   // Schieber: Klotz, der hin- und herfährt (wie die Plattform) und die Murmel vom Weg schiebt.
   // from/to = Mitte unten, size = [breit, hoch, tief], time = Fahrzeit, pause = Pause an den Enden, offset = Startverzögerung
-  // {type:'schieber', from, to, size?, yaw?, time?, pause?, offset?, look?}
+  // form = Gegenstand aus props.js statt des Klotzes, auf size gestreckt (z. B. 'putschauto', yaw = wohin es schaut), farbe dazu
+  // {type:'schieber', from, to, size?, yaw?, time?, pause?, offset?, look?, form?, farbe?}
   schieber: {
     init(el, g) {
       const [b, hh, t] = el.size || [2, 1.2, 2];
@@ -93,7 +95,12 @@ export const FALLEN = {
     },
     reset(el, g) { el.t = el.offset || 0; el.body.position.set(...TYPES.plattform.posAt(el, el.t)); el.body.velocity.set(0, 0, 0); el.lastV = [0, 0, 0]; },
     pre(el, g, h) { el.t += h; driveTo(el.body, TYPES.plattform.posAt(el, el.t), h); },
-    view(el, v) { return v.bodyGroup(el.body); }
+    view(el, v) {
+      if (!el.form) return v.bodyGroup(el.body);
+      const [b, hh, t] = el.size || [2, 1.2, 2], s = PROP_SIZE[el.form] || [2, 2, 2], grp = buildProp(v.THREE, el.form, el);
+      grp.scale.set(b / s[0], hh / s[1], t / s[2]); v.scene.add(grp);
+      return { tick() { grp.position.copy(el.body.position); grp.quaternion.copy(el.body.quaternion); } };
+    }
   },
 
   // Hammer: schwingt von der Seite auf den Weg. Ist die Murmel darunter, wird sie zerquetscht (zurück zum Checkpoint).

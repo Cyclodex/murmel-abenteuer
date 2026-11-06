@@ -3,6 +3,7 @@
 import { DEG, quatYawPitch, rotate, add, sub, scale, lerp3, toLocal, fwdOf } from './math.js';
 import { TYPES, segment, kinematicBody, ballPos } from './elements.js';
 import { rohrSolids, abflussPts, ABFLUSS } from './elements-bahn.js';
+import { buildProp } from './props.js';
 
 const R = 0.5;
 const UP = [0, 1, 0];
@@ -197,7 +198,9 @@ export const EXTRA = {
     }
   },
 
-  // Drehender Balken, der die Murmel sanft schubst. {type:'balken', at (Drehpunkt am Boden), length?, speed?:Grad/s, height?}
+  // Drehender Balken, der die Murmel sanft schubst. form = Gegenstand aus props.js, der an beiden Enden mitfährt
+  // (z. B. 'pferd' für ein Karussell, nur Grafik), scale = dessen Grösse.
+  // {type:'balken', at (Drehpunkt am Boden), length?, speed?:Grad/s, height?, farbe?, form?, scale?}
   balken: {
     init(el, g) {
       const L = el.length ?? 6, hh = el.height ?? 0.6;
@@ -215,7 +218,13 @@ export const EXTRA = {
     view(el, v) {
       const T = v.THREE, hub = new T.Mesh(new T.CylinderGeometry(0.35, 0.45, (el.height ?? 0.6) + 0.3, 16), v.mats.pole);
       hub.position.set(el.at[0], el.at[1] + ((el.height ?? 0.6) + 0.3) / 2, el.at[2]); v.scene.add(hub);
-      return v.bodyGroup(el.body);
+      const bg = v.bodyGroup(el.body);
+      if (el.form) for (const k of [-1, 1]) { // Figuren an den Enden, Gesicht in Drehrichtung
+        const p = buildProp(T, el.form, el);
+        p.scale.setScalar(el.scale ?? 0.6); p.position.set(k * ((el.length ?? 6) / 2 - 0.8), (el.height ?? 0.6) + 0.05, 0);
+        p.rotation.y = k * Math.sign(el.speed ?? 40) > 0 ? 0 : Math.PI; bg.grp.add(p);
+      }
+      return bg;
     }
   },
 
@@ -307,7 +316,8 @@ export const EXTRA = {
   // Dominos: weisse Steine mit Punkten, die umfallen. count Reihen von from bis to, bis zu quer (ungerade) Steine
   // nebeneinander (abstand = Mitte zu Mitte), jede zweite Reihe um einen halben Abstand versetzt mit einem Stein weniger:
   // ein fallender Stein trifft zwei der nächsten Reihe. Vorne beginnt es als Dreieck (1, 2, 3 …), damit alle umfallen.
-  // Einzelner Stein: at, yaw. {type:'domino', from, to, count?, quer?, abstand?, size?:[b,h,t]}
+  // Einzelner Stein: at, yaw. form: 'dose' = Büchsen statt Dominosteine (nur Grafik, size z. B. [0.9, 1.2, 0.9]).
+  // {type:'domino', from, to, count?, quer?, abstand?, size?:[b,h,t], form?}
   domino: {
     init(el, g) {
       if (el.at) el.from = el.to = el.at;
@@ -348,7 +358,13 @@ export const EXTRA = {
       const T = v.THREE, he = el.bodies[0].shapes[0].halfExtents;
       const geo = new T.BoxGeometry(he.x * 2, he.y * 2, he.z * 2);
       const white = new T.MeshPhongMaterial({ color: 0xF7F4EC, shininess: 60 });
+      const blech = new T.MeshPhongMaterial({ color: 0xCFD8DC, shininess: 140, specular: 0xffffff }), dosenGeo = new T.CylinderGeometry(he.x, he.x, he.y * 2, 20);
       const meshes = el.bodies.map((b, i) => {
+        if (el.form === 'dose') { // Büchse: Blech mit buntem Etikett
+          const m = new T.Mesh(dosenGeo, blech), etikett = new T.Mesh(new T.CylinderGeometry(he.x + 0.015, he.x + 0.015, he.y * 1.1, 20), new T.MeshPhongMaterial({ color: DOSEN_FARBEN[i % DOSEN_FARBEN.length], shininess: 40 }));
+          m.add(etikett); m.castShadow = true; v.scene.add(m);
+          return m;
+        }
         const [o, u] = DOMINO_PAARE[(i * 11 + 5) % DOMINO_PAARE.length];
         const face = new T.MeshPhongMaterial({ map: dominoTex(v, o, u), shininess: 60 });
         const m = new T.Mesh(geo, [white, white, white, white, face, face]);
@@ -360,6 +376,7 @@ export const EXTRA = {
   }
 };
 
+const DOSEN_FARBEN = [0xE53935, 0x1E88E5, 0xFDD835, 0x43A047, 0xFB8C00];
 // Alle 28 Steine eines Domino-Spiels (Punkte oben, unten)
 export const DOMINO_PAARE = [];
 for (let a = 0; a <= 6; a++) for (let b = a; b <= 6; b++) DOMINO_PAARE.push([a, b]);

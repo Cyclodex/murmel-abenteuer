@@ -19,7 +19,10 @@ export const PROP_SIZE = {
   pinguin: [2.4, 3.9, 2.2], torstange: [0.5, 2.6, 0.5], eiszapfen: [2, 3, 0.8],
   fisch: [2, 2.4, 5], muschel: [4, 1.6, 4], anker: [5, 6, 1], truhe: [5, 4, 3.4], seestern: [4, 0.6, 4], koralle: [3, 5, 3],
   rakete: [3, 10, 3], satellit: [8, 3, 3], ufo: [6, 2.4, 6], kristall: [2.4, 5, 2.4], vulkanstein: [4, 3, 4],
-  satschuessel: [3, 4, 2]
+  satschuessel: [3, 4, 2],
+  bude: [7, 6, 4.4], zelt: [9, 9.5, 9], ballons: [3, 7, 3], zuckerwatte: [2.4, 5, 2.4], popcorn: [3, 4.4, 3], lolli: [2.8, 6, 0.8],
+  herz: [4, 4.2, 0.8], pferd: [1.4, 3.6, 3.2], putschauto: [2.4, 1.6, 3.4], dose: [1, 1.3, 1], lukas: [2.4, 9, 2.4], turm: [5, 14.5, 5],
+  torbogen: [8, 10, 1], zielscheibe: [3, 3.8, 0.6]
 };
 
 export const PROPS = {
@@ -230,7 +233,119 @@ export const PROPS = {
     const arm = mesh(T, cyl(T, 0.06, 0.06, 1.7, 6), dunkel, 0, 2.9, -0.5); arm.rotation.x = 1.1;
     return group(T, mesh(T, cyl(T, 0.14, 0.14, 2.6, 10), dunkel, 0, 1.3, 0), dish, arm, mesh(T, new T.SphereGeometry(0.22, 10, 8), dunkel, 0, 3.3, -1.25));
   },
-  vulkanstein(T, o) { return group(T, mesh(T, new T.DodecahedronGeometry(2, 0).scale(1, 0.75, 1), mat(T, o.farbe ?? 0x3E3438, { flatShading: true }), 0, 1.4, 0)); }
+  vulkanstein(T, o) { return group(T, mesh(T, new T.DodecahedronGeometry(2, 0).scale(1, 0.75, 1), mat(T, o.farbe ?? 0x3E3438, { flatShading: true }), 0, 1.4, 0)); },
+
+  // ---------- Chilbi ----------
+  // Bude: Theke, vier Pfosten, schräges Streifendach
+  bude(T, o) {
+    const c = o.farbe ?? 0xE53935, weiss = mat(T, 0xFAFAFA), farbe = mat(T, c);
+    const g = group(T, mesh(T, new T.BoxGeometry(6.4, 2, 3.4), mat(T, 0xC98B4F), 0, 1, 0), mesh(T, new T.BoxGeometry(6.8, 0.25, 3.8), mat(T, 0xFFF3E0), 0, 2.12, 0));
+    for (const x of [-3, 3]) for (const z of [-1.5, 1.5]) g.add(mesh(T, cyl(T, 0.12, 0.12, 3, 8), weiss, x, 3.6, z));
+    const dach = group(T); dach.position.y = 5.3; dach.rotation.x = 0.16;
+    for (let i = 0; i < 8; i++) dach.add(mesh(T, new T.BoxGeometry(0.875, 0.3, 4.4), i % 2 ? weiss : farbe, -3.06 + i * 0.875, 0, 0));
+    for (let i = 0; i < 8; i++) dach.add(mesh(T, new T.SphereGeometry(0.44, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), i % 2 ? farbe : weiss, -3.06 + i * 0.875, -0.1, -2.2)); // Zacken vorne
+    g.add(dach);
+    return g;
+  },
+  // Zirkuszelt: runde Wand und spitzes Dach in Streifen, Wimpel
+  zelt(T, o) {
+    const c = o.farbe ?? 0xE53935, ms = [mat(T, c, { side: T.DoubleSide }), mat(T, 0xFAFAFA, { side: T.DoubleSide })], g = group(T), n = 12, w = Math.PI * 2 / n;
+    for (let i = 0; i < n; i++) {
+      g.add(mesh(T, cyl(T, 4.4, 4.4, 3.4, 3, 1, true, i * w, w), ms[i % 2], 0, 1.7, 0));
+      g.add(mesh(T, cyl(T, 0.3, 4.6, 4.6, 3, 1, true, i * w, w), ms[(i + 1) % 2], 0, 5.7, 0));
+    }
+    g.add(mesh(T, cyl(T, 0.06, 0.06, 1.6, 6), mat(T, 0x6D4C41), 0, 8.7, 0), mesh(T, new T.ConeGeometry(0.35, 1, 3).rotateZ(-Math.PI / 2), mat(T, 0xFDD835), 0.5, 9.1, 0));
+    g.add(mesh(T, new T.BoxGeometry(1.6, 2.4, 0.1), mat(T, 0x4A2C5E), 0, 1.2, -4.3)); // Eingang
+    return g;
+  },
+  // Drei Ballone an Schnüren
+  ballons(T, o) {
+    const g = group(T, mesh(T, new T.BoxGeometry(0.6, 0.4, 0.6), mat(T, 0x795548), 0, 0.2, 0)), schnur = mat(T, 0xEEEEEE);
+    [[o.farbe ?? 0xE53935, -0.9, 6, 0.2], [0xFDD835, 0.2, 6.5, -0.4], [0x1E88E5, 0.9, 5.7, 0.5]].forEach(([c, x, y, z]) => {
+      g.add(mesh(T, new T.SphereGeometry(0.8, 16, 12).scale(1, 1.2, 1), mat(T, c, { shininess: 110 }), x, y, z), mesh(T, new T.ConeGeometry(0.14, 0.2, 8), mat(T, c), x, y - 1.02, z));
+      const L = Math.hypot(x, y - 1.4, z), s = mesh(T, cyl(T, 0.02, 0.02, L, 4), schnur, x / 2, (y - 1) / 2 + 0.2, z / 2);
+      s.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(x, y - 1.4, z).normalize()); g.add(s);
+    });
+    return g;
+  },
+  // Zuckerwatte am Stiel
+  zuckerwatte(T, o) {
+    const rosa = mat(T, o.farbe ?? 0xF8A5C8, { shininess: 5 }), g = group(T, mesh(T, new T.ConeGeometry(0.28, 2.6, 10).rotateX(Math.PI), mat(T, 0xFFFDE7), 0, 1.3, 0));
+    for (const [x, y, z, r] of [[0, 3.4, 0, 1.15], [0.5, 2.8, 0.2, 0.8], [-0.5, 3, -0.2, 0.85], [0.1, 4.2, 0.1, 0.8], [-0.2, 2.5, 0.4, 0.6]]) g.add(mesh(T, new T.SphereGeometry(r, 12, 10), rosa, x, y, z));
+    return g;
+  },
+  // Popcorn-Tüte mit Streifen
+  popcorn(T, o) {
+    const g = group(T, mesh(T, cyl(T, 1.5, 1.1, 3.2, 4).rotateY(Math.PI / 4), mat(T, o.farbe ?? 0xE53935), 0, 1.6, 0));
+    for (const y of [0.9, 2.2]) g.add(mesh(T, cyl(T, 1.22 + y * 0.125, 1.16 + y * 0.125, 0.5, 4).rotateY(Math.PI / 4), mat(T, 0xFAFAFA), 0, y, 0));
+    const korn = mat(T, 0xFFF3C4, { shininess: 10 });
+    for (let i = 0; i < 9; i++) { const a = i * 2.4; g.add(mesh(T, new T.DodecahedronGeometry(0.42, 0), korn, Math.cos(a) * (i % 3) * 0.38, 3.4 + (i % 2) * 0.4 + (i === 0 ? 0.5 : 0), Math.sin(a) * (i % 3) * 0.38)); }
+    return g;
+  },
+  // Lolli: Scheibe mit Ringen am Stiel
+  lolli(T, o) {
+    const g = group(T, mesh(T, cyl(T, 0.1, 0.1, 3.4, 8), mat(T, 0xFAFAFA), 0, 1.7, 0), mesh(T, cyl(T, 1.4, 1.4, 0.4, 28).rotateX(Math.PI / 2), mat(T, o.farbe ?? 0xEC407A, { shininess: 110 }), 0, 4.6, 0));
+    for (const r of [0.45, 0.95]) for (const z of [-0.2, 0.2]) g.add(mesh(T, new T.TorusGeometry(r, 0.1, 6, 24), mat(T, 0xFAFAFA), 0, 4.6, z));
+    return g;
+  },
+  // Lebkuchenherz mit Zuckerguss
+  herz(T, o) {
+    const s = new T.Shape(); s.moveTo(0, 0); s.bezierCurveTo(-2.6, 1.6, -2.4, 4.4, 0, 3.2); s.bezierCurveTo(2.4, 4.4, 2.6, 1.6, 0, 0);
+    const platte = (k, d, m, z) => { const geo = new T.ExtrudeGeometry(s, { depth: d, bevelEnabled: false }); geo.translate(0, 0, -d / 2); const p = mesh(T, geo, m, 0, 1.9 * (1 - k) + 0.3, z); p.scale.set(k, k, 1); return p; };
+    return group(T, platte(1, 0.6, mat(T, o.farbe ?? 0x8D5A2B, { shininess: 10 }), 0), platte(0.82, 0.1, mat(T, 0xFAFAFA), -0.32), platte(0.7, 0.1, mat(T, 0xE53935), -0.36), platte(0.3, 0.1, mat(T, 0xFAFAFA), -0.4));
+  },
+  // Karussellpferd an der Stange
+  pferd(T, o) {
+    const w = mat(T, o.farbe ?? 0xFAFAFA, { shininess: 80 }), gold = mat(T, 0xFFC928, { shininess: 120 }), rot = mat(T, 0xE53935);
+    const hals = mesh(T, cyl(T, 0.24, 0.3, 0.9, 10), w, 0, 2.45, -0.8); hals.rotation.x = -0.6;
+    const schweif = mesh(T, new T.ConeGeometry(0.2, 0.9, 8), gold, 0, 1.75, 1.2); schweif.rotation.x = -2.4;
+    const g = group(T, mesh(T, cyl(T, 0.07, 0.07, 3.6, 8), gold, 0, 1.8, 0), mesh(T, new T.SphereGeometry(0.5, 14, 10).scale(0.85, 0.95, 2), w, 0, 1.9, 0), hals,
+      mesh(T, new T.SphereGeometry(0.3, 12, 8).scale(0.8, 0.9, 1.5), w, 0, 2.85, -1.25), mesh(T, new T.BoxGeometry(0.9, 0.2, 0.7), rot, 0, 2.38, 0.05), schweif);
+    for (const x of [-0.25, 0.25]) for (const [z, a] of [[-0.6, -0.5], [0.6, 0.5]]) { const bein = mesh(T, cyl(T, 0.09, 0.07, 1, 6), w, x, 1.15, z + Math.sin(a) * 0.4); bein.rotation.x = a; g.add(bein); }
+    for (const x of [-0.13, 0.13]) g.add(mesh(T, new T.ConeGeometry(0.07, 0.2, 6), w, x, 3.15, -1.05));
+    return g;
+  },
+  // Putschauto: Gummiwulst rundum, bunte Haube, Lenkrad, Stange mit Stromabnehmer
+  putschauto(T, o) {
+    const farbe = mat(T, o.farbe ?? 0xE53935, { shininess: 110 }), gummi = mat(T, 0x212121, { shininess: 20 });
+    const g = group(T, mesh(T, cyl(T, 1.2, 1.2, 0.5, 24).scale(1, 1, 1.42), gummi, 0, 0.3, 0),
+      mesh(T, new T.SphereGeometry(1.05, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.95, 1.45), farbe, 0, 0.5, 0),
+      mesh(T, new T.BoxGeometry(1.3, 0.5, 0.9), mat(T, 0x37474F), 0, 1.25, 0.55), mesh(T, cyl(T, 0.04, 0.04, 2.2, 6), mat(T, 0xB0BEC5), 0, 2.4, 1.35));
+    const rad = mesh(T, new T.TorusGeometry(0.3, 0.06, 6, 16), gummi, 0, 1.5, -0.1); rad.rotation.x = -1; g.add(rad);
+    for (const x of [-0.55, 0.55]) g.add(mesh(T, new T.SphereGeometry(0.18, 10, 8), mat(T, 0xFFF59D, { emissive: 0xFFE082, emissiveIntensity: 0.7 }), x, 0.85, -1.3));
+    return g;
+  },
+  // Büchse mit Etikett
+  dose(T, o) { const blech = mat(T, 0xCFD8DC, { shininess: 140, specular: 0xffffff }); return group(T, mesh(T, cyl(T, 0.5, 0.5, 1.3, 20), blech, 0, 0.65, 0), mesh(T, cyl(T, 0.515, 0.515, 0.75, 20), mat(T, o.farbe ?? 0xE53935), 0, 0.65, 0)); },
+  // Hau den Lukas: Sockel mit Schlagfläche, Skala, oben die Glocke
+  lukas(T, o) {
+    const g = group(T, mesh(T, new T.BoxGeometry(2.4, 0.8, 2.4), mat(T, o.farbe ?? 0xE53935), 0, 0.4, 0), mesh(T, cyl(T, 0.55, 0.55, 0.3, 16), mat(T, 0xFDD835), 0, 0.95, -0.6),
+      mesh(T, new T.BoxGeometry(1, 7, 0.3), mat(T, 0xFAFAFA), 0, 4.3, 0.4), mesh(T, new T.BoxGeometry(0.5, 0.3, 0.2), mat(T, 0x212121), 0, 1.6, 0.2));
+    [0x43A047, 0x7CB342, 0xFDD835, 0xFB8C00, 0xE53935].forEach((c, i) => g.add(mesh(T, new T.BoxGeometry(0.8, 0.9, 0.06), mat(T, c), 0, 2.2 + i * 1.15, 0.23)));
+    g.add(mesh(T, new T.SphereGeometry(0.6, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(T, 0xFFC928, { shininess: 140, specular: 0xffffff }), 0, 8, 0.3), mesh(T, new T.SphereGeometry(0.16, 8, 6), mat(T, 0xFFC928), 0, 8.7, 0.3));
+    return g;
+  },
+  // Rutschturm: gestreifter Turm mit Spitzdach und Wimpel (Mitte einer Rutsche als Spirale)
+  turm(T, o) {
+    const c = o.farbe ?? 0xE53935, g = group(T);
+    for (let i = 0; i < 6; i++) g.add(mesh(T, cyl(T, 2.2 - (i + 1) * 0.07, 2.2 - i * 0.07, 2, 20), mat(T, i % 2 ? 0xFAFAFA : c), 0, 1 + i * 2, 0));
+    g.add(mesh(T, new T.ConeGeometry(2.6, 2.2, 20), mat(T, 0x1E88E5), 0, 13.1, 0), mesh(T, cyl(T, 0.05, 0.05, 1, 6), mat(T, 0x6D4C41), 0, 14.4, 0), mesh(T, new T.ConeGeometry(0.3, 0.8, 3).rotateZ(-Math.PI / 2), mat(T, 0xFDD835), 0.4, 14.6, 0));
+    return g;
+  },
+  // Torbogen am Eingang: zwei gestreifte Pfosten, Bogen mit Lämpchen, Schild
+  torbogen(T, o) {
+    const c = o.farbe ?? 0xE53935, g = group(T), licht = mat(T, 0xFFF59D, { emissive: 0xFFD54F, emissiveIntensity: 0.9 });
+    for (const x of [-3.6, 3.6]) for (let i = 0; i < 6; i++) g.add(mesh(T, new T.BoxGeometry(0.8, 1, 0.8), mat(T, i % 2 ? 0xFAFAFA : c), x, 0.5 + i, 0));
+    g.add(mesh(T, new T.TorusGeometry(3.6, 0.4, 10, 28, Math.PI), mat(T, 0x1E88E5), 0, 6, 0), mesh(T, new T.BoxGeometry(4.4, 1.2, 0.3), mat(T, 0xFDD835), 0, 7.6, 0));
+    for (let i = 0; i <= 10; i++) { const a = i * Math.PI / 10; g.add(mesh(T, new T.SphereGeometry(0.2, 8, 6), licht, Math.cos(a) * 3.6, 6 + Math.sin(a) * 3.6, -0.45)); }
+    return g;
+  },
+  // Zielscheibe der Schiessbude auf einem Ständer
+  zielscheibe(T, o) {
+    const g = group(T, mesh(T, new T.BoxGeometry(0.2, 2.2, 0.2), mat(T, 0x795548), 0, 1.1, 0.2), mesh(T, new T.BoxGeometry(1.6, 0.2, 1), mat(T, 0x795548), 0, 0.1, 0.2));
+    [[1.5, 0xFAFAFA], [1.1, o.farbe ?? 0xE53935], [0.7, 0xFAFAFA], [0.3, o.farbe ?? 0xE53935]].forEach(([r, c], i) => g.add(mesh(T, cyl(T, r, r, 0.12, 28).rotateX(Math.PI / 2), mat(T, c), 0, 2.3, -i * 0.04)));
+    return g;
+  }
 };
 
 // Gegenstand bauen (unbekannte Form: Klotz als Platzhalter)

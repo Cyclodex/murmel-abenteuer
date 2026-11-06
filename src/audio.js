@@ -70,6 +70,12 @@ export const SONGS = {
       69, null, 72, 76, 81, null, 80, 77, 76, 74, 72, 71, 69, null, null, null],
     bass: [45, 45, 52, 45, 43, 43, 50, 43, 41, 41, 48, 41, 40, 47, 45, null]
   },
+  chilbi: { // Drehorgel-Walzer: sechs Achtel pro Takt, Bass hm-ta-ta, ohne Schlagzeug
+    bpm: 138, lead: 'box',
+    melody: [72, null, 76, null, 79, null, 84, null, 79, null, 76, null, 74, null, 77, null, 79, null, 83, null, 79, null, 77, null,
+      72, null, 76, null, 79, null, 81, null, 84, null, 81, null, 79, 77, 74, null, 71, null, 72, null, null, null, null, null],
+    bass: [48, 55, 55, 48, 55, 55, 43, 50, 50, 43, 50, 50, 48, 55, 55, 41, 53, 53, 43, 50, 50, 48, 55, null]
+  },
   spielzimmer: {
     bpm: 100, lead: 'box', drums: true,
     melody: [72, null, 76, 79, 81, 79, 76, null, 74, null, 77, 81, 79, 77, 74, null,
@@ -199,6 +205,11 @@ export function createAudio(opts = {}) {
       tone(70, t, 0.5, 0.5, 'sine', 40); hiss(t, 0.3, 0.3, 'lowpass', 300, 150, 0.7);
       hiss(t + 0.1, 0.7, 0.45, 'bandpass', 400, 3500, 1.2);
       bell(midi(91), t + 0.8, 0.2, 0.6); bell(midi(98), t + 0.9, 0.15, 0.5);
+    },
+    'cp-lukas': t => { // Hammerschlag, der Klotz saust hoch, Glocke bimmelt
+      hiss(t, 0.06, 0.6, 'lowpass', 900, 200, 0.8); tone(130, t, 0.1, 0.6, 'sine', 60);
+      tone(320, t + 0.03, 0.24, 0.16, 'triangle', 1500);
+      bell(midi(93), t + 0.27, 0.3, 0.9); bell(midi(93), t + 0.48, 0.2, 0.7); bell(midi(98), t + 0.66, 0.16, 0.7);
     },
     turbo: t => { hiss(t, 0.4, 1.0, 'bandpass', 400, 3500, 1.5); tone(180, t, 0.35, 0.3, 'sawtooth', 700); },
     click: t => { hiss(t, 0.03, 0.7, 'highpass', 2500); tone(1200, t, 0.04, 0.2, 'square', 900); tone(midi(72), t + 0.08, 0.2, 0.18, 'triangle'); },
