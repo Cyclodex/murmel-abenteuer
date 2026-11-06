@@ -8,10 +8,12 @@
 #   2. GitHub: Settings → Secrets and variables → Actions: Secrets CLOUDFLARE_API_TOKEN und CLOUDFLARE_ACCOUNT_ID.
 #   3. Nach der ersten Vorschau (legt das Projekt murmel-vorschau an): Cloudflare → Workers & Pages → murmel-vorschau →
 #      Settings → General → Access policy → „Enable“. Dann öffnen die Vorschauen nur nach Login mit deiner E-Mail.
+# Wird der PR geschlossen (gemergt oder nicht), löscht der Job „aufraeumen“ alle Vorschauen des PRs (Zweig pr-<nummer>).
 name: Vorschau (PR)
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, closed]
 
 permissions:
   contents: read
@@ -28,6 +30,7 @@ jobs:
   # Vorschau nur mit Secrets (fehlen in PRs aus Forks und solange Cloudflare nicht eingerichtet ist)
   pruefen:
     runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
     outputs:
       da: ${{ steps.secrets.outputs.da }}
     steps:
@@ -74,3 +77,31 @@ jobs:
           url="https://$ZWEIG.$PROJEKT.pages.dev"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "### Vorschau: $url" >> "$GITHUB_STEP_SUMMARY"
+
+  # PR geschlossen: alle Vorschauen des Zweigs pr-<nummer> löschen (Cloudflare-API, erst alle IDs sammeln, dann löschen,
+  # sonst verschieben sich die Seiten). force=true löscht auch die Vorschau, auf die der Alias zeigt.
+  aufraeumen:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ZWEIG: pr-${{ github.event.pull_request.number }}
+    steps:
+      - run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::notice::Kein Secret CLOUDFLARE_API_TOKEN: nichts zu löschen."; exit 0; fi
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PROJEKT/deployments"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          : > ids.txt
+          for seite in $(seq 1 100); do
+            curl -sS --fail-with-body -H "$auth" "$api?env=preview&page=$seite" > seite.json
+            jq -e '.success' seite.json > /dev/null
+            [ "$(jq '.result | length' seite.json)" -gt 0 ] || break
+            jq -r --arg z "$ZWEIG" '.result[] | select(.deployment_trigger.metadata.branch == $z) | .id' seite.json >> ids.txt
+          done
+          echo "$(grep -c . ids.txt || true) Vorschauen von $ZWEIG"
+          while read -r id; do
+            curl -sS --fail-with-body -X DELETE -H "$auth" "$api/$id?force=true" | jq -e '.success' > /dev/null
+            echo "gelöscht: $id"
+          done < ids.txt
