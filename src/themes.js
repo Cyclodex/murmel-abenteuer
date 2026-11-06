@@ -209,7 +209,9 @@ export const THEMES = {
       const L = {
         holz: 0xB08E68, papier: 0xF7F7F2, karton: 0xC69C6D, lampe: 0x5C6B7A, schublade: 0xB9A58C,
         'buch-rot': 0xC0504D, 'buch-blau': 0x4F81BD, 'buch-gruen': 0x6BA368, 'stift-gelb': 0xF2C14E, 'stift-rot': 0xD9534F,
-        'stift-blau': 0x5B8DEF, maeppchen: 0x7E57C2, becher: 0x90A4AE, radierer: 0xF48FB1
+        'stift-blau': 0x5B8DEF, maeppchen: 0x7E57C2, becher: 0x90A4AE, radierer: 0xF48FB1,
+        decke: 0x6F95C8, kissen: 0xF2F2F2, kuscheltier: 0xA1774F, hase: 0xE8DCCF, bilderbuch: 0xE57373, rennbahn: 0x5C6BC0,
+        bauklotz: 0xF2C14E, nachttisch: 0xB9A58C, wecker: 0xD9534F, wand: 0xEDE6DA
       }[look];
       return L === undefined ? null : t.lambert(L);
     }
