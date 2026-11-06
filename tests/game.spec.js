@@ -1309,11 +1309,26 @@ test('Profi-Welt Vulkan ist erst ab genug Sternen offen', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('Karte: Umschalter Bahnen / Echte Orte, Wahl wird gemerkt, Nächstes Level bleibt in der Kategorie', async ({ page }) => {
+test('Karte: Echte Orte nur freigeschaltet; Umschalter Bahnen / Echte Orte, Wahl wird gemerkt, Nächstes Level bleibt in der Kategorie', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/');
   await page.click('#startJoy');
   await newPlayer(page, 'Kat');
+  // ohne Freischaltung: kein Umschalter, nur Bahnen, keine Welt der Kategorie Echte Orte
+  await expect(page.locator('#mapKat')).toBeHidden();
+  await expect(page.locator('.world[data-world="spielzimmer"]')).toBeVisible();
+  expect(await page.evaluate(() => window.murmel.WORLDS.filter(w => w.kategorie === 'orte').length)).toBe(0);
+  // falscher Schlüssel: bleibt zu, der Schlüssel verschwindet aus der Adresse
+  await page.goto('/?orte=falsch');
+  await page.waitForURL(u => !u.search.includes('orte'));
+  await page.click('#startJoy');
+  await expect(page.locator('#mapOv')).toBeVisible();
+  await expect(page.locator('#mapKat')).toBeHidden();
+  // freigeschaltet (so speichert es ?orte=<Schlüssel>; der Schlüssel selbst steht nicht im Code)
+  await page.evaluate(() => localStorage.setItem('murmel-orte', 'an'));
+  await page.reload();
+  await page.click('#startJoy');
+  await expect(page.locator('#mapKat')).toBeVisible();
   // Start: Bahnen mit allen bisherigen Welten
   await expect(page.locator('#mapKat button[data-kat="bahn"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.world[data-world="spielzimmer"]')).toBeVisible();
@@ -1332,6 +1347,17 @@ test('Karte: Umschalter Bahnen / Echte Orte, Wahl wird gemerkt, Nächstes Level 
   await expect(page.locator('#mapKat button[data-kat="orte"]')).toHaveAttribute('aria-pressed', 'true');
   await page.click('#mapKat button[data-kat="bahn"]');
   await expect(page.locator('.world[data-world="spielzimmer"]')).toBeVisible();
+  // ?orte=aus schaltet wieder ab
+  await page.goto('/?orte=aus');
+  await page.waitForURL(u => !u.search.includes('orte'));
+  expect(await page.evaluate(() => localStorage.getItem('murmel-orte'))).toBe(null);
+  await page.click('#startJoy');
+  await expect(page.locator('#mapOv')).toBeVisible();
+  await expect(page.locator('#mapKat')).toBeHidden();
+  await page.evaluate(() => localStorage.setItem('murmel-orte', 'an'));
+  await page.reload();
+  await page.click('#startJoy');
+  await expect(page.locator('#mapOv')).toBeVisible();
   // «Nächstes Level» führt nie in die andere Kategorie (geprüft, sobald es eine Grenze zwischen zwei Kategorien gibt)
   const kreuzt = await page.evaluate(async () => {
     const { WORLDS, LEVELS, kategorie } = await import('/src/levels/index.js');

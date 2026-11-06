@@ -19,6 +19,10 @@ import { createOnline } from './online.js';
 import { createUpdate } from './update.js';
 import { createInstall } from './install.js';
 import { pack, unpack } from './umzug.js';
+import { freischalten } from './freischalten.js';
+
+// ?orte=<Schlüssel> in der Adresse: Echte Orte freischalten (oder mit ?orte=aus abschalten), dann lädt die Seite neu
+if (await freischalten()) await new Promise(() => {});
 
 const $ = id => document.getElementById(id);
 const show = (id, on = true) => $(id).classList.toggle('hidden', !on);
@@ -219,6 +223,7 @@ function showMap() {
   audio.music('karte');
   // Umschalter Bahnen / Echte Orte: gemerkt für alle Spieler, die Karte zeigt nur die Welten der gewählten Kategorie
   const kat = KATEGORIEN.find(k => k.id === progress.data.kategorie) || KATEGORIEN[0];
+  show('mapKat', KATEGORIEN.length > 1); // ohne Freischaltung nur Bahnen, kein Umschalter
   $('mapKat').replaceChildren(...KATEGORIEN.map(k => {
     const b = document.createElement('button');
     b.dataset.kat = k.id; b.setAttribute('aria-pressed', k === kat); b.innerHTML = `<span>${k.emoji}</span> ${k.name}`;
