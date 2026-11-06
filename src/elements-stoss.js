@@ -409,5 +409,73 @@ export const STOSS = {
       v.scene.add(grp);
       return { tick() { grp.position.copy(el.body.position); grp.quaternion.copy(el.body.quaternion); } };
     }
+  },
+
+  // Rutschplatte: Platte ohne Rand, die im Takt in verschiedene Richtungen kippt (Eisscholle, Wackelboden, Käseplatte).
+  // Sie dreht um die Mitte der Oberkante: an den Kanten zu Wegen entstehen beim Kippen Stufen.
+  // pos = Mitte (Oberkante), yaw, size = [breit, lang], dicke, takt = Liste [dauer, neigX, neigZ] (Grad): kippt in kipp s
+  // dorthin und hält dauer s, dann der nächste (zyklisch; Start bei der letzten Neigung). neigX > 0 = rechte Seite tiefer,
+  // neigZ > 0 = vorne (Richtung yaw) tiefer. offset, surface (z. B. 'eis'), ruhig = Grad, die für frei als flach gelten (3),
+  // look: 'holz', 'scholle' (Winter), 'wackel' (Chilbi), 'kaese' (Schweiz)
+  // Autopilot: wait: ['frei', ['rutschplatte', n, rest]] = die nächsten rest s liegt sie (fast) flach.
+  // {type:'rutschplatte', pos, yaw?, size?, dicke?, takt?, kipp?, offset?, surface?, ruhig?, look?}
+  rutschplatte: {
+    init(el, g) {
+      const [b, l] = el.size || [5, 6], th = el.dicke ?? 0.4, list = el.takt ?? [[3, 0, 0], [2, 8, 0], [2, -8, 0]];
+      el.yw = (el.yaw || 0) * DEG;
+      let prev = list[list.length - 1];
+      el.segs = list.map(([d, x, z]) => { const s = { x0: prev[1] * DEG, z0: prev[2] * DEG, x1: x * DEG, z1: z * DEG, d }; prev = [d, x, z]; return s; });
+      el.kippT = el.kipp ?? 0.8;
+      el.per = el.segs.reduce((s, x) => s + el.kippT + x.d, 0);
+      el.body = kinematicBody(g, [{ half: [b / 2, th / 2, l / 2], off: [0, -th / 2, 0], look: el.surface || 'floor' }], el.surface);
+      el.body.position.set(...el.pos);
+      el.body.userData = { track: { yaw: el.yw, mid: el.pos, right: rightOf(el.yw) } };
+      el.frei = rest => {
+        const u = el.t + (el.offset || 0), lim = (el.ruhig ?? 3) * DEG;
+        for (let s = 0; s <= rest + 1e-6; s += 0.05) { const [x, z] = STOSS.rutschplatte.neigung(el, u + s); if (Math.abs(x) > lim || Math.abs(z) > lim) return false; }
+        return true;
+      };
+    },
+    // Neigung [x, z] (rad) zur Zeit u
+    neigung(el, u) {
+      let r = ((u % el.per) + el.per) % el.per;
+      for (const s of el.segs) {
+        if (r < el.kippT) { const k = ease(r / el.kippT); return [s.x0 + (s.x1 - s.x0) * k, s.z0 + (s.z1 - s.z0) * k]; }
+        r -= el.kippT;
+        if (r < s.d) return [s.x1, s.z1];
+        r -= s.d;
+      }
+      const s = el.segs[el.segs.length - 1]; return [s.x1, s.z1];
+    },
+    // Drehung: Neigung nach vorne = pitch -z, nach rechts = roll -x (Drehpunkt Mitte der Oberkante)
+    quat: (el, [x, z]) => mulQ(quatYawPitch(el.yw, -z), quatRoll(-x)),
+    reset(el) {
+      el.t = 0; el.n = STOSS.rutschplatte.neigung(el, el.offset || 0);
+      el.body.quaternion.set(...STOSS.rutschplatte.quat(el, el.n)); el.body.angularVelocity.set(0, 0, 0);
+    },
+    pre(el, g, h) {
+      el.t += h;
+      const n1 = STOSS.rutschplatte.neigung(el, el.t + (el.offset || 0)), [x0, z0] = el.n;
+      el.body.quaternion.set(...STOSS.rutschplatte.quat(el, el.n));
+      // Winkeltempo: pitch um die Rechts-Achse, roll um die (gekippte) Längsachse
+      const wp = -(n1[1] - z0) / h, wr = -(n1[0] - x0) / h, X = rightOf(el.yw), Z = rotate(quatYawPitch(el.yw, -z0), [0, 0, 1]);
+      el.body.angularVelocity.set(X[0] * wp + Z[0] * wr, X[1] * wp + Z[1] * wr, X[2] * wp + Z[2] * wr);
+      el.n = n1;
+    },
+    view(el, v) {
+      const T = v.THREE, [b, l] = el.size || [5, 6], th = el.dicke ?? 0.4, look = el.look || 'holz';
+      const tex = v.canvasTex(128, 128, (x, W, H) => {
+        if (look === 'scholle') { x.fillStyle = '#EAF6FF'; x.fillRect(0, 0, W, H); x.strokeStyle = 'rgba(120,180,220,0.6)'; x.lineWidth = 2; for (let i = 0; i < 5; i++) { x.beginPath(); x.moveTo(i * 29, 0); x.lineTo(i * 23 + 30, H); x.stroke(); } }
+        else if (look === 'wackel') { for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.fillStyle = (i + j) % 2 ? '#FDD835' : '#E53935'; x.fillRect(i * 32, j * 32, 32, 32); } }
+        else if (look === 'kaese') { x.fillStyle = '#F2C230'; x.fillRect(0, 0, W, H); x.fillStyle = '#D99A1C'; for (let i = 0; i < 8; i++) { x.beginPath(); x.arc((i * 47 + 15) % W, (i * 71 + 25) % H, 6 + (i % 3) * 4, 0, 7); x.fill(); } }
+        else { x.fillStyle = '#C58B4E'; x.fillRect(0, 0, W, H); x.strokeStyle = '#8D5A2B'; x.lineWidth = 3; for (let i = 0; i < 4; i++) { x.beginPath(); x.moveTo(i * 32 + 2, 0); x.lineTo(i * 32 + 2, H); x.stroke(); } }
+      });
+      tex.repeat.set(Math.max(1, Math.round(b / 3)), Math.max(1, Math.round(l / 3)));
+      const top = new T.MeshPhongMaterial({ map: tex, shininess: look === 'scholle' ? 90 : 20 }), side = new T.MeshPhongMaterial({ color: { scholle: 0xB3E5FC, wackel: 0x1E88E5, kaese: 0xC98A2B }[look] ?? 0x8D5A2B });
+      const m = new T.Mesh(new T.BoxGeometry(b, th, l), [side, side, top, side, side, side]);
+      m.position.y = -th / 2; m.castShadow = m.receiveShadow = true;
+      const grp = new T.Group(); grp.add(m); v.scene.add(grp);
+      return { tick() { grp.position.copy(el.body.position); grp.quaternion.copy(el.body.quaternion); } };
+    }
   }
 };

@@ -41,5 +41,12 @@ export default [
     { type: 'besen', pos: [3.2, 0, -14], len: 5, takt: [[90, 0.6], [180, 2.5], [90, 0.4], [180, 3.5]], speed: [90, 90, 140, 90], gasse: 90, gasseBreite: 60 },
     { type: 'weg', from: [0, 0, -22], to: [0, 0, -30], width: 5, walls: 0.8, caps: 'end' },
     { type: 'ziel', at: [0, 0, -27] }
+  ]),
+  // Rutschplatte: Wackelboden ohne Rand zwischen zwei Wegen, kippt zur Seite und ein wenig nach vorne und hinten
+  lv('rutschplatte', 'Rutschplatte', 'chilbi', [
+    anlauf(-10),
+    { type: 'rutschplatte', pos: [0, 0, -14], size: [5, 8], takt: [[3, 0, 0], [1.5, 9, 0], [1, -7, 3], [2, 0, 0], [1.5, 4, -4]], look: 'wackel' },
+    { type: 'weg', from: [0, 0, -18], to: [0, 0, -26], width: 5, walls: 0.8, caps: 'end' },
+    { type: 'ziel', at: [0, 0, -23] }
   ])
 ];
