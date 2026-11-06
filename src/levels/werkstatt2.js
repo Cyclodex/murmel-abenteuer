@@ -1,8 +1,11 @@
 // Werkstatt 2: Sägewerk. Gefahren: Der Sägetisch hat keinen Rand mehr, zwei Sägeblätter drehen gegeneinander; man fährt
 // aussen an der Tischkante vorbei, wenn das Blatt gerade weg ist, und wartet zwischen den beiden. Dann drei lose Latten
-// (Falltüren) in einer Reihe über dem Sägemehl: zügig drüber, sonst klappen sie weg. Durch die Nagelwand hinunter, ohne Rand
-// im S um die Bretterstapel und im Zickzack über schmale Latten. Das Schleifband läuft gegen die Fahrtrichtung: hinauf gegen
-// das Band. Oben, ohne Rand, die Kreissäge abpassen, dann ins Ziel. Bonusstern: hinten rechts an der Tischecke.
+// (Falltüren) in einer Reihe über dem Sägemehl: zügig drüber, sonst klappen sie weg (jede Latte hält jedes Mal anders lang).
+// Durch die Nagelwand hinunter, ohne Rand im S um die Bretterstapel: Aus dem Regal darüber fallen Schrauben auf das schmale
+// Brett (sie wackeln vorher und werfen einen Schatten), mal in schneller Folge, mal mit langer Pause; wer getroffen wird,
+// fliegt seitlich hinunter. Im Zickzack über schmale Latten. Das Schleifband läuft gegen die Fahrtrichtung und stottert:
+// mal langsam, mal ein Ruck nach unten, kurz steht es oder läuft sogar mit. Oben, ohne Rand, die Kreissäge abpassen, dann
+// ins Ziel. Bonusstern: hinten rechts an der Tischecke.
 const XL = -3;   // Achse der Latten und der Nagelwand
 const NZ = -40;  // Nagelwand: obere Vorderkante
 const U = -8;    // Höhe unten (Sägemehl unter der Nagelwand)
@@ -32,7 +35,8 @@ export default {
     { type: 'weg', from: [XL, 0, -22], to: [XL, 0, -24.5], width: 2.4, walls: 0.8 },
     { type: 'checkpoint', at: [XL, 0, -23.2], size: [2.4, 3, 1.6] },
     { type: 'weg', from: [XL, 0, -24.5], to: [XL, 0, -26], width: 1.6 },
-    ...[-27.25, -29.75, -32.25].map(z => ({ type: 'falltuer', at: [XL, 0, z], size: [1.6, 2.5], delay: 1.0, offen: 2 })),
+    ...[[-27.25, [0.9, 0.6, 1.2], [2, 1.2, 3]], [-29.75, [0.8, 1.1, 0.6], [1.5, 2.6]], [-32.25, [1.0, 0.7], [2.4, 1, 1.8]]]
+      .map(([z, delay, offen]) => ({ type: 'falltuer', at: [XL, 0, z], size: [1.6, 2.5], delay, offen })),
     { type: 'weg', from: [XL, 0, -33.5], to: [XL, 0, -36], width: 1.6 },
     { type: 'weg', from: [XL, 0, -36], to: [XL, 0, NZ], width: 3, walls: 0.8 },
     { type: 'checkpoint', at: [XL, 0, -38], size: [3, 3, 2] },
@@ -52,6 +56,11 @@ export default {
     { type: 'weg', from: [XL + 3.5, U, NZ - 2], to: [4, U, NZ - 2], width: 1.6 },
     { type: 'kurve', at: [4, U, NZ - 2], yaw: -90, turn: -90, radius: 3, width: 1.6 },
     { type: 'weg', from: [7, U, NZ - 5], to: [7, U, ZB + 3], width: 1.6 },
+    // Schraubenregal über dem Brett: Schrauben fallen im unregelmässigen Takt und stossen zur Seite
+    { type: 'fallend', from: [7, U + 5.5, -45.5], to: [7, -50.5], stellen: [0.5, 0.15, 0.85, 0.35, 0.7], every: [0.9, 0.6, 5.5, 1.4, 0.7, 4.8],
+      warn: 0.8, liegt: 0.6, kick: 4, form: 'schraube', anzahl: 3 },
+    { type: 'klotz', at: [6.8, U + 6.1, -48], size: [3, 0.25, 8], look: 'latte-dunkel', deko: true },
+    ...[-44.5, -51.5].map(z => ({ type: 'klotz', at: [5.4, (U + 6.1 + BODEN) / 2, z], size: [0.3, U + 6.1 - BODEN, 0.3], look: 'latte-dunkel', deko: true })),
     { type: 'kurve', at: [7, U, ZB + 3], yaw: 0, turn: 90, radius: 3, width: 1.6 },
     { type: 'weg', from: [10, U, ZB], to: [12, U, ZB], width: 2.4, walls: 0.8 },
     { type: 'checkpoint', at: [11, U, ZB], yaw: -90, size: [2.4, 3, 1.6] },
@@ -61,7 +70,8 @@ export default {
     ...LATTEN.map(([x, z]) => ({ type: 'klotz', at: [x, U - 0.5, z], size: [1.3, 1, 1.3], yaw: 45, look: 'latte-dunkel' })),
 
     // Schleifband ohne Rand läuft hinunter: hinauf gegen das Band; oben die Kreissäge links
-    { type: 'band', from: [XS, O, ZB], to: [28, U, ZB], width: 2.2, speed: 1.5, grip: 0.8, look: 'schleifband' },
+    { type: 'band', from: [XS, O, ZB], to: [28, U, ZB], width: 2.2, speed: 1.5, grip: 0.8, look: 'schleifband',
+      takt: [[2.2, 1], [1.4, 1.8], [1.6, -1], [2.5, 1.2], [1, 0]] },
     { type: 'weg', from: [XS, O, ZB], to: [XS + 2.5, O, ZB], width: 2.4, walls: 0.8 },
     { type: 'checkpoint', at: [XS + 1.25, O, ZB], yaw: -90, size: [2.4, 3, 1.6] },
     { type: 'weg', from: [XS + 2.5, O, ZB], to: [XS + 12, O, ZB], width: 1.6 },
