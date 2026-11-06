@@ -84,7 +84,9 @@ const ROLL = {
   flussbett: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 },
   keramik: { f0: 1300, fv: 140, q: 1.6, vol: 0.15, rumble: 0.3 },
   kunststoff: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 },
-  trichter: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 }
+  trichter: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 },
+  ziegel: { f0: 420, fv: 60, q: 0.8, vol: 0.18, rumble: 1.2 },
+  dachrinne: { f0: 1100, fv: 130, q: 2, vol: 0.16, rumble: 0.4 }
 };
 
 export function createAudio(opts = {}) {

@@ -45,6 +45,7 @@ background:rgba(255,255,255,.35);border:3px solid rgba(255,255,255,.8);touch-act
 .world[data-world="garten"]{--c:#5FAE2E}
 .world[data-world="kueche"]{--c:#E39B00}
 .world[data-world="badezimmer"]{--c:#E0529C}
+.world[data-world="dach"]{--c:#B5533C}
 .world[data-world="weltraum"]{--c:#6A4BE0}
 .world[data-world="unterwasser"]{--c:#1F7AE0}
 .world[data-world="vulkan"]{--c:#D2361E}

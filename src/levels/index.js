@@ -23,6 +23,7 @@ import v1 from './vulkan1.js';
 import v2 from './vulkan2.js';
 import v3 from './vulkan3.js';
 import * as bad from './badezimmer.js';
+import d1 from './dach1.js';
 import uebungS from './schwer/uebung.js';
 import spielzimmerS from './schwer/spielzimmer.js';
 import gartenS from './schwer/garten.js';
@@ -41,6 +42,7 @@ export const WORLDS = [
   { id: 'garten', name: 'Garten', emoji: '🌻', levels: [g1, g2, g3], hard: gartenS },
   { id: 'kueche', name: 'Küche', emoji: '🍳', levels: [k1, k2, k3], hard: kuecheS },
   ...(bad.levels.length ? [{ id: 'badezimmer', name: 'Badezimmer', emoji: '🛁', levels: bad.levels, hard: bad.hard }] : []),
+  { id: 'dach', name: 'Dach', emoji: '🏠', levels: [d1] },
   { id: 'weltraum', name: 'Weltraum', emoji: '🚀', levels: [w1, w2, w3], hard: weltraumS },
   { id: 'unterwasser', name: 'Unterwasser', emoji: '🌊', levels: [u1, u2, u3], hard: unterwasserS },
   // Profi-Welt: erst ab need Sternen offen

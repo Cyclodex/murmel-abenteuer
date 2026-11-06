@@ -27,7 +27,9 @@ export const SURFACES = {
   kunststoff: { friction: 0.3, bounce: 1, grip: 1, drag: 0 }, // Kugelbahn: Rinne
   rohr: { friction: 0.3, bounce: 1, grip: 0, drag: 0 }, // geschlossenes Rohr (Abfluss): drinnen lenkt man nicht
   trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 }, // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
-  spirale: { friction: 0.4, bounce: 1, grip: 1, drag: 0.3, wash: 0.015 } // Boden von Spirale und geneigter Kurve: bremst etwas, sonst zu schnell für die Kurve
+  spirale: { friction: 0.4, bounce: 1, grip: 1, drag: 0.3, wash: 0.015 }, // Boden von Spirale und geneigter Kurve: bremst etwas, sonst zu schnell für die Kurve
+  ziegel: { friction: 0.6, bounce: 0.5, grip: 1, drag: 1.2 }, // Dachziegel: rau, bremsen stark (auf dem steilen Dach bleibt die Murmel lenkbar, ~3.4 m/s ohne Gas)
+  dachrinne: { friction: 0.4, bounce: 0.25, grip: 1, drag: 0.2, wash: 0.5 } // nasse Dachrinne mit Laub: schluckt den Aufprall (auch Flummi bleibt drin)
 };
 const DIRT_STILL = 0.08; // so viel Dreck pro Sekunde auch im Stehen im Schlamm
 const WASH_WATER = 0.6;  // Unterwasser: Abwaschen pro Sekunde

@@ -73,6 +73,29 @@ const basaltTex = (THREE, base, glow) => canvasTex(THREE, 256, 256, (x, w, h) =>
   }
 });
 // Lava: fliessende, glühende Flecken
+// Dachziegel (Biberschwanz): zwei Reihen je 1 m, versetzt, unten rund
+const ziegelTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  const r = rnd(29);
+  x.fillStyle = '#7A3323'; x.fillRect(0, 0, w, h);
+  for (let row = 0; row < 2; row++) for (let k = -1; k < 2; k++) {
+    const x0 = k * 64 + (row ? 32 : 0), y0 = row * 64, c = 168 + Math.floor(r() * 26);
+    x.fillStyle = `rgb(${c},${Math.round(c * 0.46)},${Math.round(c * 0.33)})`;
+    x.beginPath(); x.moveTo(x0 + 2, y0); x.lineTo(x0 + 62, y0); x.lineTo(x0 + 62, y0 + 40); x.arc(x0 + 32, y0 + 40, 30, 0, Math.PI); x.lineTo(x0 + 2, y0); x.fill();
+  }
+});
+const backsteinTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  const r = rnd(37);
+  x.fillStyle = '#D8CFC2'; x.fillRect(0, 0, w, h);
+  for (let row = 0; row < 4; row++) for (let k = -1; k < 2; k++) {
+    const c = 150 + Math.floor(r() * 40);
+    x.fillStyle = `rgb(${c},${Math.round(c * 0.42)},${Math.round(c * 0.3)})`;
+    x.fillRect(k * 64 + (row % 2 ? 32 : 0) + 2, row * 32 + 2, 60, 28);
+  }
+});
+const solarTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  x.fillStyle = '#C7D0D8'; x.fillRect(0, 0, w, h);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.fillStyle = (i + j) % 2 ? '#16335E' : '#1B3E70'; x.fillRect(i * 32 + 1.5, j * 32 + 1.5, 29, 29); }
+});
 const lavaTex = THREE => dots(THREE, '#E8480C', ['#FF7A1A', '#FFB020', '#B8290A', '#FFD54A'], 160, 6, 22, 23);
 const hedgeTex = THREE => dots(THREE, '#2E7D32', ['#388E3C', '#1B5E20', '#43A047', '#4CAF50'], 260, 4, 11, 5, 128);
 
@@ -265,6 +288,93 @@ export const THEMES = {
           im.instanceMatrix.needsUpdate = true;
         }
       };
+    }
+  },
+
+  // Dach: echte Kulisse statt Gegenständen im Leeren. Das Level liegt auf dem Dach eines Hauses (Masse in level.haus),
+  // darunter der Garten, ringsum Nachbarhäuser, Bäume und Wolken.
+  dach: {
+    sky: 0x9FD4F7, fog: [80, 190], hemi: [0xffffff, 0x6f8f5a, 0.85],
+    walls: ['zink'],
+    floor: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#C9A06A', '#7A5530') }),
+    ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#C9A06A', '#7A5530') }),
+    pillars: null,
+    look(t, look) {
+      const T = t.THREE;
+      if (look === 'ziegel') return t.lambert(0xffffff, { map: ziegelTex(T) });
+      if (look === 'backstein') return t.lambert(0xffffff, { map: backsteinTex(T) });
+      if (look === 'putz') return t.lambert(0xF4EFE6);
+      if (look === 'zink') return phong(T, 0x8E9AA3, { shininess: 110, specular: 0x666666 });
+      if (look === 'fenster') return phong(T, 0x7FB4E6, { shininess: 160, specular: 0xffffff, emissive: 0x10202c });
+      if (look === 'solar') return phong(T, 0xffffff, { map: solarTex(T), shininess: 180, specular: 0xBFD8FF });
+      return null;
+    },
+    ground(t, y) {
+      const T = t.THREE, r = rnd(41);
+      const gras = dots(T, '#6CBF4B', ['#5EAE3F', '#7ACB57', '#5AA23A'], 500, 1, 3, 9); gras.repeat.set(50, 50);
+      t.plane(gras, y);
+      const box = (sx, sy, sz, m, x, yy, z) => { const o = new T.Mesh(new T.BoxGeometry(sx, sy, sz), m); o.position.set(x, yy, z); t.scene.add(o); return o; };
+      const putz = t.lambert(0xF4EFE6), glas = THEMES.dach.look(t, 'fenster'), weiss = t.lambert(0xffffff), holz = t.lambert(0x7A5530);
+      // Ziegelfläche in beliebiger Grösse (Textur so oft wiederholt, dass ein Ziegel 1 m breit bleibt)
+      const ziegel = (b, l) => { const tx = ziegelTex(T); tx.repeat.set(b / 2, l / 2); return t.lambert(0xffffff, { map: tx }); };
+      // Giebeldach als Prisma: Dreieck (Breite b, Höhe h) quer, Länge l entlang x
+      const prisma = (b, h, l, m) => {
+        const s = new T.Shape(); s.moveTo(-b / 2, 0); s.lineTo(b / 2, 0); s.lineTo(0, h); s.lineTo(-b / 2, 0);
+        const g = new T.ExtrudeGeometry(s, { depth: l, bevelEnabled: false }); g.translate(0, 0, -l / 2);
+        const o = new T.Mesh(g, m); o.rotation.y = Math.PI / 2; return o;
+      };
+
+      // ----- das Haus unter dem Level -----
+      const h = t.level && t.level.haus;
+      if (h) {
+        const [x0, x1] = h.x, [zf, zb] = h.z, n = h.neigung ?? 0.5, tief = (zb - zf) / 2, mx = (x0 + x1) / 2, mz = (zf + zb) / 2, b = x1 - x0;
+        const yTop = -1.3 - n * (h.first - zf); // Oberkante der Mauern: knapp unter den Ziegeln an der Traufe
+        box(b, yTop - y, zb - zf, putz, mx, (yTop + y) / 2, mz);
+        const giebel = prisma(zb - zf, n * tief, b, putz); giebel.position.set(mx, yTop, mz); giebel.rotation.y = -Math.PI / 2; t.scene.add(giebel);
+        // hintere Dachfläche (die vordere ist das Level): vom First hinunter bis über die Rückwand
+        const L = Math.hypot(tief + 0.8, n * (tief + 0.8)), hinten = box(b + 1.2, 0.8, L, ziegel(b + 1.2, L), mx, 0, 0);
+        hinten.rotation.x = Math.atan(n);
+        hinten.position.set(mx, -n * (tief + 0.8) / 2 - 0.45, h.first + (tief + 0.8) / 2);
+        // Pfosten unter dem Holzdeck
+        for (const px of [-2.2, 2.2]) box(0.5, n * (5.5 - h.first) - 0.9, 0.5, holz, px, -(n * (5.5 - h.first) + 0.9) / 2, 5.5);
+        // Fenster und Tür vorne, Fenster an der Seite
+        const fenster = (x, yy, z, quer) => { box(quer ? 0.1 : 4.6, 5.1, quer ? 4.6 : 0.1, weiss, x, yy, z); box(quer ? 0.2 : 4, 4.5, quer ? 4 : 0.2, glas, x, yy, z); };
+        for (const fx of [x0 + 4, x1 - 4]) fenster(fx, y + 8, zf - 0.03);
+        box(3.6, 7.6, 0.2, t.lambert(0x8D4B2D), mx, y + 3.8, zf - 0.05);
+        for (const fz of [zf + 8, zb - 8]) { fenster(x1 + 0.03, y + 8, fz, true); fenster(x0 - 0.03, y + 8, fz, true); }
+        // Gartenweg von der Tür zur Hecke
+        const platten = tiles(T, '#C9C4BA', '#B8B2A6', 2, '#8F897D'); platten.repeat.set(2, 9);
+        const weg = new T.Mesh(new T.PlaneGeometry(4, 22), t.lambert(0xffffff, { map: platten })); weg.rotation.x = -Math.PI / 2; weg.position.set(mx, y + 0.04, zf - 11); t.scene.add(weg);
+        const hecke = hedgeTex(T); hecke.repeat.set(30, 2);
+        for (const s of [-1, 1]) box(34, 3.4, 2.4, t.lambert(0xffffff, { map: hecke }), mx + s * 19.5, y + 1.7, zf - 23);
+      }
+
+      // ----- Nachbarhäuser, Bäume, Blumen, Wolken -----
+      for (const [x, z, b, d, hh, wand, dach, yaw] of [[-62, -8, 24, 20, 15, 0xF2E3C6, 0x8E4A38, 0.1], [66, 6, 22, 18, 13, 0xE8EEF2, 0x5C6470, -0.15],
+        [-18, -84, 26, 18, 14, 0xF7D9C4, 0x9C4F3A, Math.PI / 2], [34, -88, 22, 20, 16, 0xE4EBD8, 0x6B4A3A, Math.PI / 2 + 0.1], [8, 70, 26, 20, 15, 0xF0E6D8, 0x8E4A38, Math.PI / 2]]) {
+        const g = new T.Group(), body = new T.Mesh(new T.BoxGeometry(b, hh, d), t.lambert(wand)); body.position.y = hh / 2;
+        const roof = prisma(d + 1.6, d * 0.42, b + 1.6, t.lambert(dach)); roof.position.y = hh;
+        g.add(body, roof);
+        for (const s of [-1, 1]) for (const fx of [-b / 4, b / 4]) { const f = new T.Mesh(new T.BoxGeometry(3.6, 4.2, 0.2), glas); f.position.set(fx, hh * 0.55, s * (d / 2 + 0.05)); g.add(f); }
+        g.position.set(x, y, z); g.rotation.y = yaw; t.scene.add(g);
+      }
+      for (const [x, z, s] of [[-24, -34, 1.7], [32, -44, 1.5], [-30, 8, 1.6], [36, 24, 1.8], [-44, -60, 1.5], [58, -52, 1.6], [-8, 44, 1.5]]) {
+        const g = buildProp(T, 'baum'); g.position.set(x, y, z); g.scale.setScalar(s); g.rotation.y = r() * 6.3; t.scene.add(g);
+      }
+      const blume = new T.SphereGeometry(0.35, 8, 6);
+      for (const col of [0xFF5A8A, 0xFFD23F, 0xFFFFFF, 0xB388FF]) {
+        const im = new T.InstancedMesh(blume, t.lambert(col), 40), m = new T.Matrix4();
+        for (let i = 0; i < 40; i++) { m.makeTranslation((r() - 0.5) * 150, y + 0.3, (r() - 0.5) * 150 - 20); im.setMatrixAt(i, m); }
+        t.scene.add(im);
+      }
+      const wolke = new T.MeshBasicMaterial({ color: 0xffffff, fog: false, transparent: true, opacity: 0.9 }), kugel = new T.SphereGeometry(1, 12, 8), wolken = new T.Group();
+      for (let i = 0; i < 7; i++) {
+        const a = r() * Math.PI * 2, d = 90 + r() * 50, g = new T.Group();
+        for (let k = 0; k < 4; k++) { const m = new T.Mesh(kugel, wolke); m.scale.set(9 + r() * 7, 4 + r() * 2, 6 + r() * 4); m.position.set((k - 1.5) * 9, r() * 2, r() * 4); g.add(m); }
+        g.position.set(Math.cos(a) * d, 35 + r() * 25, Math.sin(a) * d - 20); wolken.add(g);
+      }
+      t.scene.add(wolken);
+      return { tick(dt) { wolken.rotation.y += dt * 0.004; } };
     }
   }
 };
