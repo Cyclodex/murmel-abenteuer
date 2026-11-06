@@ -1,25 +1,33 @@
 // Autopilot-Routen für src/levels/chilbi3.js (siehe tests/autopilot.js).
-const AUTO = (n, a, b) => ['phase', ['schieber', n, a, b]];
-// Kettenlift, Abfahrt, Looping, Zuckerwatte, Helix, Kanone bis auf das Zuckerwatte-Kissen
-const bisBude = [
-  { x: 0, z: -4, speed: 4 }, { x: 0, z: -7, speed: 3 }, { x: 0, z: -26, speed: 3 }, { x: 0, z: -29.5, speed: 3 },
-  { x: 0, z: -46, free: true, r: 2 }, { x: 0, z: -51.5, speed: 8 }, { x: 5, z: -55, free: true, r: 2.5 },
-  { x: 5, z: -59.5, speed: 3 }, { x: 5, z: -63, speed: 2.5, r: 0.8 }, { follow: true, bisY: -2.3, speed: 5 },
-  { x: 5, z: -68, speed: 3 }, { x: 5, z: -72, speed: 3 }, { x: 5, z: -75, speed: 2 }, { x: 5, z: -92, speed: 2 },
-  { x: 5, z: -98, speed: 3 }
+const BAND = 13, KR = -76;
+// Kehre: Punkt auf dem Bogen um [9, -85] mit Radius r, phi = Grad ab dem Anfang der Kehre
+const kehre = (phi, r = 4) => ({ x: 9 - r * Math.cos(phi * Math.PI / 180), z: -85 - r * Math.sin(phi * Math.PI / 180) });
+// Neben dem Bahnhof warten, bis der Mitnehmer unten steht, vor ihn rollen und hinaufschieben lassen
+const lift = [
+  { x: -4, z: -5, speed: 3 }, { x: -2.6, z: -5, speed: 1.5, r: 0.4 },
+  { x: 0, z: -5, speed: 2.5, r: 0.4, wait: ['phase', ['schieber', 0, 0, 0.02]] }, { x: 0, z: -5.2, speed: 0.5, r: 0.3 },
+  { x: 0, z: -12, speed: 3, r: 0.6 }, { x: 0.65, z: -16, speed: 3, r: 0.6 }, { x: 0, z: -20, speed: 3, r: 0.6 },
+  { x: 0, z: -24, speed: 2, r: 0.6 }
+];
+// Abfahrt, Steg mit Turbo, Sprung über die Lücke, Looping, Bremssand, Kehre, aufs Band im Takt des Wagens, Kanone,
+// Podest, Rampe, Ziel
+const rest = [
+  { x: 0, z: -27, speed: 2, r: 0.6 }, { x: 0, z: -36, free: true, r: 1.5 }, { x: 0.25, z: -39.5, speed: 5, r: 0.6 },
+  { x: 0, z: -42, speed: 5, r: 0.6 }, { x: 0, z: -52, free: true, r: 2 }, { x: 0, z: -63, speed: 8, r: 1 },
+  { x: 5, z: -69, free: true, r: 2.5 }, { x: 5.7, z: -75, speed: 3, r: 0.6 }, { x: 5, z: -81, speed: 2, r: 0.6 },
+  { x: 5, z: -84.5, speed: 2, r: 0.5 }, { ...kehre(45, 4.4), speed: 2, r: 0.5 }, { ...kehre(90, 4.6), speed: 2, r: 0.4 },
+  { ...kehre(135, 4.2), speed: 1.5, r: 0.5 },
+  { ...kehre(170), speed: 2, r: 0.4, wait: ['phase', ['schieber', 1, 0, 0.04]] },
+  { x: BAND, z: -83, speed: 3, r: 0.5 }, { x: BAND + 0.4, z: -80, speed: 3, r: 0.5 }, { x: BAND, z: -70, speed: 3, r: 0.6 },
+  { x: BAND, z: -63.5, speed: 2 }, { x: 21, z: -64.5, speed: 1.5, r: 0.6 }, { x: 21, z: -66, speed: 2, r: 0.5 },
+  { x: 21, z: -74, speed: 2.5, r: 0.6 }, { x: 21, z: -80, speed: 3 }
 ];
 
 export default {
   c3: [
-    // Hauptweg: unter dem Hammer durch, auf der Putschauto-Bahn zwischen den Autos durch, ins Ziel
-    [
-      ...bisBude,
-      { x: 5, z: -105.5, speed: 2, r: 0.5 }, { x: 5, z: -111, speed: 5, wait: ['phase', ['hammer', 0, 0.72, 0.85]] }, { x: 5, z: -114, speed: 3 },
-      { x: 5, z: -117.1, speed: 2, r: 0.5 }, { x: 5, z: -120.9, speed: 4, r: 0.6, wait: AUTO(0, 0.43, 0.53) },
-      { x: 5, z: -123.1, speed: 2, r: 0.5 }, { x: 5, z: -126.9, speed: 4, r: 0.6, wait: AUTO(1, 0.93, 0.03) },
-      { x: 5, z: -131, speed: 3 }, { x: 5, z: -134 }
-    ],
-    // Abstecher in die Büchsen-Bude zum Bonusstern
-    [...bisBude, { x: 5.5, z: -100.5, speed: 2, r: 0.6 }, { x: 8.2, z: -100.5, speed: 2, r: 0.6 }]
+    // Hauptweg
+    [...lift, ...rest],
+    // Bonusstern: oben über das schmale Brett nach links und zurück
+    [...lift, { x: -1.5, z: -24, speed: 1.5, r: 0.4 }, { x: -4.8, z: -24, speed: 1.2, r: 0.4 }, { x: 0, z: -24, speed: 1.5, r: 0.5 }, ...rest]
   ]
 };
