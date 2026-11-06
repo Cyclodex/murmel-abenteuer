@@ -45,5 +45,6 @@ export const RICHTZEIT = {
   v2s: 78.8,
   v3s: 77.9,
   kz1: 49.9,
-  kz2: 82.1
+  kz2: 82.1,
+  kz3: 45.2
 };
