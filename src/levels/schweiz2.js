@@ -1,82 +1,79 @@
-// Schweiz 2: Uhrwerk. Im Innern einer riesigen Uhr: auf drehenden Zahnrädern mitfahren (erst eines zum Üben, dann zwei,
-// die ineinandergreifen), über das Zifferblatt an den Zeigern vorbei, mit dem Uhrgewicht als Lift nach oben,
-// unter dem Pendel durch und am Glockenhammer vorbei zum Ziel.
-const X = -9; // ab dem zweiten Zahnrad-Paar läuft alles auf dieser Linie
-// Takt: yaw des Minutenzeigers und offset von Lift, Pendel und Hammer sind so gewählt, dass eine zügige Fahrt (Autopilot,
-// Stärke normal) nirgends lange warten muss. Wer die Strecke davor ändert, stimmt sie neu ab (sonst nur längere Wartezeit).
-// Zifferblatt 14 x 14 mit Rand, vorne und hinten offen (wie der Teller in Küche 2)
-const blatt = (x, z, open = 2.2) => [
-  { type: 'klotz', at: [x, -0.5, z], size: [14, 1, 14], look: 'zifferblatt' },
-  { type: 'deko', form: 'zifferblatt', at: [x, 0, z], scale: 1.15 },
-  { type: 'wand', from: [x - 7.2, 0, z + 7], to: [x - 7.2, 0, z - 7] },
-  { type: 'wand', from: [x + 7.2, 0, z + 7], to: [x + 7.2, 0, z - 7] },
-  { type: 'wand', from: [x - 7.4, 0, z + 7.2], to: [x - open, 0, z + 7.2] },
-  { type: 'wand', from: [x + open, 0, z + 7.2], to: [x + 7.4, 0, z + 7.2] },
-  { type: 'wand', from: [x - 7.4, 0, z - 7.2], to: [x - open, 0, z - 7.2] },
-  { type: 'wand', from: [x + open, 0, z - 7.2], to: [x + 7.4, 0, z - 7.2] }
-];
+// Schweiz 2: Uhrwerk. Im Innern einer riesigen Uhr, alles ohne Rand. Vier Zahnräder greifen ineinander (gross, klein,
+// gross, klein, jedes andersrum): die dicke Achse in der Mitte lässt nur einen schmalen Ring zum Mitfahren, hinüber geht
+// es nur dort, wo Zahn auf Zahn steht. Die Zugfeder führt schmal und ohne Rand eine Runde hinunter. Auf dem Zifferblatt
+// ohne Rand kreuzen Minuten- und Stundenzeiger mit verschiedenem
+// Tempo: in den Ecken ist man sicher, an den Kanten entlang nur, wenn beide Zeiger eben vorbei sind. Drei Uhrgewichte
+// steigen und sinken nacheinander, man geht von Gewicht zu Gewicht, solange sie oben sind. Zuletzt schlagen Pendel und
+// Glockenhammer im selben Takt auf den schmalen Steg, und ein zweites Pendel schwingt in einem anderen Takt.
+const D = 6.85 / Math.SQRT2;                        // Zahnräder: Versatz der Mitten (r 4 + r 3, Zähne greifen leicht ein)
+const G = [[0, -8.2], [-D, -8.2 - D], [0, -8.2 - 2 * D], [-D, -8.2 - 3 * D]];
+const X = -D;                                      // Ausfahrt vom letzten Zahnrad, Steg zum Zifferblatt
+const ZF = -40, XF = X - 4.7;                      // Zifferblatt: Mitte (11 x 11, Weg 0.8 innerhalb der Kante)
+const XS = XF - 4.7;                               // ab der hinteren linken Ecke des Zifferblatts
+const GEW = [-50.2, -52.6, -55];                   // Uhrgewichte (z)
+const Y = -3;                                      // nach der Zugfeder: Höhe von Zifferblatt, Gewichten und Glocke
+// Kette eines Uhrgewichts (nur Grafik, links und rechts neben dem Gewicht)
+const kette = z => [-1.3, 1.3].map(dx => ({ type: 'klotz', at: [XS + dx, Y + 1, z], size: [0.12, 16, 0.12], look: 'stahl', deko: true }));
+
 export default {
   id: 'sch2', name: 'Uhrwerk', emoji: '🕰️', theme: 'schweiz', variante: 'uhrwerk',
-  start: [0, 0, 2], killY: -8,
+  start: [0, 0, 2], killY: -11,
   parts: [
     // Start auf der Messingplatte, daneben der Aufziehschlüssel
-    { type: 'weg', from: [0, 0, 6], to: [0, 0, -6], width: 5, walls: 0.8, caps: 'start' },
+    { type: 'weg', from: [0, 0, 6], to: [0, 0, -4.3], width: 4, walls: 0.8, caps: 'start' },
     { type: 'deko', form: 'schluessel', at: [-6.5, -1, 1], yaw: 20, scale: 1.2 },
 
-    // Erstes Zahnrad zum Üben: vorne drauf, stillhalten, hinten wieder hinunter (die Achse versperrt den geraden Weg).
-    // Wer schon rechts aussteigt, findet hinter der Schraube den Bonusstern.
-    { type: 'zahnrad', at: [0, 0, -10.05], r: 4, speed: 30 },
-    { type: 'nische', at: [4.1, 0, -10.05], yaw: -90, width: 3, depth: 3.2 },
-    { type: 'klotz', at: [6.4, -0.5, -7.2], size: [2.6, 1, 2.3] },
-    { type: 'deko', form: 'schraube', at: [6.4, 0, -7.3], scale: 1.1 },
-    { type: 'deko', form: 'zahnrad', at: [-6.95, -1.6, -10.05], dreh: -40, farbe: 0x9E9E9E },
-    { type: 'weg', from: [0, 0, -14.1], to: [0, 0, -19.05], width: 4, walls: 0.8 },
-    { type: 'checkpoint', at: [0, 0, -16.3], size: [4, 3, 3] },
+    // Zahnradkette: gross (r 4) und klein (r 3, schneller), im Wechsel andersrum; die Achse lässt nur einen Ring frei
+    { type: 'zahnrad', at: [G[0][0], 0, G[0][1]], r: 4, speed: -22, nabe: 1.6 },
+    { type: 'zahnrad', at: [G[1][0], 0, G[1][1]], r: 3, speed: 29.33, nabe: 1.2, farbe: 0xB87333 },
+    { type: 'zahnrad', at: [G[2][0], 0, G[2][1]], r: 4, speed: -22, nabe: 1.6 },
+    { type: 'zahnrad', at: [G[3][0], 0, G[3][1]], r: 3, speed: 29.33, nabe: 1.2, farbe: 0xB87333 },
+    // rechts am ersten Rad eine kleine Schraube: wer die Runde andersherum fährt, findet dort den Bonusstern
+    { type: 'klotz', at: [5, -0.5, G[0][1]], size: [2, 1, 2], look: 'messing-dunkel' },
+    { type: 'deko', form: 'schraube', at: [5.3, 0, G[0][1] + 0.6], scale: 0.6 },
+    { type: 'deko', form: 'zahnrad', at: [6.5, -1.6, -17], dreh: 40, farbe: 0x9E9E9E },
+    { type: 'deko', form: 'zahnrad', at: [-11, -1.6, -12], scale: 1.2, dreh: -33, farbe: 0x9E9E9E },
+    { type: 'weg', from: [X, 0, G[3][1] - 2.9], to: [X, 0, -31.5], width: 3, walls: 0.8 },
+    { type: 'checkpoint', at: [X, 0, -29.5], size: [3, 3, 2] },
 
-    // Zwei Zahnräder greifen ineinander: das grosse dreht im Uhrzeigersinn und trägt die Murmel nach links,
-    // dort übergibt es sie dem kleinen, das sie nach hinten trägt
-    { type: 'zahnrad', at: [0, 0, -24.1], r: 5, speed: -24 },
-    { type: 'zahnrad', at: [X, 0, -24.1], r: 4, speed: 30, farbe: 0xB87333 },
-    { type: 'deko', form: 'zahnrad', at: [7.9, -1.6, -24.1], dreh: 40, farbe: 0x9E9E9E },
-    { type: 'deko', form: 'zahnrad', at: [X - 6.3, -1.6, -19.85], scale: 1.2, dreh: -33, farbe: 0x9E9E9E },
-    { type: 'weg', from: [X, 0, -28.15], to: [X, 0, -33], width: 4, walls: 0.8 },
-    { type: 'checkpoint', at: [X, 0, -30.5], size: [4, 3, 3] },
+    // Zugfeder: schmal und ohne Rand eine Runde links hinunter
+    { type: 'kurve', at: [X, 0, -31.5], yaw: 0, turn: -360, radius: 4, width: 1.6, rise: Y },
+    { type: 'deko', form: 'zahnrad', at: [X - 4, Y - 1.6, -31.5], scale: 0.9, dreh: 25, farbe: 0x9E9E9E },
 
-    // Zifferblatt: der lange Minutenzeiger fegt im Uhrzeigersinn herum, der kurze Stundenzeiger schleicht hinterher.
-    // Links herum mit dem Zeiger mitfahren
-    ...blatt(X, -40),
-    { type: 'balken', at: [X, 0, -40], length: 11, speed: -30, yaw: -60, form: 'zeiger', farbe: 'stahl' },
-    { type: 'balken', at: [X, 0, -40], length: 5, speed: -6, yaw: 60, form: 'zeiger', farbe: 'messing' },
-    { type: 'weg', from: [X, 0, -47], to: [X, 0, -52], width: 4, walls: 0.8 },
-    { type: 'checkpoint', at: [X, 0, -49.5], size: [4, 3, 3] },
+    // Zifferblatt ohne Rand: von der vorderen rechten Ecke der rechten Kante entlang, dann der hinteren Kante entlang
+    { type: 'weg', from: [X, Y, -31.5], to: [X, Y, ZF + 5.5], width: 2.6, walls: 0.8 },
+    { type: 'checkpoint', at: [X, Y, -33], size: [2.6, 3, 1.4] },
+    { type: 'klotz', at: [XF, Y - 0.5, ZF], size: [11, 1, 11], look: 'zifferblatt' },
+    { type: 'deko', form: 'zifferblatt', at: [XF, Y, ZF], scale: 0.9 },
+    { type: 'balken', at: [XF, Y, ZF], length: 11, speed: -20, yaw: 30, form: 'zeiger', farbe: 'stahl' },
+    { type: 'balken', at: [XF, Y, ZF], length: 8.6, speed: -6, yaw: 3, form: 'zeiger', farbe: 'messing' },
+    { type: 'weg', from: [XS, Y, ZF - 5.5], to: [XS, Y, -46.5], width: 1.6 },
+    { type: 'weg', from: [XS, Y, -46.5], to: [XS, Y, -49.1], width: 3, walls: 0.8 },
+    { type: 'checkpoint', at: [XS, Y, -47.8], size: [3, 3, 1.6] },
 
-    // Das Uhrgewicht als Lift: es fährt an zwei Stangen hinauf und hinunter
-    { type: 'plattform', from: [X, 0, -54], to: [X, 3, -54], size: [4, 4], time: 2, pause: 2, offset: 4.5 },
-    { type: 'klotz', at: [X - 2.6, 1, -54], size: [0.25, 18, 0.25], look: 'stahl', deko: true },
-    { type: 'klotz', at: [X + 2.6, 1, -54], size: [0.25, 18, 0.25], look: 'stahl', deko: true },
-    // Obere Ebene (dick, damit man unten nicht drunter durchrollt)
-    { type: 'weg', from: [X, 3, -56], to: [X, 3, -60], width: 4, walls: 0.8, thick: 3 },
-    { type: 'checkpoint', at: [X, 3, -58], size: [4, 3, 2] },
+    // Drei Uhrgewichte steigen und sinken nacheinander; oben liegen sie bündig mit dem Steg
+    ...GEW.map((z, k) => ({ type: 'plattform', from: [XS, Y - 5, z], to: [XS, Y, z], size: [2.2, 2.2], rim: 0, time: 1.5, pause: 3, offset: -1.5 * k })),
+    ...GEW.flatMap(kette),
+    { type: 'weg', from: [XS, Y, -56.1], to: [XS, Y, -60], width: 3, walls: 0.8 },
+    { type: 'checkpoint', at: [XS, Y, -58], size: [3, 3, 2] },
 
-    // Das Pendel schwingt quer über den Steg ohne Rand
-    { type: 'weg', from: [X, 3, -60], to: [X, 3, -66], width: 3 },
-    { type: 'pendel', at: [X, 3, -63], offset: 1.5 },
-    { type: 'weg', from: [X, 3, -66], to: [X, 3, -70], width: 4, walls: 0.8 },
-    { type: 'checkpoint', at: [X, 3, -68], size: [4, 3, 2] },
+    // Pendel und Glockenhammer im selben Takt, dann ein zweites Pendel in einem anderen; Steg ohne Rand
+    { type: 'weg', from: [XS, Y, -60], to: [XS, Y, -72], width: 1.6 },
+    { type: 'pendel', at: [XS, Y, -62], time: 3.88, r: 0.7 },
+    { type: 'hammer', at: [XS, Y, -64.6], side: 1, length: 4, size: [3.2, 1.4, 1.6], up: 2, down: 0.5, offset: 2.46, farbe: 'gelb' },
+    { type: 'klotz', at: [XS - 3.5, Y - 6, -64.6], size: [4, 12, 4], look: 'holz-dunkel' },
+    { type: 'deko', form: 'glocke', at: [XS - 3.5, Y, -64.6], fest: true },
+    { type: 'pendel', at: [XS, Y, -69], time: 4.4, offset: 1, r: 0.7 },
+    { type: 'weg', from: [XS, Y, -72], to: [XS, Y, -80], width: 5, walls: 0.8, caps: 'end' },
+    { type: 'ziel', at: [XS, Y, -77] },
 
-    // Der Glockenhammer schlägt neben der Glocke (auf ihrem Holzturm) auf den Steg
-    { type: 'weg', from: [X, 3, -70], to: [X, 3, -77], width: 3 },
-    { type: 'hammer', at: [X, 3, -73.5], side: 1, length: 4, size: [3.2, 1.4, 1.6], offset: 1.5, farbe: 'gelb' },
-    { type: 'klotz', at: [X - 3.5, -3, -73.5], size: [4, 12, 4], look: 'holz-dunkel' },
-    { type: 'deko', form: 'glocke', at: [X - 3.5, 3, -73.5], fest: true },
-    { type: 'weg', from: [X, 3, -77], to: [X, 3, -84], width: 5, walls: 0.8, caps: 'end' },
-    { type: 'ziel', at: [X, 3, -81.5] },
-
-    { type: 'stern', at: [0, 0.9, -2] },
-    { type: 'stern', at: [0, 0.9, -21.1] },
-    { type: 'stern', at: [X - 4.5, 0.9, -40] },
-    { type: 'stern', at: [X, 3.9, -54] },
-    { type: 'stern', at: [X, 3.9, -63] },
-    { type: 'stern', at: [6.2, 0.9, -10.05], bonus: true }
+    // Sterne: aussen auf dem dritten Zahnrad, an der rechten Kante des Zifferblatts, auf dem letzten Uhrgewicht,
+    // unter dem Glockenhammer, am Stegrand vor dem zweiten Pendel; Bonus auf der Schraube rechts vom ersten Rad
+    { type: 'stern', at: [-3.5, 0.9, G[2][1]] },
+    { type: 'stern', at: [X + 0.3, Y + 0.9, ZF] },
+    { type: 'stern', at: [XS, Y + 0.9, GEW[2]] },
+    { type: 'stern', at: [XS, Y + 0.9, -64.6] },
+    { type: 'stern', at: [XS + 0.5, Y + 0.9, -66.4] },
+    { type: 'stern', at: [5.2, 0.9, G[0][1]], bonus: true }
   ]
 };
