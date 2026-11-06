@@ -74,6 +74,18 @@ const basaltTex = (THREE, base, glow) => canvasTex(THREE, 256, 256, (x, w, h) =>
 });
 // Lava: fliessende, glühende Flecken
 const lavaTex = THREE => dots(THREE, '#E8480C', ['#FF7A1A', '#FFB020', '#B8290A', '#FFD54A'], 160, 6, 22, 23);
+// Zeltstoff: senkrechte Streifen in Farbe und Weiss (4 pro 2 m)
+const ZELT = { rot: '#E53935', blau: '#1E88E5', gelb: '#FDD835', gruen: '#43A047' };
+const zeltTex = (THREE, farbe) => canvasTex(THREE, 64, 64, (x, w, h) => {
+  x.fillStyle = '#FAFAFA'; x.fillRect(0, 0, w, h); x.fillStyle = farbe;
+  for (let i = 0; i < 4; i += 2) x.fillRect(i * w / 4, 0, w / 4, h);
+  x.fillStyle = 'rgba(0,0,0,0.12)'; x.fillRect(0, 0, w, 3); // Saum
+});
+// Pfosten: Ringe in Rot und Weiss
+const pfostenTex = THREE => canvasTex(THREE, 64, 64, (x, w, h) => {
+  x.fillStyle = '#FAFAFA'; x.fillRect(0, 0, w, h); x.fillStyle = '#E53935';
+  for (let i = 0; i < 4; i += 2) x.fillRect(0, i * h / 4, w, h / 4);
+});
 const hedgeTex = THREE => dots(THREE, '#2E7D32', ['#388E3C', '#1B5E20', '#43A047', '#4CAF50'], 260, 4, 11, 5, 128);
 
 // Riesige Gegenstände verstreut auf dem Untergrund (unter und neben der Bahn), fest je Welt
@@ -147,6 +159,58 @@ export const THEMES = {
     },
     props: [['apfel'], ['apfel', 0x7CB342], ['orange'], ['tomate'], ['tasse'], ['tasse', 0xE53935], ['teekanne'], ['toaster'], ['milch'], ['kaese'], ['salz'], ['glas'], ['teller']],
     ground(t, y) { const tex = tiles(t.THREE, '#303030', '#F2F2F2', 2); tex.repeat.set(60, 60); t.plane(tex, y); scatter(t, y, THEMES.kueche.props, 7); }
+  },
+
+  chilbi: {
+    // Abend auf dem Festplatz: dunkler Himmel mit Sternen und Mond, Lichterketten zwischen den Buden,
+    // helle Holzbohlen als Bahn, Wände aus gestreiftem Zeltstoff
+    sky: 0x2B1F5E, fog: [55, 140], hemi: [0xFFE6C4, 0x54417F, 0.9], sun: 0.75,
+    walls: ['zelt-rot', 'zelt-blau', 'zelt-gelb', 'zelt-gruen'],
+    floor: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#E6BC80', '#8A5A2A') }),
+    ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#F4D8A6', '#9A6A3A') }),
+    pillars: ['pfosten'],
+    props: [['bude'], ['bude', 0x1E88E5], ['zelt'], ['ballons'], ['zuckerwatte'], ['popcorn'], ['lolli'], ['herz'], ['pferd'], ['putschauto', 0xFDD835], ['bude', 0x43A047], ['zelt', 0x1E88E5], ['ballons', 0x8E24AA]],
+    look(t, look) {
+      const [k, c] = look.split('-');
+      if (k === 'zelt') return t.lambert(0xffffff, { map: zeltTex(t.THREE, ZELT[c] ?? ZELT.rot) });
+      if (look === 'pfosten') return t.lambert(0xffffff, { map: pfostenTex(t.THREE) });
+      if (look === 'zuckerwatte') return t.lambert(0xffffff, { map: dots(t.THREE, '#F8A5C8', ['#FBC4DC', '#F48FB8', '#FFD9E8'], 220, 4, 12, 27, 128) });
+      return null;
+    },
+    ground(t, y) {
+      const T = t.THREE, tex = dots(T, '#3A6650', ['#325A47', '#447358', '#5A5240'], 500, 1, 4, 29); tex.repeat.set(50, 50);
+      t.plane(tex, y);
+      scatter(t, y, THEMES.chilbi.props, 13, 34);
+      // Lichterketten: vier Reihen Pfosten, dazwischen hängen bunte Lämpchen durch (weit unter der Bahn)
+      const farben = [0xFFE082, 0xFF5A8A, 0x80D8FF, 0xB9F6CA], reihen = [-38, -13, 13, 38], z0 = 30, z1 = -150, feld = 15, je = 9, H = 5;
+      const n = reihen.length * Math.round((z0 - z1) / feld) * je, m = new T.Matrix4();
+      const lampen = farben.map(c => new T.InstancedMesh(new T.SphereGeometry(0.22, 8, 6), new T.MeshBasicMaterial({ color: c }), Math.ceil(n / farben.length)));
+      const pfosten = new T.InstancedMesh(new T.CylinderGeometry(0.12, 0.16, H, 6), t.lambert(0xFAFAFA), reihen.length * (Math.round((z0 - z1) / feld) + 1));
+      let i = 0, p = 0;
+      for (const x of reihen) for (let z = z0; z >= z1; z -= feld) {
+        pfosten.setMatrixAt(p++, m.makeTranslation(x, y + H / 2, z));
+        if (z - feld < z1) continue;
+        for (let k = 0; k < je; k++) { const u = (k + 0.5) / je; lampen[i % farben.length].setMatrixAt(Math.floor(i / farben.length), m.makeTranslation(x, y + H - 0.1 - 1.3 * Math.sin(Math.PI * u), z - u * feld)); i++; }
+      }
+      t.scene.add(pfosten, ...lampen);
+      // Sterne und Mond am Abendhimmel
+      const r = rnd(41), ns = 260, pos = new Float32Array(ns * 3);
+      for (let k = 0; k < ns; k++) { const a = r() * Math.PI * 2, b = Math.acos(r() * 0.95), d = 150; pos.set([Math.sin(b) * Math.cos(a) * d, Math.cos(b) * d, Math.sin(b) * Math.sin(a) * d], k * 3); }
+      const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.BufferAttribute(pos, 3));
+      const himmel = new T.Group();
+      himmel.add(new T.Points(geo, new T.PointsMaterial({ color: 0xFFF6D8, size: 1, fog: false })));
+      const mond = new T.Mesh(new T.SphereGeometry(7, 24, 16), new T.MeshBasicMaterial({ color: 0xFFF3C4, fog: false })); mond.position.set(60, 75, -115); himmel.add(mond);
+      t.scene.add(himmel);
+      let zeit = 0;
+      return {
+        tick(dt, cam) {
+          himmel.position.copy(cam.position);
+          zeit += dt; // Lauflicht: eine Farbe nach der anderen wird kurz dunkler
+          const s = Math.floor(zeit * 2.5) % farben.length;
+          lampen.forEach((l, j) => l.material.color.setHex(farben[j]).multiplyScalar(j === s ? 0.4 : 1));
+        }
+      };
+    }
   },
 
   weltraum: {

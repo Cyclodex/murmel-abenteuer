@@ -10,6 +10,7 @@ import badezimmer from './routes/badezimmer.js';
 import weltraum from './routes/weltraum.js';
 import unterwasser from './routes/unterwasser.js';
 import vulkan from './routes/vulkan.js';
+import chilbi from './routes/chilbi.js';
 import pruefstand from './routes/pruefstand/index.js';
 
 const WAITS = {
@@ -31,6 +32,8 @@ const WAITS = {
     const u = ((t % per) + per) % per / per;
     return a <= b ? u >= a && u <= b : u >= a || u <= b;
   },
+  // Riesenrad n: die Gondel mit der Murmel steht am Platz platz (0 = unten, gondeln / 2 = oben) und hält noch mindestens rest s
+  gondel: (g, [n, platz, rest = 1]) => { const e = g.els.filter(x => x.type === 'riesenrad')[n]; return e.platz === platz && e.halt >= rest; },
   // Falltür n ist zu (und nicht gerade am Aufgehen)
   tuerZu: (g, n = 0) => { const e = g.els.filter(x => x.type === 'falltuer')[n]; return e.state === 'zu' && e.a < 0.01; },
   // der drehende Balken (oder Rasensprenger) ist gerade am Punkt [x, z] vorbei (10°..80° danach), bis er zurückkommt bleibt Zeit
@@ -247,3 +250,4 @@ export const ROUTES = {
 
 // Routen der schweren Level und der Badezimmer-Welt liegen je Welt in tests/routes/
 Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, weltraum, unterwasser, vulkan, pruefstand);
+Object.assign(ROUTES, chilbi);

@@ -11,7 +11,7 @@ const R = 0.5;          // Murmel-Radius
 const JUBEL = 1.8;      // s Jubel nach dem Erreichen, danach winken
 const GRAU = 0xBBBBBB, GRUEN = 0x3BB273;
 const FIG_R = 1.1, FIG_H = 3.2; // Platzbedarf der Figur (Radius, Höhe)
-export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', vulkan: 'geysir' };
+export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', vulkan: 'geysir', chilbi: 'lukas' };
 // Figur eines Checkpoints: el.figur oder die der Welt (bestimmt auch den Jubel-Klang 'cp-' + Figur in audio.js)
 export const figurVon = (el, theme) => FIGUREN[el.figur] ? el.figur : FIGUR_JE_WELT[theme] || 'zwerg';
 
@@ -300,6 +300,32 @@ export const FIGUREN = {
             : z === 'jubel' ? -0.35 + 0.8 * (1 - Math.exp(-5 * t) * Math.cos(10 * t)) + 0.25 * Math.sin(t * 10 + i)
             : 0.3 + 0.25 * Math.sin(t * 3 + i + k * 0.6);
         }));
+      }
+    };
+  },
+
+  // Hau den Lukas: der Klotz döst unten an der Skala, schiesst hoch an die Glocke und lässt sie bimmeln
+  lukas(T, F) {
+    const gold = mat(T, 0xFFC928, { shininess: 140, specular: 0xffffff }), UNTEN = 0.72, OBEN = 2.5;
+    const augen = [-1, 1].map(k => { const a = auge(T, 0.1); a.position.set(k * 0.24, 0.32, -0.46); return a; });
+    const klotz = mesh(T, new T.BoxGeometry(0.36, 0.2, 0.12), mat(T, 0x212121), 0, UNTEN, 0.06);
+    const glocke = group(T, mesh(T, new T.SphereGeometry(0.3, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), gold, 0, -0.3, 0), mesh(T, new T.SphereGeometry(0.08, 8, 6), gold, 0, -0.34, 0));
+    glocke.position.set(0, 3.05, 0.1);
+    const fahne = F.make(1.1); fahne.position.set(0.32, 2.1, 0.2);
+    const g = group(T, mesh(T, new T.BoxGeometry(1.1, 0.55, 0.9), mat(T, 0xE53935), 0, 0.275, 0), mesh(T, cyl(T, 0.26, 0.26, 0.1, 14), mat(T, 0xFDD835), 0, 0.6, -0.2),
+      mesh(T, new T.BoxGeometry(0.5, 2.2, 0.12), mat(T, 0xFAFAFA), 0, 1.65, 0.2), ...augen, klotz, glocke, fahne);
+    [0x43A047, 0xFDD835, 0xFB8C00, 0xE53935].forEach((c, i) => g.add(mesh(T, new T.BoxGeometry(0.4, 0.42, 0.04), mat(T, c), 0, 0.95 + i * 0.5, 0.125)));
+    return {
+      g, kopf: [0, 1.1, -0.5], sockel: 0xFDD835,
+      pose(z, t) {
+        augen.forEach(a => a.auf(z === 'schlaf' ? 0 : 1));
+        if (z === 'schlaf') { g.position.y = 0; klotz.position.y = UNTEN + 0.02 * Math.sin(t * 2); glocke.rotation.z = 0; }
+        else if (z === 'jubel') {
+          const u = t - 0.25; // nach 0.25 s schlägt der Klotz an die Glocke
+          g.position.y = huepf(t, 0.45, 0.25);
+          klotz.position.y = u < 0 ? UNTEN + (OBEN - UNTEN) * (t / 0.25) : OBEN - 0.35 * Math.abs(Math.sin(u * 8)) * Math.exp(-3 * u);
+          glocke.rotation.z = u < 0 ? 0 : 0.6 * Math.sin(u * 18) * Math.exp(-2 * u);
+        } else { g.position.y = 0; klotz.position.y = OBEN - 0.06 + 0.04 * Math.sin(t * 5); glocke.rotation.z = 0.15 * Math.sin(t * 4); }
       }
     };
   },

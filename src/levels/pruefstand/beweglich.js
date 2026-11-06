@@ -93,5 +93,12 @@ export default [
     { type: 'kanone', at: [0, 0, -7], target: [0, 4, -24], time: 1.6 },
     { type: 'weg', from: [0, 4, -19], to: [0, 4, -38], width: 4, walls: 0.6, caps: 'both' },
     { type: 'ziel', at: [0, 4, -34] }
-  ])
+  ]),
+  // Riesenrad: unten in die Gondel, drei Plätze weiter oben wieder hinaus (wie in Chilbi 2)
+  lv('riesenrad', 'Riesenrad', [
+    anlauf(-6, 4),
+    { type: 'riesenrad', at: [0, 0, -8], radius: 5, gondeln: 6, size: [3.2, 4] },
+    { type: 'weg', from: [0, 10, -10], to: [0, 10, -20], width: 4, walls: 0.8, caps: 'end' },
+    { type: 'ziel', at: [0, 10, -17] }
+  ], { theme: 'chilbi' })
 ];

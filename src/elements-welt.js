@@ -12,7 +12,8 @@ const BOWL = {
   topf: { inner: 0xC9CED6, outer: 0xB7BDC6, shine: 130 },
   lavabo: { inner: 0xF7F9FB, outer: 0xFFFFFF, shine: 110 },
   schuessel: { inner: 0xFFF3E0, outer: 0x4FC3F7, shine: 70 },
-  sandkuchen: { inner: 0xE6C27A, outer: 0xD9B56C, shine: 5 }
+  sandkuchen: { inner: 0xE6C27A, outer: 0xD9B56C, shine: 5 },
+  karussell: { inner: 0xF3E2B8, outer: 0xD32F2F, shine: 40 }
 };
 
 // Richtung eines Segments (Winkel a in der x/z-Ebene)
@@ -21,7 +22,7 @@ const dirOf = a => [Math.cos(a), 0, Math.sin(a)];
 export const WELT = {
   // Schüssel: runder Boden, schräge Wand, flacher Rand (und aussen eine Wand bis zum Boden).
   // at = Mitte des Bodens (Oberkante), r = Bodenradius, R = Radius oben, h = Randhöhe, rim = Randbreite,
-  // art = 'pfanne' | 'topf' | 'lavabo' | 'schuessel' | 'sandkuchen', offen = Liste von yaw (Grad): dort ist eine Lücke
+  // art = 'pfanne' | 'topf' | 'lavabo' | 'schuessel' | 'sandkuchen' | 'karussell' (Drehscheibe der Chilbi), offen = Liste von yaw (Grad): dort ist eine Lücke
   // (z. B. für eine Rampe hinein/hinaus), luecke = Breite der Lücke, aussen:false = keine Aussenwand (z. B. in einer Ablage),
   // griff = yaw des Pfannenstiels, hahn = yaw des Wasserhahns (Lavabo), abfluss:true = echtes Loch in der Mitte
   // (Radius 0.7 wie das Rohr darunter) mit steilem, abgesenktem Rand: die Murmel fällt hinein, dazu eine roehre mit down:true bei at
