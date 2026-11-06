@@ -1,5 +1,31 @@
 # Hinweise für Claude
 
+## Modelle und Kontext
+
+Am 6. Nov. 2026 waren 95 % des 5-Stunden-Limits nach 56 Minuten weg: 11 Sessions gleichzeitig, 84 % des Verbrauchs auf Fable,
+44 % in Subagenten, jeder Aufruf las im Schnitt 270k Tokens neu. Der Benutzer will das nicht mehr.
+
+| Modell | Wofür |
+|---|---|
+| `fable` | Nur Planen und Entwerfen: Aufgabe zerlegen, Welt, Level oder Bauteil entwerfen, Briefings schreiben. Nie als Subagent, nie für eine Seitensession. |
+| `opus` | Viel Urteil nötig: Physik, neue Bauteile, Fehler ohne klare Ursache, Reviews (`subagent_type: "reviewer"`). |
+| `sonnet` | Standard fürs Umsetzen: Level nach Entwurf, Routen, Grafik, Menüs, Doku (`subagent_type: "implementer"`). |
+
+- **Fable delegiert.** Eine Fable-Session plant und gibt das Umsetzen an Subagenten auf Sonnet oder Opus. Selbst macht sie nur,
+  was wirklich nötig ist: ein paar Befehle (`git`, `gh`), kurzes Nachlesen, Entscheide. Bezahlt wird jeder Aufruf mit ihrem ganzen Kontext.
+- **Modell immer nennen,** bei jedem `Agent`- und jedem `start_session`-Aufruf. Keine Forks (`subagent_type: "fork"`) aus einer
+  Fable-Session: Sie erben Fable.
+- **Wenig gleichzeitig.** Höchstens zwei Seitensessions. Vorher mit `get_usage` das Limit lesen: Über 50 % des 5-Stunden-Limits
+  keine neue Session und keinen Workflow starten; über 80 % den Stand committen und pushen und dem Benutzer melden.
+- **Kontext klein.** `.claude/settings.json` kompaktiert bei 250k (`autoCompactWindow`, übersteuert die Benutzer-Einstellung),
+  `implementer` und `reviewer` bei 200k. Nicht höher ohne den Benutzer, nie 1M.
+- **Neue Aufgabe, neuer Kontext.** Frische Session oder frischer Subagent, im Briefing Dateien und Issue statt Chatverlauf.
+  Bei jedem Meilenstein (Commit, PR) `get_usage` lesen; über 150k den Stand zuerst sichern (Commit, Issue oder PR-Text).
+- **Ausgaben klein.** Dateien nach Zeilenbereich, grosse Ausgaben in eine Datei und mit `grep` lesen, nie ein ganzes Log.
+
+Technisch festgelegt sind nur die Kompaktion und das Standardmodell der Subagenten (Sonnet, wenn der Aufruf keines nennt).
+Der Rest gilt als Regel: Das Modell einer Session wählt der Benutzer.
+
 ## Tests
 
 Die volle Suite (`npm test`, 81 Tests) dauert im Cloud-Container 24 Minuten: 16 Autopilot-Tests fahren jedes Level mit

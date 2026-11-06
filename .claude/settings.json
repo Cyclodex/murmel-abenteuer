@@ -1,0 +1,7 @@
+{
+  "autoCompactWindow": 250000,
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet",
+    "CLAUDE_CODE_WORKFLOW_SUBAGENT_MODEL": "sonnet"
+  }
+}
