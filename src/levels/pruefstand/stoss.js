@@ -23,5 +23,15 @@ export default [
     { type: 'weg', from: [0, 0, -20], to: [0, 0, -36], width: 5, walls: 1, caps: 'end' },
     { type: 'knall', pos: [0, 0, -25], r: 1.8, takt: [2, 3], kick: 5, up: 0.8, look: 'kessi' },
     { type: 'ziel', at: [0, 0, -33] }
+  ]),
+  // Fallend: Ziegel fallen quer über die Gasse (stossen zur Seite), dann Eiszapfen längs auf einen Steg ohne Rand (quetschen)
+  lv('fallend', 'Fallend', 'winter', [
+    anlauf(-6),
+    { type: 'weg', from: [0, 0, -6], to: [0, 0, -18], width: 5, walls: 1 },
+    { type: 'fallend', from: [-1.8, 7, -12], to: [1.8, -12], every: [2, 1.2, 3.5], form: 'ziegel', farbe: 0xB5552F },
+    { type: 'weg', from: [0, 0, -18], to: [0, 0, -28], width: 3 },
+    { type: 'fallend', from: [0, 6, -20], to: [0, -26], every: [1.5, 4.5], offset: 1, form: 'eiszapfen', quetscht: true, stellen: [0.2, 0.8, 0.5] },
+    { type: 'weg', from: [0, 0, -28], to: [0, 0, -36], width: 5, walls: 0.8, caps: 'end' },
+    { type: 'ziel', at: [0, 0, -33] }
   ])
 ];

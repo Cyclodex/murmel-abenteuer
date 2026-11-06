@@ -4,7 +4,7 @@
 // (el.t), der Ablauf ist bei jedem Start gleich; kein Zufall in Physik und Takt (nur in Funken und Staub).
 // Jedes getaktete Teil hat el.frei(rest): true = die nächsten rest Sekunden sind sicher (Autopilot: wait: ['frei', type, n, rest]).
 import { DEG, quatYawPitch, rotate, add, sub, scale, fwdOf, rightOf, ease, mulQ, toLocal, angleDiff } from './math.js';
-import { kinematicBody, ballPos, norm } from './elements.js';
+import { kinematicBody, driveTo, ballPos, norm } from './elements.js';
 
 const R = 0.5; // Murmel-Radius
 const TAU = Math.PI * 2;
@@ -187,6 +187,146 @@ export const STOSS = {
           if (eck) scheibe.rotation.x = el.seit < 0.6 ? -Math.sin(el.seit / 0.6 * Math.PI) * 1.2 : 0; // Luke klappt auf und zu
           if (el.k !== k) { k = el.k; if (k >= 0) fx.go(add(el.pos, [0, 0.3, 0]), r * 2.5, 4); }
           fx.tick(dt);
+        }
+      };
+    }
+  },
+
+  // Fallende Dinge: fallen im Takt von oben auf den Weg (Eiszapfen, Kastanien, Schrauben aus dem Regal, Käselaibe, Ziegel),
+  // bleiben liegt s als Hindernis liegen und versinken dann. Vorher warn s: Schatten am Boden, das Ding wackelt oben.
+  // Trifft es die Murmel, stösst es sie zur Seite (Tempo kick, das Vorwärtstempo ist weg) oder quetscht sie (quetscht: true,
+  // zurück zum Checkpoint wie beim Hammer). Wo es aufschlägt, sucht ein Strahl nach unten (erster fester Boden).
+  // from = [x, Höhe, z] Startpunkt oben, to = [x, z] (Linie, auf der es fällt; ohne to immer bei from),
+  // stellen = Anteil 0..1 auf der Linie (Zahl oder Array, pro Fall zyklisch), every = Lücken zwischen den Fällen (s, Zahl oder
+  // Array), offset, warn, liegt, r = Grösse, form: 'ziegel' | 'eiszapfen' | 'kastanie' | 'schraube' | 'laib', farbe,
+  // kick (m/s), quetscht, anzahl = so viele gleichzeitig unterwegs (Standard 3)
+  // Autopilot: wait: ['frei', ['fallend', n, rest]] = nichts in der Luft, und die nächsten rest s fällt nichts.
+  // {type:'fallend', from, to?, stellen?, every?, offset?, warn?, liegt?, r?, form?, farbe?, kick?, quetscht?, anzahl?}
+  fallend: {
+    FORM: {
+      ziegel: { r: 0.6, h: 0.3, t: 0.45, farbe: 0xB5552F, liegt: 1.5 },
+      eiszapfen: { r: 0.3, h: 2.2, t: 1, farbe: 0xCFEFFF, liegt: 0.4 },
+      kastanie: { r: 0.4, h: 0.9, t: 1, farbe: 0x6D3B1E, liegt: 1.5 },
+      schraube: { r: 0.25, h: 2.4, t: 1, farbe: 0x9EA7B0, liegt: 1.5 },
+      laib: { r: 0.8, h: 0.45, t: 1, farbe: 0xF2C230, liegt: 1.5 }
+    },
+    init(el, g) {
+      const f = STOSS.fallend.FORM[el.form] || STOSS.fallend.FORM.ziegel, r = el.r ?? f.r;
+      el.half = [r, r * f.h, r * f.t]; el.f = f;
+      const to = el.to ? [el.to[0], el.to[el.to.length - 1]] : [el.from[0], el.from[2]];
+      el.a0 = [el.from[0], el.from[2]]; el.a1 = to;
+      el.yw = el.to ? Math.atan2(-(to[0] - el.a0[0]), -(to[1] - el.a0[1])) : 0;
+      el.pool = [];
+      for (let i = 0; i < (el.anzahl ?? 3); i++) {
+        const b = kinematicBody(g, [{ half: el.half, off: [0, 0, 0], look: 'floor' }]);
+        b.collisionFilterGroup = 4; b.collisionFilterMask = 2; // nur die Murmel; der Strahl zum Aufschlagpunkt sieht sie nicht
+        b.quaternion.set(...quatYawPitch(el.yw, 0)); b.userData = {};
+        el.pool.push({ b, k: -1 });
+      }
+      el.ray = new g.C.RaycastResult(); el.rA = new g.C.Vec3(); el.rB = new g.C.Vec3();
+      el.frei = rest => {
+        const u = el.t + (el.offset || 0);
+        return el.pool.every(s => s.k < 0 || u - s.T >= s.tf) && takt(el.every ?? 3, u + (el.warn ?? 0.6)).bis > rest;
+      };
+    },
+    reset(el) {
+      el.t = 0; el.evs = [];
+      for (const s of el.pool) { s.k = -1; s.zustand = 'weg'; STOSS.fallend.park(s); }
+    },
+    park(s) { s.b.position.set(0, -300, 0); s.b.velocity.set(0, 0, 0); s.b.collisionFilterMask = 2; },
+    // Fall k planen: Stelle auf der Linie, Aufschlag (Strahl nach unten), Fallzeit
+    plan(el, g, s, k) {
+      const a = zyk(el.stellen ?? [0.5, 0.15, 0.85, 0.35, 0.65], k), x = el.a0[0] + (el.a1[0] - el.a0[0]) * a, z = el.a0[1] + (el.a1[1] - el.a0[1]) * a;
+      el.rA.set(x, el.from[1], z); el.rB.set(x, el.from[1] - 60, z); el.ray.reset();
+      g.world.raycastClosest(el.rA, el.rB, { collisionFilterMask: 1, skipBackfaces: true }, el.ray);
+      const yl = el.ray.hasHit ? el.ray.hitPointWorld.y : el.from[1] - 60, y0 = el.from[1] + el.half[1];
+      Object.assign(s, { k, T: zeitVon(el.every ?? 3, k), x, z, yl, y0, tf: Math.sqrt(2 * Math.max(0.01, y0 - yl - el.half[1]) / g.gy), hit: false, zustand: 'warnt' });
+      s.b.position.set(x, y0, z); s.b.velocity.set(0, 0, 0); s.b.collisionFilterMask = 2;
+    },
+    // Höhe der Mitte zur Zeit tau nach dem Fallbeginn (null = weg)
+    hoehe(el, g, s, tau) {
+      const hy = el.half[1], liegt = el.liegt ?? el.f.liegt;
+      if (tau < 0) return s.y0;
+      if (tau < s.tf) return s.y0 - g.gy * tau * tau / 2;
+      if (tau < s.tf + liegt) return s.yl + hy;
+      if (tau < s.tf + liegt + 0.6) return s.yl + hy - (tau - s.tf - liegt) / 0.6 * (2 * hy + 0.1); // versinkt
+      return null;
+    },
+    pre(el, g, h) {
+      el.t += h;
+      const u = el.t + (el.offset || 0), m = el.pool.length, kw = takt(el.every ?? 3, u + (el.warn ?? 0.6)).k, [hx, hy, hz] = el.half;
+      for (let j = 0; j < m; j++) { const k = kw - j; if (k >= 0 && el.pool[k % m].k !== k) STOSS.fallend.plan(el, g, el.pool[k % m], k); }
+      const p = ballPos(g), busy = g.squashT > 0 || g.holdT > 0;
+      for (const s of el.pool) {
+        if (s.k < 0 || s.zustand === 'weg') continue;
+        const tau = u - s.T, y1 = STOSS.fallend.hoehe(el, g, s, tau + h);
+        if (y1 === null) { s.zustand = 'weg'; STOSS.fallend.park(s); continue; }
+        const z0 = s.zustand;
+        s.zustand = tau < 0 ? 'warnt' : tau < s.tf ? 'faellt' : 'liegt';
+        if (z0 === 'faellt' && s.zustand === 'liegt' && Math.hypot(p[0] - s.x, p[2] - s.z) < 20) el.evs.push('rumpel');
+        driveTo(s.b, [s.x, y1, s.z], h);
+        const l = toLocal(p, [s.x, 0, s.z], el.yw), y = s.b.position.y;
+        if (s.zustand === 'faellt' && !s.hit && !busy && Math.abs(l[0]) < hx + R * 0.8 && Math.abs(l[2]) < hz + R * 0.8 && y1 - hy < p[1] + R && y + hy > p[1] - R) {
+          // getroffen: das Ding fällt durch die Murmel hindurch, die Murmel fliegt zur Seite (oder wird zerquetscht)
+          s.hit = true; s.b.collisionFilterMask = 0; el.evs.push('klapp'); // ohne Kontakt (auch kein Abprall in game.js)
+          if (el.quetscht) g.squash();
+          else {
+            let d = [p[0] - s.x, 0, p[2] - s.z];
+            if (Math.hypot(d[0], d[2]) < 0.05) d = scale(rightOf(el.yw), s.k % 2 ? 1 : -1);
+            d = norm(d);
+            const v = g.ball.velocity, kick = el.kick ?? 5;
+            v.x = d[0] * kick; v.z = d[2] * kick; v.y = Math.min(v.y, 0);
+          }
+        }
+        // durchgefallen: erst wieder fest, wenn die Murmel weg ist
+        if (!s.b.collisionFilterMask && s.zustand !== 'faellt' && (Math.abs(l[0]) > hx + R + 0.05 || Math.abs(l[2]) > hz + R + 0.05)) s.b.collisionFilterMask = 2;
+      }
+    },
+    step(el, g, h, ev) { if (el.evs.length) { ev.push(...el.evs); el.evs = []; } },
+    view(el, v) {
+      const T = v.THREE, [hx, hy, hz] = el.half, form = el.form || 'ziegel', farbe = el.farbe ?? el.f.farbe;
+      const M = (color, extra) => new T.MeshPhongMaterial({ color, shininess: 50, ...extra });
+      const bau = () => {
+        const grp = new T.Group();
+        if (form === 'eiszapfen') grp.add(new T.Mesh(new T.ConeGeometry(hx, hy * 2, 10).rotateX(Math.PI), M(farbe, { transparent: true, opacity: 0.85, shininess: 120 })));
+        else if (form === 'kastanie') {
+          grp.add(new T.Mesh(new T.SphereGeometry(hx, 14, 10).scale(1, hy / hx, 1), M(farbe, { shininess: 90 })));
+          const kappe = new T.Mesh(new T.SphereGeometry(hx * 0.75, 10, 6, 0, TAU, 0, 1).scale(1, 0.5, 1), M(0xD7B98E, { shininess: 10 }));
+          kappe.position.y = hy * 0.55; grp.add(kappe);
+        } else if (form === 'schraube') {
+          grp.add(new T.Mesh(new T.CylinderGeometry(hx * 0.45, hx * 0.3, hy * 1.7, 10), M(farbe, { shininess: 120 })));
+          const kopf = new T.Mesh(new T.CylinderGeometry(hx, hx, hy * 0.3, 6), M(farbe, { shininess: 120 }));
+          kopf.position.y = hy * 0.85; grp.add(kopf);
+        } else if (form === 'laib') grp.add(new T.Mesh(new T.CylinderGeometry(hx, hx, hy * 2, 24), [M(0xC98A2B, { shininess: 10 }), M(farbe, { shininess: 10 }), M(farbe, { shininess: 10 })]));
+        else { // Dachziegel: gewölbt (Halbrohr) auf einer Platte
+          grp.add(new T.Mesh(new T.BoxGeometry(hx * 2, hy, hz * 2), M(farbe, { shininess: 10 })));
+          const w = new T.Mesh(new T.CylinderGeometry(hz * 0.9, hz * 0.9, hx * 2, 12, 1, false, 0, Math.PI).rotateZ(Math.PI / 2), M(farbe, { shininess: 10 }));
+          w.position.y = hy * 0.4; w.scale.y = 0.6; grp.add(w);
+        }
+        grp.traverse(m => { if (m.isMesh) m.castShadow = true; });
+        grp.rotation.y = el.yw; v.scene.add(grp); return grp;
+      };
+      const schatten = new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false });
+      const teile = el.pool.map(() => {
+        const sh = new T.Mesh(new T.CircleGeometry(Math.max(hx, hz) * 1.2, 20).rotateX(-Math.PI / 2), schatten.clone());
+        v.scene.add(sh); return { g: bau(), sh, fx: puffs(v, form === 'eiszapfen' ? 0xE1F5FE : 0xBCAAA4, 8, 0.14), z: 'weg' };
+      });
+      let t = 0;
+      return {
+        tick(dt) {
+          t += dt;
+          el.pool.forEach((s, i) => {
+            const o = teile[i], p = s.b.position, sichtbar = s.k >= 0 && s.zustand !== 'weg';
+            o.g.visible = sichtbar; o.sh.visible = sichtbar && s.zustand !== 'liegt';
+            if (sichtbar) {
+              o.g.position.copy(p);
+              o.g.rotation.z = s.zustand === 'warnt' ? Math.sin(t * 40) * 0.12 : 0; // wackelt oben vor dem Fall
+              o.sh.position.set(s.x, s.yl + 0.03, s.z);
+              o.sh.material.opacity = 0.45 * Math.min(1, Math.max(0.2, 1 - (p.y - s.yl) / Math.max(1, s.y0 - s.yl)));
+            }
+            if (o.z === 'faellt' && s.zustand === 'liegt') o.fx.go([s.x, s.yl + 0.2, s.z], 2.5, 1.5); // Staub bzw. Eissplitter
+            o.z = s.zustand; o.fx.tick(dt);
+          });
         }
       };
     }
