@@ -11,7 +11,7 @@ const R = 0.5;          // Murmel-Radius
 const JUBEL = 1.8;      // s Jubel nach dem Erreichen, danach winken
 const GRAU = 0xBBBBBB, GRUEN = 0x3BB273;
 const FIG_R = 1.1, FIG_H = 3.2; // Platzbedarf der Figur (Radius, Höhe)
-export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', vulkan: 'geysir' };
+export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', winter: 'schneemann', vulkan: 'geysir' };
 // Figur eines Checkpoints: el.figur oder die der Welt (bestimmt auch den Jubel-Klang 'cp-' + Figur in audio.js)
 export const figurVon = (el, theme) => FIGUREN[el.figur] ? el.figur : FIGUR_JE_WELT[theme] || 'zwerg';
 
@@ -300,6 +300,39 @@ export const FIGUREN = {
             : z === 'jubel' ? -0.35 + 0.8 * (1 - Math.exp(-5 * t) * Math.cos(10 * t)) + 0.25 * Math.sin(t * 10 + i)
             : 0.3 + 0.25 * Math.sin(t * 3 + i + k * 0.6);
         }));
+      }
+    };
+  },
+
+  // Schneemann: döst mit dem Hut im Gesicht, dann fliegt der Hut hoch, er hüpft und schwenkt die Fahne am Astarm
+  schneemann(T, F) {
+    const schnee = mat(T, 0xFFFFFF, { shininess: 10 }), kohle = mat(T, 0x222222), ast = mat(T, 0x6D4C41);
+    const augen = [-1, 1].map(k => { const a = auge(T, 0.07); a.position.set(k * 0.13, 0.08, -0.28); return a; });
+    const nase = mesh(T, new T.ConeGeometry(0.07, 0.4, 8), mat(T, 0xFF7A1A), 0, -0.02, -0.48); nase.rotation.x = -Math.PI / 2;
+    const hut = group(T, mesh(T, cyl(T, 0.42, 0.42, 0.06, 16), kohle), mesh(T, cyl(T, 0.27, 0.27, 0.4, 16), kohle, 0, 0.22, 0), mesh(T, cyl(T, 0.275, 0.275, 0.08, 16), mat(T, 0xE53935), 0, 0.08, 0));
+    const kopf = group(T, mesh(T, new T.SphereGeometry(0.33, 16, 12), schnee), ...augen, nase, hut); kopf.position.y = 1.72;
+    const schal = mesh(T, new T.TorusGeometry(0.3, 0.09, 8, 16), mat(T, 0xE53935), 0, 1.45, 0); schal.rotation.x = Math.PI / 2;
+    const arme = [-1, 1].map(k => { const a = group(T, mesh(T, cyl(T, 0.035, 0.035, 0.7, 6), ast, 0, -0.35, 0)); a.position.set(k * 0.4, 1.3, 0); a.rotation.z = k * 0.9; return a; });
+    const arm = arme[1], fahne = F.make(1.6); fahne.position.y = -0.45; fahne.rotation.z = Math.PI; arm.add(fahne);
+    const g = group(T, mesh(T, new T.SphereGeometry(0.6, 18, 14), schnee, 0, 0.5, 0), mesh(T, new T.SphereGeometry(0.45, 18, 14), schnee, 0, 1.1, 0),
+      ...[0.95, 1.18].map(y => mesh(T, new T.SphereGeometry(0.05, 8, 6), kohle, 0, y, -0.43)), schal, kopf, ...arme);
+    return {
+      g, kopf: [0, 2.3, 0], sockel: 0xBFE6FA,
+      pose(z, t) {
+        augen.forEach(a => a.auf(z === 'schlaf' ? 0 : 1));
+        hut.position.set(0, 0.27, 0); hut.rotation.set(0, 0, 0);
+        if (z === 'schlaf') {
+          const b = Math.sin(t * 2);
+          g.position.y = 0; g.rotation.z = 0; kopf.rotation.set(0.3 + 0.04 * b, 0, 0);
+          hut.position.set(0, 0.2, -0.1); hut.rotation.x = -0.5; arm.rotation.z = 2.3 + 0.03 * b;
+        } else if (z === 'jubel') {
+          g.position.y = huepf(t, 0.45, 0.5); g.rotation.z = 0; kopf.rotation.set(0, 0, 0.15 * Math.sin(t * 12));
+          if (t < 1) { hut.position.y = 0.27 + 3.2 * t * (1 - t); hut.rotation.y = t * 12; }
+          arm.rotation.z = 2.8 + 0.5 * Math.sin(t * 14);
+        } else {
+          g.position.y = 0.04 * Math.abs(Math.sin(t * 4)); g.rotation.z = 0.06 * Math.sin(t * 2);
+          kopf.rotation.set(0, 0.25 * Math.sin(t * 1.5), 0); arm.rotation.z = 2.7 + 0.35 * Math.sin(t * 4);
+        }
       }
     };
   },

@@ -15,6 +15,8 @@ export const PROP_SIZE = {
   flasche: [2.4, 7, 2.4], ente: [4, 4, 4.4], zahnbuerste: [1, 1, 11], becher: [3, 4, 3], seife: [4, 1.4, 2.6], shampoo: [2.6, 6, 1.8],
   blume: [3, 6, 3], zwerg: [3, 6, 3], giesskanne: [7, 5, 3], eimer: [4, 4, 4], schaufel: [1.6, 0.5, 9], burg: [9, 7, 9], baum: [6, 12, 6],
   pilz: [3, 3, 3], stein: [4, 2.4, 3.4], teddy: [5, 6, 4], wuerfel: [3, 3, 3], auto: [3.6, 2.4, 6], kreisel: [3, 3.2, 3],
+  tanne: [5, 9.6, 5], schneemann: [3.4, 7, 3.4], iglu: [8, 4, 8], schlitten: [2.2, 1.2, 6], huette: [7.6, 6.2, 6.8], muetze: [4.2, 3, 4.2],
+  pinguin: [2.4, 3.9, 2.2], torstange: [0.5, 2.6, 0.5], eiszapfen: [2, 3, 0.8],
   fisch: [2, 2.4, 5], muschel: [4, 1.6, 4], anker: [5, 6, 1], truhe: [5, 4, 3.4], seestern: [4, 0.6, 4], koralle: [3, 5, 3],
   rakete: [3, 10, 3], satellit: [8, 3, 3], ufo: [6, 2.4, 6], kristall: [2.4, 5, 2.4], vulkanstein: [4, 3, 4]
 };
@@ -117,6 +119,79 @@ export const PROPS = {
   baum(T, o) { return group(T, mesh(T, cyl(T, 0.8, 1.1, 6, 12), mat(T, 0x795548), 0, 3, 0), mesh(T, new T.SphereGeometry(3.4, 18, 14), mat(T, o.farbe ?? 0x43A047), 0, 8, 0), mesh(T, new T.SphereGeometry(2.4, 16, 12), mat(T, o.farbe ?? 0x4CAF50), 1.8, 9.5, 0.8)); },
   pilz(T, o) { const g = group(T, mesh(T, cyl(T, 0.6, 0.8, 2, 12), mat(T, 0xFFF3E0), 0, 1, 0), mesh(T, new T.SphereGeometry(1.5, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(T, o.farbe ?? 0xE53935), 0, 1.9, 0)); for (let i = 0; i < 5; i++) { const a = i * 1.3; g.add(mesh(T, new T.SphereGeometry(0.22, 8, 6), mat(T, 0xFFFFFF), Math.cos(a) * 0.9, 2.9, Math.sin(a) * 0.9)); } return g; },
   stein(T, o) { const m = mesh(T, new T.DodecahedronGeometry(1.8, 0).scale(1.1, 0.7, 0.95), mat(T, o.farbe ?? 0x9E9E9E, { flatShading: true }), 0, 1.1, 0); return group(T, m); },
+
+  // ---------- Winter ----------
+  tanne(T, o) { // verschneite Tanne: drei Stufen, jede mit Schneehaube
+    const gruen = mat(T, o.farbe ?? 0x2E7D4F, { flatShading: true }), weiss = mat(T, 0xFFFFFF, { shininess: 10 });
+    const g = group(T, mesh(T, cyl(T, 0.5, 0.7, 2.4, 10), mat(T, 0x6D4C41), 0, 1.2, 0));
+    for (const [r, h, y] of [[2.6, 4, 3.6], [2, 3.4, 6], [1.3, 2.8, 8.2]]) {
+      g.add(mesh(T, new T.ConeGeometry(r, h, 10), gruen, 0, y, 0), mesh(T, new T.ConeGeometry(r * 0.62, h * 0.6, 10), weiss, 0, y + h * 0.2 + 0.02, 0));
+    }
+    return g;
+  },
+  schneemann(T, o) {
+    const s = mat(T, 0xFFFFFF, { shininess: 10 }), kohle = mat(T, 0x222222);
+    const g = group(T, mesh(T, new T.SphereGeometry(1.7, 20, 16), s, 0, 1.5, 0), mesh(T, new T.SphereGeometry(1.25, 20, 16), s, 0, 3.7, 0), mesh(T, new T.SphereGeometry(0.9, 18, 14), s, 0, 5.3, 0));
+    const nase = mesh(T, new T.ConeGeometry(0.2, 1, 10), mat(T, 0xFF7A1A), 0, 5.3, -1.3); nase.rotation.x = -Math.PI / 2; g.add(nase);
+    for (const x of [-0.35, 0.35]) g.add(mesh(T, new T.SphereGeometry(0.13, 8, 6), kohle, x, 5.6, -0.78));
+    for (const y of [3.3, 3.9, 4.4]) g.add(mesh(T, new T.SphereGeometry(0.14, 8, 6), kohle, 0, y, -Math.sqrt(1.25 * 1.25 - (y - 3.7) * (y - 3.7))));
+    g.add(mesh(T, cyl(T, 1, 1, 0.12, 18), kohle, 0, 6.05, 0), mesh(T, cyl(T, 0.65, 0.65, 0.9, 18), mat(T, o.farbe ?? 0x333333), 0, 6.5, 0));
+    const schal = mesh(T, new T.TorusGeometry(0.85, 0.22, 8, 20), mat(T, 0xE53935), 0, 4.6, 0); schal.rotation.x = Math.PI / 2; g.add(schal);
+    for (const k of [-1, 1]) { const a = mesh(T, cyl(T, 0.08, 0.08, 2, 6), mat(T, 0x6D4C41), k * 1.9, 4.2, 0); a.rotation.z = -k; g.add(a); }
+    return g;
+  },
+  iglu(T, o) { // Eingang (Tunnel) zeigt nach -z
+    const s = mat(T, o.farbe ?? 0xEAF4FB, { flatShading: true, shininess: 20 });
+    const tunnel = mesh(T, cyl(T, 1.3, 1.3, 2.4, 12, 1, false, 0, Math.PI).rotateZ(Math.PI / 2).rotateY(Math.PI / 2), s, 0, 0, -3.6);
+    const loch = mesh(T, new T.CircleGeometry(1.05, 12, 0, Math.PI), mat(T, 0x37474F, { side: T.DoubleSide }), 0, 0, -4.82); loch.castShadow = false;
+    return group(T, mesh(T, new T.SphereGeometry(4, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2), s, 0, 0, 0), tunnel, loch);
+  },
+  schlitten(T, o) { // Davoser Schlitten, fährt nach -z
+    const holz = mat(T, o.farbe ?? 0xC68A4A), g = group(T);
+    for (const x of [-0.9, 0.9]) {
+      g.add(mesh(T, new T.BoxGeometry(0.18, 0.18, 5), holz, x, 0.09, 0.4));
+      const horn = mesh(T, new T.BoxGeometry(0.18, 0.18, 1.5), holz, x, 0.52, -2.65); horn.rotation.x = 0.7; g.add(horn);
+      for (const z of [-1.1, 1.8]) g.add(mesh(T, new T.BoxGeometry(0.15, 0.9, 0.15), holz, x, 0.6, z));
+    }
+    for (const z of [-1.1, 1.8]) g.add(mesh(T, new T.BoxGeometry(2, 0.12, 0.2), holz, 0, 1, z));
+    for (let i = 0; i < 5; i++) g.add(mesh(T, new T.BoxGeometry(0.3, 0.1, 4), holz, -0.8 + i * 0.4, 1.1, 0.4));
+    return g;
+  },
+  huette(T, o) { // Berghütte mit Schnee auf dem Dach, Tür zeigt nach -z
+    const g = group(T, mesh(T, new T.BoxGeometry(7, 3.6, 6), mat(T, o.farbe ?? 0x8D5A34, { shininess: 10 }), 0, 1.8, 0));
+    g.add(mesh(T, new T.CylinderGeometry(0, 5.4, 2.6, 4).rotateY(Math.PI / 4).scale(1, 1, 0.88), mat(T, 0xFFFFFF, { flatShading: true, shininess: 10 }), 0, 4.9, 0));
+    g.add(mesh(T, new T.BoxGeometry(1.3, 2.2, 0.1), mat(T, 0x4E342E), -1.5, 1.1, -3.03));
+    g.add(mesh(T, new T.BoxGeometry(1.4, 1.1, 0.1), mat(T, 0xFFE082, { emissive: 0xFFB300, emissiveIntensity: 0.5 }), 1.5, 2.1, -3.03));
+    g.add(mesh(T, new T.BoxGeometry(0.8, 1.8, 0.8), mat(T, 0x757575), 2, 5, 1), mesh(T, new T.BoxGeometry(1, 0.25, 1), mat(T, 0xFFFFFF), 2, 6, 1));
+    return g;
+  },
+  muetze(T, o) { // Zipfelmütze mit Bommel
+    const weiss = mat(T, 0xFFFFFF, { shininess: 5 });
+    const rand = mesh(T, new T.TorusGeometry(1.7, 0.42, 8, 22), weiss, 0, 0.42, 0); rand.rotation.x = Math.PI / 2;
+    return group(T, mesh(T, new T.SphereGeometry(1.7, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 1.15, 1), mat(T, o.farbe ?? 0xE53935, { shininess: 5 }), 0, 0.42, 0), rand,
+      mesh(T, new T.SphereGeometry(0.55, 12, 8), weiss, 0, 2.6, 0));
+  },
+  pinguin(T, o) {
+    const schwarz = mat(T, o.farbe ?? 0x263238, { shininess: 60 }), weiss = mat(T, 0xFFFFFF), gelb = mat(T, 0xFF9800);
+    const schnabel = mesh(T, new T.ConeGeometry(0.22, 0.6, 10), gelb, 0, 3.1, -0.85); schnabel.rotation.x = -Math.PI / 2;
+    const g = group(T, mesh(T, new T.SphereGeometry(1, 18, 14).scale(1, 1.5, 0.9), schwarz, 0, 1.55, 0), mesh(T, new T.SphereGeometry(0.8, 16, 12).scale(1, 1.4, 0.6), weiss, 0, 1.45, -0.45),
+      mesh(T, new T.SphereGeometry(0.7, 16, 12), schwarz, 0, 3.2, 0), schnabel);
+    for (const k of [-1, 1]) {
+      g.add(mesh(T, new T.SphereGeometry(0.14, 8, 6), weiss, k * 0.28, 3.4, -0.58), mesh(T, new T.SphereGeometry(0.07, 8, 6), mat(T, 0x111111), k * 0.28, 3.42, -0.7));
+      g.add(mesh(T, new T.SphereGeometry(0.4, 10, 8).scale(1, 0.3, 1.4), gelb, k * 0.45, 0.12, -0.45));
+      const fl = mesh(T, new T.SphereGeometry(0.7, 10, 8).scale(0.25, 1, 0.6), schwarz, k * 1.02, 1.8, 0); fl.rotation.z = k * 0.3; g.add(fl);
+    }
+    return g;
+  },
+  torstange(T, o) { // Slalomstange mit Fähnchen
+    const m = mat(T, o.farbe ?? 0xE53935, { shininess: 60 });
+    return group(T, mesh(T, cyl(T, 0.09, 0.09, 2.6, 8), m, 0, 1.3, 0), mesh(T, new T.BoxGeometry(0.9, 0.6, 0.04), m, 0.5, 2.2, 0), mesh(T, new T.SphereGeometry(0.4, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.4, 1), mat(T, 0xFFFFFF), 0, 0, 0));
+  },
+  eiszapfen(T, o) { // hängen von y = 3 herunter
+    const m = mat(T, o.farbe ?? 0xBFE6FA, { shininess: 140, specular: 0xffffff, transparent: true, opacity: 0.85 }), g = group(T);
+    for (const [x, h] of [[-0.7, 2.1], [0, 3], [0.65, 1.7], [-0.3, 1.2]]) g.add(mesh(T, new T.ConeGeometry(0.28, h, 8).rotateX(Math.PI), m, x, 3 - h / 2, 0));
+    return g;
+  },
 
   // ---------- Spielzimmer ----------
   teddy(T, o) {

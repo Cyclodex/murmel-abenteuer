@@ -47,6 +47,7 @@ background:rgba(255,255,255,.35);border:3px solid rgba(255,255,255,.8);touch-act
 .world[data-world="badezimmer"]{--c:#E0529C}
 .world[data-world="weltraum"]{--c:#6A4BE0}
 .world[data-world="unterwasser"]{--c:#1F7AE0}
+.world[data-world="winter"]{--c:#2FA9C4}
 .world[data-world="vulkan"]{--c:#D2361E}
 .lvl{width:96px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:4px;background:color-mix(in srgb,var(--c) 22%,#fff);color:#3A2A14;border-radius:20px;font-size:34px;line-height:1.1}
 .lvl .s{font-size:14px;font-weight:800}

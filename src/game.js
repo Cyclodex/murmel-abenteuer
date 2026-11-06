@@ -21,6 +21,7 @@ export const SURFACES = {
   sand: { friction: 0.7, bounce: 0.3, grip: 0.9, drag: 1.4, dirt: 0.03 },
   seife: { friction: 0.02, bounce: 1, grip: 0.4, drag: -0.15, wash: 0.8, roll: 0.2 },
   handtuch: { friction: 0.9, bounce: 0.1, grip: 1, drag: 1.8, wash: 0.3 },
+  schnee: { friction: 0.7, bounce: 0.15, grip: 0.9, drag: 1.3, wash: 0.5 }, // Pulverschnee: bremst, schluckt Sprünge, putzt die Murmel
   nagel: { friction: 0.3, bounce: 0.55, grip: 1, drag: 0 }, // Nägel der Nagelwand schlucken etwas Schwung
   flussbett: { friction: 0.4, bounce: 0.05, grip: 1, drag: 0, wash: 0.5 }, // Grund im Fluss: Wasser schluckt den Aufprall
   keramik: { friction: 0.3, bounce: 1, grip: 1, drag: 0.9, wash: 0.5 }, // nasses Lavabo: hart (Bälle springen), ein Wasserfilm bremst etwas

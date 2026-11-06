@@ -282,7 +282,7 @@ test('Ohne localStorage läuft das Spiel trotzdem', async ({ page }) => {
 
 // Autopilot pro Welt (laufen parallel): jede Stärke mit der Standard-Murmel, jede Murmel mit Stärke normal.
 // Neue Welt: hier eintragen (der Test darunter meldet vergessene Welten).
-const WELTEN = ['uebung', 'spielzimmer', 'garten', 'kueche', 'badezimmer', 'weltraum', 'unterwasser', 'vulkan'];
+const WELTEN = ['uebung', 'spielzimmer', 'garten', 'kueche', 'badezimmer', 'weltraum', 'unterwasser', 'winter', 'vulkan'];
 
 test('Jedes Level hat eine Route und gehört zu einer Welt aus WELTEN', async ({ page }) => {
   await page.goto('/');
@@ -1090,7 +1090,7 @@ test('Checkpoint: Figur je Welt schläft, jubelt beim Erreichen, Band reisst, Ne
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
   const cp = () => page.evaluate(() => ({ ...window.murmel.view.scene.getObjectByName('checkpoint').userData }));
-  const welten = { ausflug: 'zwerg', sz2: 'springteufel', g1: 'zwerg', k1: 'toaster', b1: 'ente', w1: 'astronaut', u1: 'oktopus', v1: 'geysir' };
+  const welten = { ausflug: 'zwerg', sz2: 'springteufel', g1: 'zwerg', k1: 'toaster', b1: 'ente', w1: 'astronaut', u1: 'oktopus', wi1: 'schneemann', v1: 'geysir' };
   for (const [id, figur] of Object.entries(welten)) {
     await page.evaluate(i => { const m = window.murmel; m.startLevel(m.LEVELS.findIndex(l => l.id === i)); }, id);
     await expect.poll(cp, { message: id }).toMatchObject({ figur, zustand: 'schlaf', band: 'ganz' });
@@ -1166,19 +1166,20 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-schneemann', 'cp-geysir']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
     out.rollenEis = await render(a => a.roll(6, true, 'eis'), 1);
     out.rollenPfuetze = await render(a => a.roll(6, true, 'pfuetze'), 1);
+    out.rollenSchnee = await render(a => a.roll(6, true, 'schnee'), 1);
     out.rollenLuft = await render(a => a.roll(6, false, 'normal'), 1);
     out.aus = await render(a => { a.setMode('aus'); a.sfx('win'); });
-    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser', 'vulkan', 'badezimmer']) out['musik_' + song] = await render(a => a.music(song), 1);
+    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser', 'winter', 'vulkan', 'badezimmer']) out['musik_' + song] = await render(a => a.music(song), 1);
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-schneemann', 'cp-geysir', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'rollenSchnee', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_winter', 'musik_vulkan', 'musik_badezimmer']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }
