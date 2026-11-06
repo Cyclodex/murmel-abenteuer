@@ -53,6 +53,9 @@ const ROLL_FLAT = 0.9998; // Rollwiderstand nur auf ebenem Boden (Neigung < 1.1�
 const SLOPE_PUSH = 0.3;
 // Blickrichtung nach einem Sprung: so lange (s) in der Luft und so schnell (m/s) entlang des neuen Stücks
 const LAND_AIR = 0.3, LAND_V = 1;
+// Echte Orte: auf Flächen ohne Richtung (Tischplatte, Matratze) folgt der Blick der Rollrichtung, ab FOLGE_V (m/s)
+// höchstens FOLGE_W (rad/s). Langsam, weil die Eingabe relativ zur Kamera wirkt: Querlenken dreht sonst die Kamera mit.
+const FOLGE_V = 1.5, FOLGE_W = 1;
 const BRAKE_FLAT = 0.998; // Bremshilfe nur auf (fast) ebenem Boden (Neigung < 3.6°), bergab rollt die Murmel weiter
 
 export function createGame(CANNON, level, ballProps = BALL) {
@@ -225,6 +228,14 @@ export function createGame(CANNON, level, ballProps = BALL) {
       const flip = landed ? Math.sign(vf) : Math.abs(d) > Math.PI / 2 ? -1 : 1;
       g.track.yaw = flip < 0 ? tr.yaw + Math.PI : tr.yaw;
       g.track.lateral = flip * ((p.x - tr.mid[0]) * tr.right[0] + (p.y - tr.mid[1]) * tr.right[1] + (p.z - tr.mid[2]) * tr.right[2]);
+    } else if (level.ort && ground && !g.lock && !(g.holdT > 0)) {
+      const v = ball.velocity, sp = Math.hypot(v.x, v.z);
+      if (sp > FOLGE_V) {
+        const ziel = Math.atan2(-v.x, -v.z), d = Math.atan2(Math.sin(ziel - g.track.yaw), Math.cos(ziel - g.track.yaw));
+        const w = FOLGE_W * Math.min(1, (sp - FOLGE_V) / FOLGE_V); // knapp über der Schwelle noch langsamer
+        g.track.yaw += Math.max(-w * H, Math.min(w * H, d * 2 * H)); // nahe am Ziel weich auslaufen
+      }
+      g.track.lateral *= 1 - 2 * H; // kein Weg: Kamera wieder mittig hinter die Murmel
     }
     g.surface = SURFACES[ground && ground.userData && ground.userData.surface] || SURFACES.normal;
     airT = best ? 0 : airT + H;
@@ -283,7 +294,7 @@ export function createGame(CANNON, level, ballProps = BALL) {
   // Hangabtrieb auf festen Bahnstücken (nicht im Looping, nicht an den Seiten einer Rinne, nicht auf bewegten Teilen wie Wippe oder Falltür)
   function slope() {
     const gb = g.groundBody, u = gb && gb.userData;
-    if (g.lock || !u || !u.track || u.loop || u.pendel || gb.type !== CANNON.Body.STATIC) return;
+    if (g.lock || !u || !u.track || u.track.blick || u.loop || u.pendel || gb.type !== CANNON.Body.STATIC) return;
     // Richtung bergab = Schwerkraft entlang der Fläche: (0, -1, 0) + n * ny, Länge = sin(Neigung)
     const [nx, ny, nz] = g.groundN, dx = nx * ny, dy = ny * ny - 1, dz = nz * ny, v = ball.velocity;
     if (v.x * dx + v.y * dy + v.z * dz <= 0) return; // nur bergab, bergauf bleibt es wie bisher

@@ -31,13 +31,13 @@ export default {
   bereich: { at: [90, 50, 336], yaw: 180, strecke: ['bett', 'nachttisch'] },
   start: [42, KISSEN.h, -5], killY: -50 / U + 1,
   parts: [
-    // Matratze mit Bettdecke (weich: Oberfläche matratze)
+    // Matratze mit Bettdecke (weich: Oberfläche matratze), ohne richtung: der Blick folgt der Rollrichtung (Bogen um den Teddy)
     { type: 'klotz', at: [BETT.x / 2, -BETT.d / 2, BETT.z / 2], size: [BETT.x, BETT.d, -BETT.z], look: 'decke', surface: 'matratze' },
     // Westwand (hinter der Wand des Zimmers, nur damit die Murmel nicht durch die Wand fällt)
     { type: 'klotz', at: [BETT.x + 1.15, 10, BETT.z / 2], size: [2, 40, -BETT.z], look: 'wand' },
 
     // Kissen am Kopfende: oben flach, nach Süden ein Hang
-    { type: 'klotz', at: [(KISSEN.x0 + KISSEN.x1) / 2, KISSEN.h / 2, KISSEN.oben / 2], size: [KISSEN.x1 - KISSEN.x0, KISSEN.h, -KISSEN.oben], look: 'kissen', surface: 'matratze' },
+    { type: 'klotz', at: [(KISSEN.x0 + KISSEN.x1) / 2, KISSEN.h / 2, KISSEN.oben / 2], size: [KISSEN.x1 - KISSEN.x0, KISSEN.h, -KISSEN.oben], look: 'kissen', surface: 'matratze', richtung: 0 },
     { type: 'weg', from: [(KISSEN.x0 + KISSEN.x1) / 2, KISSEN.h, KISSEN.oben], to: [(KISSEN.x0 + KISSEN.x1) / 2, 0, KISSEN.z0], width: KISSEN.x1 - KISSEN.x0, thick: 3, surface: 'matratze', look: 'kissen' },
 
     // Bettdecke: zwei Falten
@@ -49,7 +49,7 @@ export default {
     { type: 'klotz', at: [21, 6, -56], size: [9, 12, 8], look: 'kuscheltier', surface: 'matratze', yaw: 15 },
 
     // Bilderbuch als Rampe (25 cm), oben auf einer Kurve der Spielzeug-Rennbahn, die auf Bauklötzen steht
-    { type: 'checkpoint', at: [3.1, 0, -44], size: [6, 3, 3] },
+    { type: 'checkpoint', at: [3.1, 0, -44], size: [6, 3, 3], yaw: 180 },
     { type: 'weg', from: [3.1, 0, -39], to: [3.1, 2.5, -23], width: 4.5, thick: 0.63, look: 'bilderbuch' },
     { type: 'kurve', at: [3.1, 2.5, -23], yaw: 180, turn: 90, radius: 3, width: 4, walls: 1, look: 'rennbahn' },
     { type: 'klotz', at: [2.6, 0.75, -21.4], size: [4, 1.5, 4], look: 'bauklotz', deko: true },

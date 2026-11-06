@@ -194,11 +194,14 @@ export const TYPES = {
     }
   },
 
-  // Klotz: Mittelpunkt + Grösse. {type:'klotz', at, size:[b,h,t], yaw?, look?, text?, surface?, deko?}
+  // Klotz: Mittelpunkt + Grösse. {type:'klotz', at, size:[b,h,t], yaw?, look?, text?, surface?, deko?, richtung?}
   // look z. B. 'floor', 'wall', 'lego-rot', 'klotz-blau', 'abc' (mit text:'A'). deko:true = nur Grafik, keine Physik
+  // richtung (Grad, wie startYaw): Fahrfläche, die Kamera schaut darauf in diese Richtung (wie auf einem Weg).
+  // Nur für die Kamera (blick): kein Hangabtrieb, keine Säulen, für Checkpoint-Figuren kein Weg.
   klotz: {
     solids(d) {
-      return [{ pos: d.at, half: scale(d.size, 0.5), quat: quatYawPitch((d.yaw || 0) * DEG, 0), look: d.look || 'floor', text: d.text, surface: d.surface, deko: !!d.deko }];
+      const tr = d.richtung == null ? undefined : { yaw: d.richtung * DEG, mid: d.at, right: rightOf(d.richtung * DEG), blick: true };
+      return [{ pos: d.at, half: scale(d.size, 0.5), quat: quatYawPitch((d.yaw || 0) * DEG, 0), look: d.look || 'floor', text: d.text, surface: d.surface, deko: !!d.deko, track: tr }];
     }
   },
 

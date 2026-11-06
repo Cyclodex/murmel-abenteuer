@@ -29,13 +29,13 @@ export default {
   start: [0, SAUM, -5], killY: -90 / U + 1,
   parts: [
     // Fensterbank aus Stein (2 cm): glatt, rollt weit
-    { type: 'klotz', at: [0, -0.625, -B.l / 2], size: [B.b, 1.25, B.l], look: 'stein', surface: 'stein' },
+    { type: 'klotz', at: [0, -0.625, -B.l / 2], size: [B.b, 1.25, B.l], look: 'stein', surface: 'stein', richtung: 0 },
     // Fensterglas (und Wand neben dem Fenster): die Murmel bleibt drinnen
     { type: 'klotz', at: [X1 + 0.5, 10, -B.l / 2], size: [1, 20, B.l], look: 'glas' },
 
     // Vorhang am Westende: zusammengerafft, der Saum liegt auf der Fensterbank (stoff bremst stark)
     { type: 'klotz', at: [0, VORHANG.h / 2, -VORHANG.d / 2], size: [B.b, VORHANG.h, VORHANG.d], look: 'vorhang', surface: 'stoff' },
-    { type: 'klotz', at: [0, SAUM / 2, -VORHANG.d - VORHANG.saum / 2], size: [B.b, SAUM, VORHANG.saum], look: 'vorhang', surface: 'stoff' },
+    { type: 'klotz', at: [0, SAUM / 2, -VORHANG.d - VORHANG.saum / 2], size: [B.b, SAUM, VORHANG.saum], look: 'vorhang', surface: 'stoff', richtung: 0 },
 
     // Slalom: Blumentopf am Glas, Blumentopf an der Zimmerkante, Kaktus am Glas
     ...topf(X1 - TOPF / 2 - 0.3, -15),
@@ -63,7 +63,7 @@ export default {
     // Grosse Muschel (Ziel), dahinter der Vorhang am Ostende
     { type: 'schuessel', at: MUSCHEL, r: 2, R: 3.5, h: 0.8, rim: 0.3, art: 'schuessel', offen: [180] },
     { type: 'ziel', at: MUSCHEL, r: 1.8 },
-    { type: 'klotz', at: [0, SAUM / 2, -B.l + VORHANG.d + VORHANG.saum / 2], size: [B.b, SAUM, VORHANG.saum], look: 'vorhang', surface: 'stoff' },
+    { type: 'klotz', at: [0, SAUM / 2, -B.l + VORHANG.d + VORHANG.saum / 2], size: [B.b, SAUM, VORHANG.saum], look: 'vorhang', surface: 'stoff', richtung: 0 },
     { type: 'klotz', at: [0, VORHANG.h / 2, -B.l + VORHANG.d / 2], size: [B.b, VORHANG.h, VORHANG.d], look: 'vorhang', surface: 'stoff' },
 
     { type: 'stern', at: [-3.5, 0.9, -15] },                // neben dem ersten Topf
