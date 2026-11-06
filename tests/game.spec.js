@@ -1196,7 +1196,7 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir', 'cp-schraube']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
