@@ -1309,6 +1309,50 @@ test('Profi-Welt Vulkan ist erst ab genug Sternen offen', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('Karte: Umschalter Bahnen / Echte Orte, Wahl wird gemerkt, Nächstes Level bleibt in der Kategorie', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.click('#startJoy');
+  await newPlayer(page, 'Kat');
+  // Start: Bahnen mit allen bisherigen Welten
+  await expect(page.locator('#mapKat button[data-kat="bahn"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.world[data-world="spielzimmer"]')).toBeVisible();
+  // Echte Orte: keine Bahn-Welt mehr; ohne eigene Welt ein Hinweis
+  await page.click('#mapKat button[data-kat="orte"]');
+  await expect(page.locator('#mapKat button[data-kat="orte"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.world[data-world="spielzimmer"]')).toHaveCount(0);
+  const orte = await page.evaluate(() => window.murmel.WORLDS.filter(w => w.kategorie === 'orte').map(w => w.id));
+  if (!orte.length) await expect(page.locator('.world.bald')).toContainText('Haus');
+  for (const id of orte) await expect(page.locator(`.world[data-world="${id}"]`)).toBeVisible();
+  // gemerkt, auch nach dem Neuladen
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('murmel-abenteuer-v2')).kategorie)).toBe('orte');
+  await page.reload();
+  await page.click('#startJoy');
+  await expect(page.locator('#mapOv')).toBeVisible();
+  await expect(page.locator('#mapKat button[data-kat="orte"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.click('#mapKat button[data-kat="bahn"]');
+  await expect(page.locator('.world[data-world="spielzimmer"]')).toBeVisible();
+  // «Nächstes Level» führt nie in die andere Kategorie (geprüft, sobald es eine Grenze zwischen zwei Kategorien gibt)
+  const kreuzt = await page.evaluate(async () => {
+    const { WORLDS, LEVELS, kategorie } = await import('/src/levels/index.js');
+    const welt = lv => WORLDS.find(w => w.levels.includes(lv) || (w.hard || []).includes(lv));
+    return LEVELS.slice(0, -1).some((lv, i) => kategorie(welt(lv)) !== kategorie(welt(LEVELS[i + 1])));
+  });
+  if (kreuzt) {
+    const i = await page.evaluate(async () => {
+      const { WORLDS, LEVELS, kategorie } = await import('/src/levels/index.js');
+      const welt = lv => WORLDS.find(w => w.levels.includes(lv) || (w.hard || []).includes(lv));
+      for (const lv of LEVELS) window.murmel.progress.finish(lv.id, 0);
+      return LEVELS.findIndex((lv, i) => i + 1 < LEVELS.length && kategorie(welt(lv)) !== kategorie(welt(LEVELS[i + 1])));
+    });
+    await page.evaluate(i => window.murmel.startLevel(i), i);
+    await expect(page.locator('#hud')).toBeVisible();
+    await winLevel(page, 0);
+    await expect(page.locator('#nextBtn')).toBeHidden();
+  }
+  expect(errors).toEqual([]);
+});
+
 // ---------- Belohnungen: Sticker, Spuren, Jubel ----------
 // Spielstand des aktuellen Spielers
 const saved = page => page.evaluate(() => { const d = JSON.parse(localStorage.getItem('murmel-abenteuer-v2')); return d.players.find(p => p.id === d.current); });

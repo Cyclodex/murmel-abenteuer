@@ -48,4 +48,13 @@ export const WORLDS = [
   ...(PRUEF ? [{ id: 'pruefstand', name: 'Prüfstand', emoji: '🔧', levels: PRUEFSTAND }] : [])
 ];
 
+// Kategorien der Karte (Umschalter oben): Bahnen = alle bisherigen Welten, Echte Orte = Welten, die an einem echten Ort spielen
+// (Haus vom Dach bis in den Keller, siehe docs/plan-echte-orte.md). Welt ohne kategorie = 'bahn'.
+// bald = Hinweis, solange die Kategorie noch keine Welt hat
+export const KATEGORIEN = [
+  { id: 'bahn', name: 'Bahnen', emoji: '🎢' },
+  { id: 'orte', name: 'Echte Orte', emoji: '🏠', bald: 'Hier entsteht ein ganzes Haus: vom Dach über den Estrich durch alle Stockwerke bis in den Keller.' }
+];
+export const kategorie = w => w.kategorie || 'bahn';
+
 export const LEVELS = WORLDS.flatMap(w => [...w.levels, ...(w.hard || [])]);

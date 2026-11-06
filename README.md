@@ -18,7 +18,7 @@ Kein Build-Schritt. `index.html` lädt `vendor/` (three.js r128, cannon.js 0.6.2
 
 | Datei | Inhalt |
 |---|---|
-| `src/levels/*.js` | Level als Daten (ein Objekt pro Level), Welten und Reihenfolge in `src/levels/index.js` (`need` = Welt erst ab so vielen Sternen offen, z. B. Profi-Welt Vulkan) |
+| `src/levels/*.js` | Level als Daten (ein Objekt pro Level), Welten und Reihenfolge in `src/levels/index.js` (`need` = Welt erst ab so vielen Sternen offen, z. B. Profi-Welt Vulkan), Kategorien der Karte in `KATEGORIEN` (Umschalter 🎢 Bahnen / 🏠 Echte Orte, Welt mit `kategorie: 'orte'`, sonst Bahnen; Plan in `docs/plan-echte-orte.md`) |
 | `src/levels/schwer/*.js` | Schwere Versionen (💀) je Welt: Level mit `schwer: '<id des normalen Levels>'`, offen sobald das normale geschafft ist |
 | `src/levels/pruefstand/*.js` | Prüfstand: ein kurzes Level pro Bauteil (Anlauf, Bauteil, Ziel), muss mit jeder Murmel schaffbar sein. Nicht auf der Karte, im Spiel mit `?pruefstand` als eigene Welt; Routen in `tests/routes/pruefstand/` |
 | `src/elements.js` | Grund-Bauteile: Klötze, Logik und Grafik je Typ |

@@ -4,7 +4,7 @@ import { createGame, R } from './game.js';
 import { createRenderer, createView } from './view.js';
 import { createInput, POWERS } from './input.js';
 import { createAudio, SOUND_MODES, buzz } from './audio.js';
-import { WORLDS, LEVELS } from './levels/index.js';
+import { WORLDS, LEVELS, KATEGORIEN, kategorie } from './levels/index.js';
 import { SKINS } from './skins.js';
 import { createTreppenView } from './treppe.js';
 import { TRAILS } from './trails.js';
@@ -148,6 +148,9 @@ $('c').addEventListener('pointerdown', () => {
 // danach freigeschaltet durch das vorherige
 // Schwere Version (lv.schwer = ID des normalen Levels): offen, sobald das normale Level geschafft ist
 const worldOpen = w => !w.need || progress.totalStars() >= w.need;
+const worldOf = lv => WORLDS.find(w => w.levels.includes(lv) || (w.hard || []).includes(lv));
+// «Nächstes Level» im Gewinn-Fenster: nur innerhalb derselben Kategorie (Bahnen / Echte Orte)
+const hasNext = i => i + 1 < LEVELS.length && kategorie(worldOf(LEVELS[i])) === kategorie(worldOf(LEVELS[i + 1])) && isOpen(i + 1);
 function isOpen(i) {
   const lv = LEVELS[i];
   if (lv.schwer) return progress.isDone(lv.schwer);
@@ -214,6 +217,14 @@ function showMap() {
   const sound = SOUND_MODES.find(m => m.id === audio.mode) || SOUND_MODES[0];
   label('btnSound', sound.emoji, sound.name);
   audio.music('karte');
+  // Umschalter Bahnen / Echte Orte: gemerkt für alle Spieler, die Karte zeigt nur die Welten der gewählten Kategorie
+  const kat = KATEGORIEN.find(k => k.id === progress.data.kategorie) || KATEGORIEN[0];
+  $('mapKat').replaceChildren(...KATEGORIEN.map(k => {
+    const b = document.createElement('button');
+    b.dataset.kat = k.id; b.setAttribute('aria-pressed', k === kat); b.innerHTML = `<span>${k.emoji}</span> ${k.name}`;
+    b.onclick = () => { if (k === kat) return; audio.sfx('tap'); progress.setKategorie(k.id); showMap(); };
+    return b;
+  }));
   const box = $('worlds'); box.textContent = '';
   // pro Welt eine Reihe; hat ein offenes Level eine schwere Version, ist die Kachel diagonal geteilt:
   // oben links das normale Level, unten rechts das schwere (🔒, bis das normale geschafft ist)
@@ -228,7 +239,13 @@ function showMap() {
   };
   // ⭐ gesammelt/möglich, z. B. ⭐2/9
   const stars = lv => `<span class="s">⭐${progress.best(lv.id)}/${lv.parts.filter(p => p.type === 'stern').length}</span>`;
-  for (const w of WORLDS) {
+  const shown = WORLDS.filter(w => kategorie(w) === kat.id);
+  if (!shown.length) {
+    const soon = document.createElement('div'); soon.className = 'world bald';
+    soon.innerHTML = `<div class="wicon">🚧</div><p>${kat.bald || ''}</p>`;
+    box.appendChild(soon);
+  }
+  for (const w of shown) {
     const row = document.createElement('div'); row.className = 'world'; row.dataset.world = w.id;
     row.innerHTML = `<div class="wicon">${w.emoji}<span class="wname">${w.name}</span></div><div class="levels"></div>`;
     w.levels.forEach((lv, k) => {
@@ -435,7 +452,7 @@ $('btnReset').onclick = () => { if (watching) game.reset(); else restart(); }; /
 $('btnHome').onclick = () => { if (watching) stopWatch(); else showMap(); };
 $('againBtn').onclick = restart;
 $('mapBtn').onclick = showMap;
-$('nextBtn').onclick = () => { if (levelIdx + 1 < LEVELS.length) chooseLevel(levelIdx + 1); };
+$('nextBtn').onclick = () => { if (hasNext(levelIdx)) chooseLevel(levelIdx + 1); };
 $('btnSkins').onclick = () => { audio.sfx('tap'); showSkins(); };
 $('btnAlbum').onclick = () => { audio.sfx('tap'); showAlbum(); };
 $('albumBack').onclick = showMap;
@@ -512,7 +529,7 @@ function onWin() {
   const cheers = [...fresh.map(s => ({ emoji: s.emoji, text: s.name, kind: 'Neue Murmel' })), ...freshTrails.map(t => ({ emoji: t.emoji, text: t.name, kind: 'Neue Spur' })),
     ...stickers.map(st => ({ emoji: st.emoji, text: st.text, kind: 'Neuer Sticker' }))];
   showWinRank();
-  show('nextBtn', levelIdx + 1 < LEVELS.length && isOpen(levelIdx + 1));
+  show('nextBtn', hasNext(levelIdx));
   // Zielmoment, Hochflug über das Level mit der gefahrenen Strecke, dann das Gewinn-Fenster (Tippen: sofort)
   view.cinema('win', { track: rec.track(t) });
   winShow = () => { winShow = null; clearTimeout(winT); show('winOv'); show('joy', false); cheer.show(cheers); };
