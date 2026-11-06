@@ -1,10 +1,13 @@
 // Dach 1: Dachrinne. Vom Holzdeck am Dachaustritt über den First, die Ziegel hinunter, über den Laufsteg des
 // Kaminfegers und die Dachkante in die Dachrinne, durch den Rinnenkessel und das Fallrohr in die Regentonne (Ziel).
-// Gefahren: Auf dem First (schmal, ohne Rand) blasen Böen quer, abwechselnd von vorne und von hinten; wer hinunterfällt,
-// fällt gleich vom Dach (Solaranlage und hintere Dachfläche sind nur Grafik). Auf der Ziegel-Schräge stehen Schneefang,
-// Gaube, Kamin und Antenne im Weg; die Lücke im unteren Schneefang liegt an der offenen Dachkante, und durch sie rollen
-// im Takt Kastanien vom Nussbaum. Im Laufsteg sind lose Bretter (Falltüren: wer stockt, fällt), dazwischen streift der
-// Arm eines Antennenrotors im Takt quer über den Steg. Zuletzt die Dachkante: schmal, ohne Rand, steil in die Rinne.
+// Gefahren: Auf dem First (schmal, ohne Rand) blasen Böen quer, abwechselnd von vorne und von hinten, jede Böe mit eigenem,
+// unregelmässigem Takt: zwischen den Böen-Feldern warten, bis es still ist; wer hinunterfällt, fällt gleich vom Dach
+// (Solaranlage und hintere Dachfläche sind nur Grafik). Auf der Ziegel-Schräge stehen Schneefang, Gaube, Kamin, Antenne
+// und Blumentöpfe der Dachterrasse (stossen weg) im Weg; die Lücke im unteren Schneefang liegt an der offenen Dachkante,
+// und durch sie rollen Kastanien vom Nussbaum in Salven, mal gross, mal klein. Am Anfang des Laufstegs lösen sich lose
+// Ziegel vom Dach und fallen auf den Steg ohne Rand (Schatten vorher; wer getroffen wird, fliegt hinunter). Dann lose
+// Bretter (Falltüren mit wechselnder Frist: wer stockt, fällt), dazwischen streift der Arm eines Antennenrotors quer über
+// den Steg. Zuletzt die Dachkante: schmal, ohne Rand, steil in die Rinne.
 // Ziegel bremsen (surface 'ziegel'), die nasse Rinne schluckt den Aufprall.
 // Massstab: 1 m im Spiel sind etwa 25 cm, die Murmel ist so gross wie ein Ball auf einem echten Hausdach.
 const y = z => (z + 3) / 2;           // vordere Dachfläche: First bei z = -3 (y = 0), 26.6° steil, Traufe bei z = -27.5
@@ -15,7 +18,7 @@ const rinneY = x => -14.05 - 0.06 * (x - 47.3); // Boden der Rinne, Gefälle nac
 const K = [55.3, rinneY(52) - 1.8, RZ];        // Rinnenkessel (Bodenmitte)
 const T = [K[0] + 10.4, K[1] - 11.4, RZ];      // Regentonne (Bodenmitte)
 const zink = h => ({ height: h, thick: 0.3, look: 'zink' });
-const kastanie = { r: 0.55, farbe: 0x7B4A2A, dir: [0, -1] };
+const kastanie = { farbe: 0x7B4A2A, dir: [0, -1] };
 
 export default {
   id: 'd1', name: 'Dachrinne', emoji: '🌧️', theme: 'dach',
@@ -31,9 +34,9 @@ export default {
     { type: 'weg', from: [-6, 0, -3], to: [19, 0, -3], width: 1.6, thick: 0.6, look: 'zink' },
     { type: 'klotz', at: [-6.4, 2, -3], size: [0.3, 4, 0.3], look: 'zink' },
     { type: 'deko', form: 'satschuessel', at: [-6.4, 2.6, -3], yaw: 160, scale: 0.6 },
-    { type: 'wind', at: [5, 0, -3], size: [3.4, 2.5, 5], yaw: 180, strength: 4 },
-    { type: 'wind', at: [10, 0, -3], size: [3.4, 2.5, 5], yaw: 0, strength: 4 },
-    { type: 'wind', at: [15, 0, -3], size: [3.4, 2.5, 5], yaw: 180, strength: 4 },
+    { type: 'wind', at: [5, 0, -3], size: [3.4, 2.5, 5], yaw: 180, strength: 4, takt: [[2.5, 0], [1.2, 1], [1, 0.4], [0.8, 1.3], [3.2, 0], [1.5, 1]] },
+    { type: 'wind', at: [10, 0, -3], size: [3.4, 2.5, 5], yaw: 0, strength: 4, takt: [[3, 0], [0.8, 1.3], [2, 0], [1.4, 0.8], [1, 0.2], [1.2, 1.1]], offset: 1 },
+    { type: 'wind', at: [15, 0, -3], size: [3.4, 2.5, 5], yaw: 180, strength: 4, takt: [[2, 0], [1, 1.2], [3.5, 0], [0.7, 1.3], [1.5, 0.5]], offset: 2.5 },
     // unter dem First vorne die Solaranlage, hinten die Ziegel der Kulisse: beide nur Grafik, wer hinunterfällt, fällt gleich
     { type: 'weg', from: [6.6, y(-3.9) + 0.05, -3.9], to: [6.6, y(-27.5) + 0.05, -27.5], width: 26, thick: 0.3, look: 'solar', deko: true },
 
@@ -57,18 +60,22 @@ export default {
     { type: 'klotz', at: [38, y(-5.5) + 1.5, -5.5], size: [0.3, 4, 0.3], look: 'zink' },
     { type: 'deko', form: 'satschuessel', at: [38, y(-5.5) + 2.5, -5.5], yaw: 200, scale: 0.7 },
     { type: 'klotz', at: [44, y(-10) + 1, -10], size: [2.4, 4, 2.4], look: 'backstein' },
-    // Kastanien vom Nussbaum: rollen im Takt durch die untere Lücke
-    { type: 'felsen', from: [21.1, y(-8.3), -8.3], speed: 1.5, every: 4, ...kastanie },
+    // Blumentöpfe der Dachterrasse über dem unteren Schneefang: wer anstösst, wird weggestossen
+    { type: 'bumper', pos: [27, y(-10.3), -10.3], r: 0.7, kick: 5, look: 'topf' },
+    { type: 'bumper', pos: [37.6, y(-11), -11], r: 0.6, kick: 5, look: 'topf' },
+    // Kastanien vom Nussbaum: rollen in Salven durch die untere Lücke, mal gross, mal klein
+    { type: 'felsen', from: [21.1, y(-8.3), -8.3], speed: [1.5, 2.2, 1.2], every: [1.2, 4.5, 1, 1, 5], r: [0.55, 0.4, 0.6, 0.45, 0.5], wobble: 0.3, ...kastanie },
     { type: 'deko', form: 'baum', at: [16, T[1] - 0.8, -9], scale: 2.2 },
 
-    // Laufsteg des Kaminfegers: eben, ohne Rand, mit drei losen Brettern (Falltüren)
+    // Laufsteg des Kaminfegers: eben, ohne Rand. Lose Ziegel fallen vom Dach auf den Anfang, dann drei lose Bretter (Falltüren)
     { type: 'weg', from: [19.6, -6, L], to: [28, -6, L], width: 2, thick: 0.4 },
-    { type: 'checkpoint', at: [25, -6, L], size: [5, 3, 2], yaw: -90 },
-    { type: 'falltuer', at: [29, -6, L], size: [2, 2], yaw: -90 },
+    { type: 'checkpoint', at: [23.1, -6, L], size: [2, 3, 2], yaw: -90 },
+    { type: 'fallend', from: [24.2, 1, L], to: [26, L], stellen: [0.5, 0, 0.9, 0.3, 1], every: [1.3, 0.9, 4.5, 2, 5.5], warn: 0.8, form: 'ziegel', kick: 5 },
+    { type: 'falltuer', at: [29, -6, L], size: [2, 2], yaw: -90, delay: [0.6, 0.45, 0.7], offen: [2.5, 1.2, 3.5] },
     { type: 'weg', from: [30, -6, L], to: [33, -6, L], width: 2, thick: 0.4 },
-    { type: 'falltuer', at: [34, -6, L], size: [2, 2], yaw: -90 },
+    { type: 'falltuer', at: [34, -6, L], size: [2, 2], yaw: -90, delay: [0.6, 0.7, 0.45], offen: [1.5, 3] },
     { type: 'weg', from: [35, -6, L], to: [36.2, -6, L], width: 2, thick: 0.4 },
-    { type: 'falltuer', at: [37.2, -6, L], size: [2, 2], yaw: -90 },
+    { type: 'falltuer', at: [37.2, -6, L], size: [2, 2], yaw: -90, delay: [0.65, 0.5], offen: [2, 1, 3] },
     { type: 'weg', from: [38.2, -6, L], to: [49.5, -6, L], width: 2, thick: 0.4 },
     { type: 'klotz', at: [31.5, y(-18.6) + 0.8, -18.6], size: [0.35, 3.2, 0.35], look: 'zink', deko: true },
     { type: 'balken', at: [31.5, -6, -18.6], length: 6.4, speed: 40, farbe: 'gelb' },
