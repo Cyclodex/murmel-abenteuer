@@ -5,7 +5,8 @@
 // Jede neue Version wird pro Tab nur einmal angeboten (sessionStorage): nach „Später“ fragt es für diese Version nicht
 // mehr, und kommt nach dem Neuladen noch die alte Seite (Cache, Verteilung noch nicht fertig), fragt es nicht endlos.
 // label: kurze Anzeige, "Version 0.3 · 01.11.26, 22:38" (Nummer = Updates auf main, Zeit des Commits in Ortszeit),
-// ohne Nummer der Commit ("Version 3fd0424 · …"), lokal "Version dev".
+// ohne Nummer der Commit ("Version 3fd0424 · …"), lokal "Version dev". In der Vorschau eines PRs (<meta name="vorschau">,
+// .github/workflows/vorschau.yml) davor "Vorschau PR 12 · ".
 const KEY = 'murmel-update';
 
 const labelOf = (version, zeit, nummer) => {
@@ -17,11 +18,12 @@ const labelOf = (version, zeit, nummer) => {
 export function createUpdate(doc = document) {
   const meta = doc.querySelector('meta[name="version"]'), mine = meta ? meta.content : 'dev';
   const zeitMeta = doc.querySelector('meta[name="version-zeit"]'), nrMeta = doc.querySelector('meta[name="version-nummer"]');
+  const vorschau = doc.querySelector('meta[name="vorschau"]')?.content;
   const tried = () => { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } };
   const remember = v => { try { sessionStorage.setItem(KEY, v); } catch (e) { /* ohne Speicher: dann fragt es wieder */ } };
   return {
     version: mine,
-    label: labelOf(mine, zeitMeta && zeitMeta.content, nrMeta && nrMeta.content),
+    label: (vorschau ? `Vorschau ${vorschau} · ` : '') + labelOf(mine, zeitMeta && zeitMeta.content, nrMeta && nrMeta.content),
     async check() {
       if (!mine || mine === 'dev') return null;
       try {

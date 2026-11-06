@@ -1,0 +1,76 @@
+# Vorschau für jeden PR: baut die Seite wie pages.yml (Stand nach dem Merge, gestempelt) und lädt sie auf Cloudflare Pages
+# unter https://pr-<nummer>.murmel-vorschau.pages.dev. Der PR zeigt den Link als „View deployment“ (Umgebung „Vorschau“).
+# Getrennt von der Produktion (GitHub Pages): eigene Domain, also eigener Spielstand (localStorage) und eigener
+# Service Worker; die Online-Rangliste ist in der Vorschau aus (<meta name="vorschau">, src/online.js), auf dem
+# Startbildschirm steht „Vorschau PR 12 · Version …“.
+# Einmalig nötig (sonst überspringt die Action die Vorschau):
+#   1. Cloudflare-Konto (gratis). API-Token mit „Account → Cloudflare Pages → Edit“ anlegen.
+#   2. GitHub: Settings → Secrets and variables → Actions: Secrets CLOUDFLARE_API_TOKEN und CLOUDFLARE_ACCOUNT_ID.
+#   3. Nach der ersten Vorschau (legt das Projekt murmel-vorschau an): Cloudflare → Workers & Pages → murmel-vorschau →
+#      Settings → General → Access policy → „Enable“. Dann öffnen die Vorschauen nur nach Login mit deiner E-Mail.
+name: Vorschau (PR)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: vorschau-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  PROJEKT: murmel-vorschau
+
+jobs:
+  # Vorschau nur mit Secrets (fehlen in PRs aus Forks und solange Cloudflare nicht eingerichtet ist)
+  pruefen:
+    runs-on: ubuntu-latest
+    outputs:
+      da: ${{ steps.secrets.outputs.da }}
+    steps:
+      - id: secrets
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then echo "da=1" >> "$GITHUB_OUTPUT"; else
+            echo "::notice::Keine Vorschau: Secret CLOUDFLARE_API_TOKEN fehlt (siehe .github/workflows/vorschau.yml)."
+          fi
+
+  vorschau:
+    needs: pruefen
+    if: needs.pruefen.outputs.da == '1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: Vorschau
+      url: ${{ steps.hochladen.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dateien kopieren und stempeln
+        run: |
+          mkdir _site
+          git archive HEAD | tar -x -C _site
+          node .github/stempel.mjs _site "$(git rev-parse --short=12 HEAD)" "$(git log -1 --format=%cI)"
+          sed -i 's|<meta name="vorschau" content="">|<meta name="vorschau" content="PR ${{ github.event.pull_request.number }}">|' _site/index.html
+          grep -q '<meta name="vorschau" content="PR ${{ github.event.pull_request.number }}">' _site/index.html
+      - id: hochladen
+        name: Auf Cloudflare Pages hochladen
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ZWEIG: pr-${{ github.event.pull_request.number }}
+        run: |
+          # Projekt beim ersten Mal anlegen (gibt es das schon, schlägt das fehl: egal). Die Produktion des Projekts (main)
+          # bleibt leer, hochgeladen werden nur Vorschauen (Zweig pr-<nummer>).
+          npx --yes wrangler@4.20.0 pages project create "$PROJEKT" --production-branch=main || true
+          npx --yes wrangler@4.20.0 pages deploy _site --project-name="$PROJEKT" --branch="$ZWEIG" \
+            --commit-hash="${{ github.event.pull_request.head.sha }}" --commit-dirty=true
+          url="https://$ZWEIG.$PROJEKT.pages.dev"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "### Vorschau: $url" >> "$GITHUB_STEP_SUMMARY"
