@@ -56,12 +56,12 @@ export const ballPos = g => [g.ball.position.x, g.ball.position.y, g.ball.positi
 
 export const TYPES = {
   // Weg von A nach B (Oberkante). Wenn die Höhe sich ändert, wird er zur Rampe.
-  // {type:'weg', from, to, width, walls?:Höhe, caps?:'start'|'end'|'both', thick?, surface?:'eis'|'schlamm', look?}
+  // {type:'weg', from, to, width, walls?:Höhe, caps?:'start'|'end'|'both', thick?, surface?:'eis'|'schlamm', look?, deko?:true = nur Grafik}
   weg: {
     solids(d) {
       const s = segment(d.from, d.to), w = d.width ?? 4, th = d.thick ?? 1;
       const look = d.look || (d.surface && d.surface !== 'normal' ? d.surface : (Math.abs(s.pitch) > 1e-3 ? 'ramp' : 'floor'));
-      const out = [{ pos: add(s.mid, scale(s.up, -th / 2)), half: [w / 2, th / 2, s.L / 2], quat: s.q, look, surface: d.surface, track: track(s) }];
+      const out = [{ pos: add(s.mid, scale(s.up, -th / 2)), half: [w / 2, th / 2, s.L / 2], quat: s.q, look, surface: d.surface, track: track(s), deko: !!d.deko }];
       const h = d.walls || 0;
       if (h > 0) {
         // Seitenwände enden an den Abschlusswänden (keine Überlappung -> kein Flimmern an den Ecken)

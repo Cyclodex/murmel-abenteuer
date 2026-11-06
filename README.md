@@ -114,7 +114,7 @@ der Garten liegt wie jeder Untergrund 1 m unter `killY`. Looks der Welt: `'ziege
 
 | Bauteil | Felder |
 |---|---|
-| `weg` | `from`, `to` (Oberkante; Höhenunterschied = Rampe), `width`, `walls`, `caps` (`'start'`/`'end'`/`'both'`), `thick`, `surface` (`'eis'`/`'schlamm'`/`'pfuetze'`/`'sand'`/`'seife'`/`'handtuch'`/`'ziegel'` = Dachziegel, bremsen stark: auf einem steilen Dach rollt die Murmel ohne Gas nur ~3.4 m/s; `'schnee'` = Pulverschnee: bremst, schluckt Sprünge; `'zuckerwatte'` = klebt und bremst stark, Aussehen in der Welt Chilbi/`'saegemehl'` = Sägemehl: weich und zäh), `look` |
+| `weg` | `from`, `to` (Oberkante; Höhenunterschied = Rampe), `width`, `walls`, `caps` (`'start'`/`'end'`/`'both'`), `thick`, `surface` (`'eis'`/`'schlamm'`/`'pfuetze'`/`'sand'`/`'seife'`/`'handtuch'`/`'ziegel'` = Dachziegel, bremsen stark: auf einem steilen Dach rollt die Murmel ohne Gas nur ~3.4 m/s; `'schnee'` = Pulverschnee: bremst, schluckt Sprünge; `'zuckerwatte'` = klebt und bremst stark, Aussehen in der Welt Chilbi/`'saegemehl'` = Sägemehl: weich und zäh), `look`, `deko: true` (nur Grafik, ohne Physik, wie beim `klotz`) |
 | `kurve` | `at` (Start, Mitte), `yaw` (Startrichtung), `turn` (+ rechts / - links), `radius`, `width`, `walls` |
 | `looping` | `at` (Einfahrt unten), `yaw`, `radius`, `width`, `shift` (Ausfahrt seitlich versetzt, beginnt und endet weich). Braucht `turbo` davor. Im Looping wirkt Kippen nicht |
 | `wand` | `from`, `to` (Unterkante), `height`, `look` |
