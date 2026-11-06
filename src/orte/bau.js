@@ -73,6 +73,7 @@ export function bauOrt(T, scene, ort, bereich = {}) {
   box(W / 2 - 0.5, W / 2 + 0.5, H - 18, H, D / 2 - 0.5, D / 2 + 0.5, 0x888888);
 
   // Möbel (grauer Rohbau)
+  const n0 = root.children.length;
   for (const m of ort.moebel) {
     const [x0, z0, x1, z1] = m.box, [y0, y1] = m.y, c = m.farbe ?? 0xBDBDBD;
     const dunkler = new T.Color(c).multiplyScalar(0.8).getHex();
@@ -100,5 +101,6 @@ export function bauOrt(T, scene, ort, bereich = {}) {
     } else if (!strecke.has(m.id)) box(x0, x1, y0, y1, z0, z1, c);
   }
   // Reichweite für die Kamera: grösster Abstand zwischen zwei Ecken des Raums
-  return { far: Math.hypot(W, H, D) * CM * 1.3, root };
+  // moebel: stehen sie zwischen Kamera und Murmel, blendet die Kamera sie aus (view.js)
+  return { far: Math.hypot(W, H, D) * CM * 1.3, root, moebel: root.children.slice(n0) };
 }
