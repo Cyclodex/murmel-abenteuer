@@ -1,8 +1,9 @@
 // Fallen und Hindernisse für schwere Level: Feld mit Löchern, Falltür, Schieber, Hammer (quetscht),
 // Treppe, Fluss, rollende Felsen. Gleiche Schnittstelle wie in elements.js.
-import { DEG, quatYawPitch, rotate, add, sub, dot, scale, lerp3, toLocal, fwdOf, rightOf, ease, mulQ } from './math.js';
+import { DEG, quatYawPitch, rotate, add, sub, dot, scale, lerp3, toLocal, fwdOf, rightOf, ease, mulQ, yawOf, angleDiff } from './math.js';
 import { TYPES, segment, track, kinematicBody, driveTo, ballPos, norm } from './elements.js';
 import { buildProp, PROP_SIZE } from './props.js';
+import { nimm, hatListe, zyklen, plan, wo, startVon, immer } from './takt.js';
 
 const R = 0.5;
 const WATER_DRAG = 2; // Wasserwiderstand im Fluss (siehe fluss.step)
@@ -50,6 +51,8 @@ export const FALLEN = {
 
   // Falltür: Klappe im Boden, die kurz nach dem Drauffahren nach unten aufklappt und später wieder zugeht.
   // at = Mitte (Oberkante), size = [breit, tief], yaw, delay = s bis sie aufgeht, offen = s bis sie wieder zu ist
+  // delay/offen als Zahl oder Liste (Öffnung k nimmt liste[k % länge], gezählt ab Level-Start).
+  // Autopilot: wait ['frei', 'falltuer', n, rest] = Klappe ist zu (und nicht am Aufgehen).
   // {type:'falltuer', at, size?, yaw?, delay?, offen?}
   falltuer: {
     init(el, g) {
@@ -60,7 +63,7 @@ export const FALLEN = {
       el.body.position.set(...el.hinge);
       el.body.userData = { track: { yaw: el.yw, mid: el.at, right: rightOf(el.yw) } };
     },
-    reset(el) { el.a = 0; el.state = 'zu'; el.t = 0; },
+    reset(el) { el.a = 0; el.state = 'zu'; el.t = 0; el.n = 0; },
     pre(el, g, h) {
       if (el.state === 'zu' && el.a < 1e-3 && g.groundBody === el.body) { el.state = 'warnt'; el.t = 0; }
       const want = el.state === 'auf' ? 95 * DEG : 0, rate = (el.state === 'auf' ? 500 : 120) * DEG;
@@ -71,9 +74,10 @@ export const FALLEN = {
     },
     step(el, g, h, ev) {
       el.t += h;
-      if (el.state === 'warnt' && el.t > (el.delay ?? 0.6)) { el.state = 'auf'; el.t = 0; ev.push('klapp'); }
-      else if (el.state === 'auf' && el.t > (el.offen ?? 2.5)) { el.state = 'zu'; el.t = 0; }
+      if (el.state === 'warnt' && el.t > nimm(el.delay, el.n, 0.6)) { el.state = 'auf'; el.t = 0; ev.push('klapp'); }
+      else if (el.state === 'auf' && el.t > nimm(el.offen, el.n, 2.5)) { el.state = 'zu'; el.t = 0; el.n++; }
     },
+    frei: el => el.state === 'zu' && el.a < 0.01,
     view(el, v) {
       const b = v.bodyGroup(el.body);
       let t = 0;
@@ -84,7 +88,14 @@ export const FALLEN = {
   // Schieber: Klotz, der hin- und herfährt (wie die Plattform) und die Murmel vom Weg schiebt.
   // from/to = Mitte unten, size = [breit, hoch, tief], time = Fahrzeit, pause = Pause an den Enden, offset = Startverzögerung
   // form = Gegenstand aus props.js statt des Klotzes, auf size gestreckt (z. B. 'putschauto', yaw = wohin es schaut), farbe dazu
+  // time/pause als Zahl oder Liste (jeder Halt mit der folgenden Fahrt ist ein Zyklus, src/takt.js).
+  // pfad = [[x, z], …] statt from/to: fährt den Polygonzug als Schleife ab (letzter Punkt -> erster), y = Höhe (Standard 0),
+  // speed = m/s (Zahl oder Liste pro Strecke), pause = Halt an jeder Ecke (Zahl oder Liste). Mit form 'putschauto' dreht die
+  // Front in Fahrtrichtung (während des Halts an der Ecke).
+  // Autopilot: wait ['frei', 'schieber', n, rest, [x, z, r?]] = kommt die nächsten rest s nicht näher als r an [x, z];
+  // ohne Punkt: steht die nächsten rest s still. Wegpunkt follow: ['schieber', n, abstand?] = hinter dem Schieber herfahren.
   // {type:'schieber', from, to, size?, yaw?, time?, pause?, offset?, look?, form?, farbe?}
+  // {type:'schieber', pfad, y?, speed?, pause?, size?, offset?, form?, farbe?}
   schieber: {
     init(el, g) {
       const [b, hh, t] = el.size || [2, 1.2, 2];
@@ -92,9 +103,46 @@ export const FALLEN = {
       el.body.quaternion.set(...quatYawPitch((el.yaw || 0) * DEG, 0));
       el.body.userData = {};
       el.lastV = [0, 0, 0];
+      if (el.pfad) {
+        const P = el.pfad.map(p => p.length === 3 ? p : [p[0], el.y ?? 0, p[1]]), n = P.length;
+        el.ecken = P;
+        el.strecken = P.map((p, i) => Math.hypot(P[(i + 1) % n][0] - p[0], P[(i + 1) % n][2] - p[2]));
+        el.richtung = P.map((p, i) => yawOf(P[(i + 1) % n][0] - p[0], P[(i + 1) % n][2] - p[2]));
+        el.dreht = el.dreht ?? el.form === 'putschauto';
+        el.pfadPlan = plan(zyklen(n, el.speed, el.pause), k => TYPES.schieber.halt(el, k) + TYPES.schieber.fahrt(el, k));
+      }
     },
-    reset(el, g) { el.t = el.offset || 0; el.body.position.set(...TYPES.plattform.posAt(el, el.t)); el.body.velocity.set(0, 0, 0); el.lastV = [0, 0, 0]; },
-    pre(el, g, h) { el.t += h; driveTo(el.body, TYPES.plattform.posAt(el, el.t), h); },
+    halt: (el, k) => nimm(el.pause, k, 0.5),
+    fahrt: (el, k) => el.strecken[k % el.ecken.length] / Math.max(0.1, nimm(el.speed, k, 3)),
+    // Ort (und Blickrichtung bei dreht) zur Zeit t
+    posAt(el, t) {
+      if (!el.pfad) return TYPES.plattform.posAt(el, t);
+      const { k, u } = wo(el.pfadPlan, t), n = el.ecken.length, i = k % n, pa = TYPES.schieber.halt(el, k);
+      return u < pa ? el.ecken[i] : lerp3(el.ecken[i], el.ecken[(i + 1) % n], ease((u - pa) / TYPES.schieber.fahrt(el, k)));
+    },
+    yawAt(el, t) {
+      const { k, u } = wo(el.pfadPlan, t), n = el.ecken.length, i = k % n, pa = TYPES.schieber.halt(el, k);
+      const a = el.richtung[(i + n - 1) % n], b = el.richtung[i];
+      return u >= pa || pa < 0.05 ? b : a + angleDiff(a, b) * ease(u / pa); // an der Ecke drehen
+    },
+    reset(el, g) {
+      el.t = el.offset || 0; el.body.position.set(...TYPES.schieber.posAt(el, el.t)); el.body.velocity.set(0, 0, 0); el.lastV = [0, 0, 0];
+      if (el.dreht) { el.yawNow = TYPES.schieber.yawAt(el, el.t); el.body.quaternion.set(...quatYawPitch(el.yawNow, 0)); el.body.angularVelocity.set(0, 0, 0); }
+    },
+    pre(el, g, h) {
+      el.t += h; driveTo(el.body, TYPES.schieber.posAt(el, el.t), h);
+      if (el.dreht) {
+        const y1 = TYPES.schieber.yawAt(el, el.t), w = angleDiff(el.yawNow, y1) / h;
+        el.body.quaternion.set(...quatYawPitch(el.yawNow, 0)); el.body.angularVelocity.set(0, w, 0); el.yawNow = y1;
+      }
+    },
+    // Autopilot: frei(el, rest, [x, z, r]) = kommt in den nächsten rest s nicht näher als r an [x, z]; ohne Punkt: steht still
+    frei(el, rest, punkt) {
+      const [b, , t] = el.size || [2, 1.2, 2], at = TYPES.schieber.posAt;
+      if (!punkt) { const p0 = at(el, el.t); return immer(rest, s => { const p = at(el, el.t + s); return p[0] === p0[0] && p[2] === p0[2]; }); }
+      const [x, z, r = Math.hypot(b, t) / 2 + R + 0.3] = punkt;
+      return immer(rest, s => { const p = at(el, el.t + s); return Math.hypot(p[0] - x, p[2] - z) > r; });
+    },
     view(el, v) {
       if (!el.form) return v.bodyGroup(el.body);
       const [b, hh, t] = el.size || [2, 1.2, 2], s = PROP_SIZE[el.form] || [2, 2, 2], grp = buildProp(v.THREE, el.form, el);
@@ -105,8 +153,10 @@ export const FALLEN = {
 
   // Hammer: schwingt von der Seite auf den Weg. Ist die Murmel darunter, wird sie zerquetscht (zurück zum Checkpoint).
   // at = Aufschlagpunkt (Mitte, Oberkante des Wegs), yaw = Wegrichtung, side = 1: Stiel rechts, -1: links,
-  // length = Drehpunkt bis Kopfmitte, size = Kopf [quer, hoch, längs], up/down = s oben warten / unten liegen, offset = Startverzögerung
-  // {type:'hammer', at, yaw?, side?, length?, size?, up?, down?, offset?, farbe?}
+  // length = Drehpunkt bis Kopfmitte, size = Kopf [quer, hoch, längs], up/down = s oben warten / unten liegen, offset = Startverzögerung,
+  // pause = zusätzlich s oben (zu up addiert). up/down/pause als Zahl oder Liste (Schlag k nimmt liste[k % länge], src/takt.js).
+  // Autopilot: wait ['frei', 'hammer', n, rest] = Kopf bleibt die nächsten rest s oben.
+  // {type:'hammer', at, yaw?, side?, length?, size?, up?, down?, pause?, offset?, farbe?}
   hammer: {
     init(el, g) {
       const [hb, hh, ht] = el.size || [2.4, 1.4, 1.6], L = el.length ?? 4, s = el.side ?? 1;
@@ -119,19 +169,30 @@ export const FALLEN = {
       el.body.position.set(...el.pivot);
       el.body.userData = {};
       const up = el.up ?? 1.5, down = el.down ?? 0.6;
-      el.times = [up, 0.28, down, 1.1]; // oben, zuschlagen, unten, hochheben
-      el.per = up + 0.28 + down + 1.1;
+      if (hatListe(el.up, el.down, el.pause)) { // Taktliste: jeder Schlag eigene Zeiten
+        el.cycles = plan(zyklen(1, el.up, el.down, el.pause), k => TYPES.hammer.zeiten(el, k).reduce((a, b) => a + b, 0));
+        el.per = el.cycles.per;
+        return;
+      }
+      el.times = [up + (el.pause ?? 0), 0.28, down, 1.1]; // oben, zuschlagen, unten, hochheben
+      el.per = el.times[0] + 0.28 + down + 1.1;
     },
+    // Zeiten von Schlag k: oben, zuschlagen, unten, hochheben
+    zeiten: (el, k) => [nimm(el.up, k, 1.5) + nimm(el.pause, k, 0), 0.28, nimm(el.down, k, 0.6), 1.1],
     reset(el) { el.t = 0; el.a = TYPES.hammer.angleAt(el, 0); el.hit = false; },
     // Winkel zur Zeit t: 0 = unten auf dem Weg, 80° = oben
     angleAt(el, t) {
-      const [up, slam, down, lift] = el.times, top = 80 * DEG;
-      let u = phaseOf({ t, offset: el.offset }, el.per) * el.per;
+      const top = 80 * DEG;
+      let up, slam, down, lift, u;
+      if (el.cycles) { const w = wo(el.cycles, t + (el.offset || 0)); [up, slam, down, lift] = TYPES.hammer.zeiten(el, w.i); u = w.u; }
+      else { [up, slam, down, lift] = el.times; u = phaseOf({ t, offset: el.offset }, el.per) * el.per; }
       if (u < up) return top;
       if ((u -= up) < slam) { const k = u / slam; return top * (1 - k * k); }
       if ((u -= slam) < down) return 0;
       return top * ease((u - down) / lift);
     },
+    // Autopilot: bleibt der Kopf die nächsten rest s oben (mindestens 60°)?
+    frei: (el, rest) => immer(rest, s => TYPES.hammer.angleAt(el, el.t + s) > 60 * DEG),
     pre(el, g, h) {
       el.t += h;
       const a1 = TYPES.hammer.angleAt(el, el.t), w = (a1 - el.a) / h;
@@ -295,47 +356,79 @@ export const FALLEN = {
   // Rollende Felsen: kommen alle `every` Sekunden bei from herunter und rollen in Richtung dir (bergab).
   // dir = Richtung [x, z] (Standard vorwärts -z), speed = Anfangstempo, r = Grösse, farbe (z. B. Kartoffeln, Äpfel),
   // form: 'laib' = rollender Käselaib (nur Grafik: ein Rad, das in Fahrtrichtung rollt; die Physik bleibt die Kugel)
-  // {type:'felsen', from, dir?:[x,z], speed?, every?, r?, offset?, farbe?, form?}
+  // every/speed/r als Zahl oder Liste (src/takt.js): every = Lücken zwischen den Starts (z. B. [1.2, 1.2, 4.5] = Salve von drei,
+  // dann Pause), speed und r pro Start zyklisch. wobble = seitlicher Versatz beim Start, ± m, sinusförmig über den Startindex.
+  // Autopilot: wait ['frei', 'felsen', n, rest, [x, z]] = nächster Start erst in mehr als rest s, und der letzte Felsen ist
+  // an [x, z] schon vorbei (oder weg); ohne Punkt nur der nächste Start.
+  // {type:'felsen', from, dir?:[x,z], speed?, every?, r?, wobble?, offset?, farbe?, form?}
   felsen: {
     init(el, g) {
-      const C = g.C, r = el.r ?? 0.9;
-      el.body = new C.Body({ mass: 4, material: g.matFor('normal'), shape: new C.Sphere(r), linearDamping: 0.05, angularDamping: 0.1 });
-      el.body.collisionFilterGroup = 4; el.body.collisionFilterMask = 1 | 2 | 4;
-      el.body.userData = {};
-      g.world.addBody(el.body);
+      const C = g.C, r = nimm(el.r, 0, 0.9);
+      // mehrere Felsen gleichzeitig unterwegs (Salve): so viele Körper wie Einträge in every (höchstens 4), sonst einer
+      const n = el.anzahl ?? (Array.isArray(el.every) ? Math.min(4, el.every.length) : 1);
+      el.bodies = [];
+      for (let i = 0; i < n; i++) {
+        const b = new C.Body({ mass: 4, material: g.matFor('normal'), shape: new C.Sphere(r), linearDamping: 0.05, angularDamping: 0.1 });
+        b.collisionFilterGroup = 4; b.collisionFilterMask = 1 | 2 | 4;
+        b.userData = {}; b.rNow = r;
+        g.world.addBody(b); el.bodies.push(b);
+      }
+      el.body = el.bodies[0];
       el.per = el.every ?? 5;
+      if (Array.isArray(el.every)) { el.startPlan = plan(el.every.length, k => el.every[k]); el.per = el.startPlan.per; }
     },
-    reset(el) { el.t = 0; el.k = -1; TYPES.felsen.park(el); },
-    park(el) { el.body.position.set(el.from[0], el.from[1] - 200, el.from[2]); el.body.velocity.set(0, 0, 0); el.body.angularVelocity.set(0, 0, 0); el.body.type = 4; /* KINEMATIC: parken */ },
+    // Nummer des aktuellen Starts zur Zeit t und s bis zum nächsten
+    start(el, t) {
+      const u = t + (el.offset || 0);
+      if (!el.startPlan) { const k = Math.floor(u / el.per); return { k, naechster: (k + 1) * el.per - u }; }
+      const { k } = wo(el.startPlan, u);
+      return { k, naechster: startVon(el.startPlan, k + 1) - u };
+    },
+    frei(el, rest, punkt) {
+      if (TYPES.felsen.start(el, el.t).naechster <= rest) return false;
+      if (!punkt) return true;
+      const dir = el.dir || [0, -1], d = norm([dir[0], 0, dir[1]]);
+      return el.bodies.every(b => b.type !== 1 || (b.position.x - punkt[0]) * d[0] + (b.position.z - punkt[1]) * d[2] > b.rNow + R + 0.3);
+    },
+    reset(el) { el.t = 0; el.k = -1; for (const b of el.bodies) TYPES.felsen.park(el, b); },
+    park(el, b = el.body) { b.position.set(el.from[0], el.from[1] - 200, el.from[2]); b.velocity.set(0, 0, 0); b.angularVelocity.set(0, 0, 0); b.type = 4; /* KINEMATIC: parken */ },
     // wie Dominos: Kippen gilt nur für die Murmel
     pre(el, g) {
-      const b = el.body, gr = g.world.gravity;
-      if (b.type === 1) { b.force.x -= b.mass * gr.x; b.force.y += b.mass * (-gr.y - g.gy); b.force.z -= b.mass * gr.z; }
+      const gr = g.world.gravity;
+      for (const b of el.bodies) if (b.type === 1) { b.force.x -= b.mass * gr.x; b.force.y += b.mass * (-gr.y - g.gy); b.force.z -= b.mass * gr.z; }
     },
     step(el, g, h, ev) {
       el.t += h;
-      const k = Math.floor((el.t + (el.offset || 0)) / el.per);
+      const { k } = TYPES.felsen.start(el, el.t), n = el.bodies.length;
       if (k !== el.k) { // neuer Felsen
         el.k = k;
-        const b = el.body, dir = el.dir || [0, -1], d = norm([dir[0], 0, dir[1]]), sp = el.speed ?? 3;
-        b.type = 1; b.position.set(el.from[0], el.from[1] + (el.r ?? 0.9), el.from[2]);
+        const b = el.bodies[((k % n) + n) % n], dir = el.dir || [0, -1], d = norm([dir[0], 0, dir[1]]), sp = nimm(el.speed, k, 3), r = nimm(el.r, k, 0.9);
+        if (r !== b.rNow) { b.rNow = r; b.shapes[0].radius = r; b.shapes[0].updateBoundingSphereRadius(); b.updateBoundingRadius(); b.aabbNeedsUpdate = true; }
+        const q = el.wobble ? el.wobble * Math.sin(k * 2.39996) : 0; // seitlicher Versatz (goldener Winkel: ohne Muster)
+        b.type = 1; b.position.set(el.from[0] - d[2] * q, el.from[1] + r, el.from[2] + d[0] * q);
         b.velocity.set(d[0] * sp, 0, d[2] * sp); b.angularVelocity.set(0, 0, 0); b.wakeUp && b.wakeUp();
         if (Math.hypot(g.ball.position.x - el.from[0], g.ball.position.z - el.from[2]) < 25) ev.push('rumpel'); // nur in der Nähe hörbar
       }
-      if (el.body.position.y < (g.level.killY ?? -8)) TYPES.felsen.park(el);
+      for (const b of el.bodies) if (b.position.y < (g.level.killY ?? -8) && b.type === 1) TYPES.felsen.park(el, b);
     },
     view(el, v) {
-      if (el.form === 'laib') return laibView(el, v);
-      const T = v.THREE, m = new T.Mesh(new T.DodecahedronGeometry(el.r ?? 0.9, 1), new T.MeshLambertMaterial({ color: el.farbe ?? 0x8A7F72, flatShading: true }));
-      m.castShadow = true; v.scene.add(m);
-      return { tick() { m.position.copy(el.body.position); m.quaternion.copy(el.body.quaternion); } };
+      const r0 = Array.isArray(el.r) ? 1 : el.r ?? 0.9; // Liste: Einheitsgrösse, pro Start skaliert
+      const ticks = el.bodies.map(b => el.form === 'laib' ? laibView(el, v, b, r0) : steinView(el, v, b, r0));
+      return { tick(dt) { for (const t of ticks) t.tick(dt); } };
     }
   }
 };
 
+// Stein (Felsen): grob facettierte Kugel
+function steinView(el, v, b, r0) {
+  const T = v.THREE, m = new T.Mesh(new T.DodecahedronGeometry(r0, 1), new T.MeshLambertMaterial({ color: el.farbe ?? 0x8A7F72, flatShading: true }));
+  m.castShadow = true; v.scene.add(m);
+  return { tick() { m.position.copy(b.position); m.quaternion.copy(b.quaternion); m.scale.setScalar(b.rNow / r0); } };
+}
+
 // Käselaib statt Felsen: Rad mit Rinde, steht aufrecht und rollt in Fahrtrichtung (Drehung aus dem zurückgelegten Weg)
-function laibView(el, v) {
-  const T = v.THREE, r = el.r ?? 0.9, grp = new T.Group();
+function laibView(el, v, b, r) {
+  const T = v.THREE, grp = new T.Group();
   const tex = v.canvasTex(128, 128, (x, w, h) => {
     x.fillStyle = '#F2C230'; x.fillRect(0, 0, w, h); x.fillStyle = '#D99A1C';
     for (let i = 0; i < 9; i++) { x.beginPath(); x.arc((i * 53 + 20) % w, (i * 89 + 30) % h, 5 + (i % 3) * 3, 0, 7); x.fill(); }
@@ -346,10 +439,11 @@ function laibView(el, v) {
   let lx = 0, lz = 0, a = 0;
   return {
     tick() {
-      const p = el.body.position, w = el.body.velocity, d = Math.hypot(p.x - lx, p.z - lz);
+      const p = b.position, w = b.velocity, d = Math.hypot(p.x - lx, p.z - lz);
       grp.position.copy(p);
+      grp.scale.setScalar(b.rNow / r);
       if (Math.hypot(w.x, w.z) > 0.3) grp.rotation.y = Math.atan2(w.x, w.z);
-      if (d < 2) a += d / r; // nicht beim Einsetzen eines neuen Laibs
+      if (d < 2) a += d / b.rNow; // nicht beim Einsetzen eines neuen Laibs
       rad.rotation.x = a; lx = p.x; lz = p.z;
     }
   };

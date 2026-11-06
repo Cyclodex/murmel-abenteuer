@@ -1,6 +1,7 @@
 // Chilbi: Riesenrad mit Gondeln, die die Murmel hinauftragen. Gleiche Schnittstelle wie in elements.js.
 import { DEG, quatYawPitch, add, scale, lerp3, fwdOf, rightOf, ease } from './math.js';
 import { kinematicBody, boardParts, driveTo, norm } from './elements.js';
+import { nimm, hatListe, zyklen, plan, wo } from './takt.js';
 
 const TAU = Math.PI * 2;
 const GONDEL_FARBEN = [0xE53935, 0xFDD835, 0x1E88E5, 0x43A047, 0xFB8C00, 0x8E24AA, 0x00ACC1, 0xEC407A];
@@ -18,14 +19,22 @@ export const CHILBI = {
   // der Mitte des Platzes), auf gleicher Höhe. Rad und Stützen stehen vorne, hinter dem Rad ist alles frei.
   // Autopilot: einsteigen mit wait: ['phase', ['riesenrad', 0, 0, 0.2]] (Rad steht noch lange genug),
   // aussteigen mit wait: ['gondel', [0, platz]] (die Gondel mit der Murmel steht am Platz).
+  // time/pause auch als Liste (Schritt k nimmt liste[k % länge], src/takt.js): das Rad hält mal kürzer, mal länger.
+  // Autopilot: wait ['frei', 'riesenrad', n, rest] = das Rad steht noch mindestens rest s.
   // {type:'riesenrad', at, yaw?, radius?, gondeln?, size?, time?, pause?, dir?, offset?, rim?}
   riesenrad: {
     geo(d) {
       const yaw = (d.yaw || 0) * DEG, r = d.radius ?? 5, [b, t] = d.size || [3.2, 4];
-      return { yaw, r, n: d.gondeln ?? 6, b, t, Rt: rightOf(yaw), F: fwdOf(yaw), C: add(d.at, [0, r, 0]), dir: d.dir ?? 1, time: d.time ?? 2.2, pause: d.pause ?? 2.6 };
+      const G = { yaw, r, n: d.gondeln ?? 6, b, t, Rt: rightOf(yaw), F: fwdOf(yaw), C: add(d.at, [0, r, 0]), dir: d.dir ?? 1, time: d.time ?? 2.2, pause: d.pause ?? 2.6 };
+      if (hatListe(d.time, d.pause)) G.plan = plan(zyklen(1, d.time, d.pause), k => nimm(d.time, k, 2.2) + nimm(d.pause, k, 2.6));
+      return G;
     },
     // Stand des Rads zur Zeit t: k = ganze Schritte, frac = Anteil des laufenden Schritts (0 = steht), halt = s, die es noch steht
     takt(el, t) {
+      if (el.G.plan) {
+        const { k, u } = wo(el.G.plan, t), time = nimm(el.time, k, 2.2), pause = nimm(el.pause, k, 2.6);
+        return u < pause ? { k, frac: 0, halt: pause - u } : { k, frac: ease((u - pause) / time), halt: 0 };
+      }
       const { time, pause } = el.G, per = time + pause, k = Math.floor(t / per), u = t - k * per;
       return u < pause ? { k, frac: 0, halt: pause - u } : { k, frac: ease((u - pause) / time), halt: 0 };
     },
@@ -36,7 +45,7 @@ export const CHILBI = {
     },
     init(el, g) {
       const G = el.G = CHILBI.riesenrad.geo(el);
-      el.per = G.time + G.pause; // für die Wartebedingung 'phase' des Autopiloten: Phase 0 = Rad hält an
+      el.per = G.plan ? G.plan.per : G.time + G.pause; // für die Wartebedingung 'phase' des Autopiloten: Phase 0 = Rad hält an
       el.bodies = [];
       for (let i = 0; i < G.n; i++) {
         const b = kinematicBody(g, boardParts(G.b, G.t, 0.5, el.rim ?? 0.5, 'gondel'));
@@ -50,6 +59,7 @@ export const CHILBI = {
       el.t = 0; el.mit = -1; el.platz = -1; el.halt = 0; el.away = 9;
       el.bodies.forEach((b, i) => { b.position.set(...CHILBI.riesenrad.ort(el, k + i)); b.velocity.set(0, 0, 0); b.lastV = [0, 0, 0]; });
     },
+    frei: (el, rest) => CHILBI.riesenrad.takt(el, el.t + (el.offset || 0)).halt >= rest,
     pre(el, g, h) {
       el.t += h;
       const { k, frac, halt } = CHILBI.riesenrad.takt(el, el.t + (el.offset || 0)), n = el.G.n;

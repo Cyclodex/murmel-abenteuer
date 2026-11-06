@@ -2,6 +2,7 @@
 // Gleiche Schnittstelle wie in elements.js.
 import { DEG, quatYawPitch, add, scale, fwdOf, rightOf, mulQ } from './math.js';
 import { phaseOf } from './elements-fallen.js';
+import { nimm, hatListe, zyklen, plan, wo, immer } from './takt.js';
 
 const TAU = Math.PI * 2;
 // Drehung um die lokale Vorwärtsachse (z): positiv = nach rechts ausschwingen
@@ -78,7 +79,10 @@ export const SCHWEIZ = {
   // winkel = Ausschlag je Seite (Grad), time = s für einmal hin und her, offset = Startverzögerung, r = Radius der Kugel,
   // luft = Abstand der Kugel zum Weg am tiefsten Punkt.
   // Takt (Autopilot phase): 0 = unten in der Mitte (schwingt nach rechts), 0.25 = ganz rechts, 0.5 = wieder Mitte, 0.75 = ganz links.
-  // {type:'pendel', at, yaw?, length?, winkel?, time?, offset?, r?, luft?, farbe?}
+  // time als Zahl oder Liste (pro Schwung hin und her), pause = Halt an beiden Umkehrpunkten (Zahl oder Liste, src/takt.js).
+  // Autopilot: wait ['frei', 'pendel', n, rest, quer?] = die Kugel bleibt die nächsten rest s seitlich weg von der Wegmitte
+  // (bzw. von quer = Versatz nach rechts in m).
+  // {type:'pendel', at, yaw?, length?, winkel?, time?, pause?, offset?, r?, luft?, farbe?}
   pendel: {
     init(el, g) {
       const C = g.C, r = el.r ?? 0.9, L = el.length ?? 6;
@@ -90,9 +94,27 @@ export const SCHWEIZ = {
       body.position.set(...el.pivot); body.userData = {};
       g.world.addBody(body);
       el.body = body; el.per = el.time ?? 4;
+      if (hatListe(el.time, el.pause) || el.pause != null) {
+        el.cycles = plan(zyklen(1, el.time, el.pause), k => nimm(el.time, k, 4) + 2 * nimm(el.pause, k, 0));
+        el.per = el.cycles.per;
+      }
     },
     reset(el) { el.t = 0; el.a = SCHWEIZ.pendel.angleAt(el, 0); },
-    angleAt: (el, t) => (el.winkel ?? 45) * DEG * Math.sin(TAU * phaseOf({ t, offset: el.offset }, el.per)),
+    angleAt(el, t) {
+      const A = (el.winkel ?? 45) * DEG;
+      if (!el.cycles) return A * Math.sin(TAU * phaseOf({ t, offset: el.offset }, el.per));
+      // Viertel nach rechts, Halt, halber Schwung nach links, Halt, Viertel zurück in die Mitte
+      const { i, u } = wo(el.cycles, t + (el.offset || 0)), T = nimm(el.time, i, 4), p = nimm(el.pause, i, 0);
+      if (u < T / 4) return A * Math.sin(TAU * u / T);
+      if (u < T / 4 + p) return A;
+      if (u < 3 * T / 4 + p) return A * Math.sin(TAU * (u - p) / T);
+      if (u < 3 * T / 4 + 2 * p) return -A;
+      return A * Math.sin(TAU * (u - 2 * p) / T);
+    },
+    frei(el, rest, quer = 0) {
+      const L = el.length ?? 6, r = el.r ?? 0.9;
+      return immer(rest, s => Math.abs(L * Math.sin(SCHWEIZ.pendel.angleAt(el, el.t + s)) - quer) > r + 0.5 + 0.3);
+    },
     pre(el, g, h) {
       el.t += h;
       const a1 = SCHWEIZ.pendel.angleAt(el, el.t), w = (a1 - el.a) / h;

@@ -3,6 +3,7 @@
 import { DEG, quatYawPitch, add, scale, toLocal, fwdOf, rightOf } from './math.js';
 import { TYPES, segment, track, kinematicBody, boardParts, driveTo, ballPos } from './elements.js';
 import { canvasTex } from './themes.js';
+import { immer } from './takt.js';
 
 const R = 0.5;
 const ZU = 0.2;     // so weit bleiben die Backen des Schraubstocks zu noch auseinander
@@ -16,6 +17,8 @@ export const WERKSTATT = {
   // at = Mitte der Durchfahrt (Oberkante des Wegs), yaw = Wegrichtung, weit = Abstand der Backen offen,
   // size = Backe [dick (quer), hoch, lang (längs)], time = s zum Zu-/Auffahren, pause = s offen/zu, offset = Startverzögerung,
   // seite = 1: bewegliche Backe rechts (Standard), -1: links
+  // time/pause als Zahl oder Liste (jeder Halt mit der folgenden Fahrt ist ein Zyklus, src/takt.js).
+  // Autopilot: wait ['frei', 'schraubstock', n, rest] = die Backen bleiben die nächsten rest s weit genug offen.
   // {type:'schraubstock', at, yaw?, weit?, size?, time?, pause?, offset?, seite?}
   schraubstock: {
     // Masse: [dick, hoch, lang], Öffnung, Seite, yaw (Bogenmass)
@@ -39,6 +42,7 @@ export const WERKSTATT = {
       const { size: [dk], weit, s, yw } = WERKSTATT.schraubstock.mass(el);
       return s * toLocal(p, el.at, yw)[0] - dk / 2 + weit / 2;
     },
+    frei: (el, rest) => immer(rest, s => WERKSTATT.schraubstock.spalt(el, TYPES.plattform.posAt(el, el.t + s)) > 2 * R + 0.6),
     reset(el) {
       el.t = el.offset || 0;
       const p = TYPES.plattform.posAt(el, el.t);

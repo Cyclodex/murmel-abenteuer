@@ -14,6 +14,7 @@
 // Winkel in Level-Daten sind in Grad. yaw 0 = nach vorne (-z), positiv = nach links drehen.
 import { buildCheckpoint } from './checkpoint-figuren.js';
 import { DEG, quatYawPitch, rotate, add, scale, lerp3, yawOf, toLocal, fwdOf, rightOf, ease, mulQ } from './math.js';
+import { hinUndHer } from './takt.js';
 
 const R = 0.5; // Murmel-Radius
 const TAU = Math.PI * 2;
@@ -299,7 +300,7 @@ export const TYPES = {
   },
 
   // Bewegte Plattform: pendelt zwischen from und to (Mitte der Oberkante).
-  // {type:'plattform', from, to, size:[b,t], yaw?, time?:Fahrzeit s, pause?:s, rim?:Randhöhe, surface?, offset?:Startverzögerung s}
+  // {type:'plattform', from, to, size:[b,t], yaw?, time?:Fahrzeit s (Zahl oder Liste), pause?:s (Zahl oder Liste), rim?:Randhöhe, surface?, offset?:Startverzögerung s}
   plattform: {
     init(el, g) {
       const size = el.size || [4, 4];
@@ -312,13 +313,7 @@ export const TYPES = {
     reset(el) {
       el.t = el.offset || 0; el.body.position.set(...TYPES.plattform.posAt(el, el.t)); el.body.velocity.set(0, 0, 0); el.lastV = [0, 0, 0];
     },
-    posAt(el, t) {
-      const move = el.time ?? 3, pause = el.pause ?? 1.5, per = 2 * (move + pause), u = t % per;
-      if (u < pause) return el.from;
-      if (u < pause + move) return lerp3(el.from, el.to, ease((u - pause) / move));
-      if (u < 2 * pause + move) return el.to;
-      return lerp3(el.to, el.from, ease((u - 2 * pause - move) / move));
-    },
+    posAt: (el, t) => hinUndHer(el, t), // time/pause: Zahl oder Liste (src/takt.js)
     pre(el, g, h) {
       el.t += h;
       driveTo(el.body, TYPES.plattform.posAt(el, el.t), h);
