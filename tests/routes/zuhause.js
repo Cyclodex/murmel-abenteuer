@@ -19,7 +19,7 @@ export default {
     { x: -10, z: -38, speed: 2 }, { x: -11, z: -43.5, speed: 2 }, { x: -11, z: -52.5, speed: 2, r: 0.5 },
     { x: -11, z: -59.5, speed: 4, wait: ['phase', ['hammer', 0, 0.72, 0.85]] }, { x: -13, z: -62, speed: 2, r: 0.6 },
     { x: -16, z: -62, speed: 2.5, r: 0.6 }, { x: -24, z: -62, speed: 2.5 }, { x: -30.5, z: -61, speed: 1.5, r: 1.5 },
-    { x: -33, z: -57, speed: 3 }, { x: -33, z: -52, speed: 2 },
+    { x: -33, z: -57, speed: 3 }, { x: -33, z: -50.5, speed: 2 },
     { x: -42, z: -37, speed: 2 }, { x: -44, z: -31, speed: 2 }, { x: -44, z: -25, speed: 2 }, { x: -30.5, z: -21, speed: 1.5, r: 0.4 },
     { x: -42, z: -18.5, speed: 1.5, r: 0.6 }, { x: -42, z: -12, speed: 3 }, { x: -42, z: 40, free: true, r: 3 },
     { x: -42, z: 52, speed: 2 }, { x: -42, z: 62, speed: 1.5 }

@@ -79,7 +79,7 @@ export default {
     ...topf(FB.x1 - TOPF / 2 - 0.3, -2),
 
     // 2. Lineal 30 × 3 cm über die Lücke neben dem Tisch auf den Bücherturm. Schmal und ohne Rand.
-    { type: 'weg', from: [16.6, FB.y + LINEAL_D, LINEAL_Z], to: [-2.15, TURM_Y + LINEAL_D, LINEAL_Z], width: 1.875, thick: LINEAL_D, look: 'lineal' },
+    { type: 'weg', from: [16.6, FB.y + 0.03, LINEAL_Z], to: [-2.15, TURM_Y + LINEAL_D, LINEAL_Z], width: 1.875, thick: LINEAL_D, look: 'lineal' },
     ...TURM.map((z, i) => ({ type: 'klotz', at: [TURM_X + (i % 2 ? 0.4 : -0.3), BUCH[1] * (i + 0.5), z], size: BUCH, look: TURM_LOOKS[i], richtung: 0 })),
 
     // 3. Lineal wippt auf einem Radiergummi, der Tischventilator bläst quer darüber zum Stuhl
@@ -127,14 +127,14 @@ export default {
     // 10. Schublade: Boden, Front und Seiten (hinten schliesst die Tischplatte ab), Filz zum Landen, Bauklötze, Katapult
     { type: 'klotz', at: [(SB.x0 + SB.x1) / 2, -9.69, (SB.z0 + SB.z1) / 2], size: [SB.x1 - SB.x0, 0.63, SB.z1 - SB.z0], look: 'schublade' },
     { type: 'wand', from: [SB.x0, SB_Y, SB.z1], to: [SB.x0, SB_Y, SB.z0], height: 6.88, thick: 0.63, look: 'schublade' },
-    { type: 'wand', from: [SB.x0, SB_Y, SB.z1], to: [SB.x1, SB_Y, SB.z1], height: 6.88, thick: 0.63, look: 'schublade' },
+    { type: 'wand', from: [SB.x0, SB_Y, SB.z1], to: [SB.x1, SB_Y, SB.z1], height: 5, thick: 0.63, look: 'schublade' },
     { type: 'wand', from: [SB.x0, SB_Y, SB.z0], to: [SB.x1, SB_Y, SB.z0], height: 6.88, thick: 0.63, look: 'schublade' },
     { type: 'wand', from: [SB.x1, SB_Y, SB.z1], to: [SB.x1, SB_Y, SB.z0], height: 6.88, thick: 0.63, look: 'schublade' },
     { type: 'klotz', at: [-30, SB_Y + 0.15, -61], size: [9, 0.3, 7], look: 'filz', surface: 'handtuch' }, // Filzmatte
     { type: 'checkpoint', at: [-30.5, SB_Y + 0.3, -61], size: [8, 3, 6], yaw: 180 },
     { type: 'domino', from: [-33, SB_Y, -58.5], to: [-33, SB_Y, -55.5], count: 4, size: [1.9, 2.5, 0.63], look: 'bauklotz' }, // Bauklötze 3 × 4 × 1 cm
     // Eisstiel-Katapult: schleudert die Murmel hoch über die Schubladenwand auf den Stuhl
-    { type: 'kanone', at: [-33, SB_Y, -52], target: [-42, KISSEN_Y, -37], time: 3.3, look: 'katapult' },
+    { type: 'kanone', at: [-33, SB_Y, -50.5], target: [-42, KISSEN_Y, -37], time: 4, look: 'katapult' },
 
     // 11. Stuhl: Sitzkissen (Stoff bremst), ein Kissen an der Lehne, die Jacke als Hügel, das Kuscheltier
     { type: 'klotz', at: [-41.5, KISSEN_Y - 1.25, -31.25], size: [26, 2.5, 30], look: 'sitzkissen', surface: 'stoff', richtung: 180 },
