@@ -200,6 +200,21 @@ export const THEMES = {
     }
   },
 
+  // Echte Orte im Haus (src/orte/): die Kulisse baut der Ort (level.ort), hier nur Himmel, Licht und die Looks der Dinge
+  // auf der Strecke. Grauer Rohbau: schlichte Farben, Details folgen.
+  zuhause: {
+    sky: 0xCFE6F5, fog: [600, 1200], hemi: [0xffffff, 0x8a7a66, 0.85], sun: 0.75,
+    floor: t => t.lambert(0xC9B79C), ramp: t => t.lambert(0xD6C6AD), wall: 0xB0A08A,
+    look(t, look) {
+      const L = {
+        holz: 0xB08E68, papier: 0xF7F7F2, karton: 0xC69C6D, lampe: 0x5C6B7A, schublade: 0xB9A58C,
+        'buch-rot': 0xC0504D, 'buch-blau': 0x4F81BD, 'buch-gruen': 0x6BA368, 'stift-gelb': 0xF2C14E, 'stift-rot': 0xD9534F,
+        'stift-blau': 0x5B8DEF, maeppchen: 0x7E57C2, becher: 0x90A4AE, radierer: 0xF48FB1
+      }[look];
+      return L === undefined ? null : t.lambert(L);
+    }
+  },
+
   vulkan: {
     sky: 0x5A2418, fog: [35, 110], hemi: [0xFFC9A8, 0x5A1A08, 0.8], sun: 0.75,
     walls: ['basalt-dunkel', 'basalt-rot'],

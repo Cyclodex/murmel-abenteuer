@@ -3,6 +3,7 @@ import { TYPES } from './bauteile.js';
 import { R, SURFACES, RESPAWN_T } from './game.js';
 import { boxesOverlap } from './math.js';
 import { THEMES, COLORS, canvasTex, rnd, woodTex } from './themes.js';
+import { bauOrt } from './orte/bau.js';
 import { createTrailFx } from './trails.js';
 import { ghostAt } from './ghost.js';
 
@@ -280,7 +281,13 @@ export function createView(THREE, renderer, game) {
     scene.add(im);
   }
   const floorY = (game.level.killY ?? -8) - 1;
-  const groundFx = theme.ground ? theme.ground(tools, floorY) : null;
+  // Echter Ort (src/orte/): Raum als Kulisse statt Untergrund; Kamera und Nebel reichen durch den ganzen Raum
+  const ortFx = game.level.ort ? bauOrt(THREE, scene, game.level.ort, game.level.bereich) : null;
+  if (ortFx) {
+    camera.far = Math.max(camera.far, ortFx.far); camera.updateProjectionMatrix();
+    scene.fog.near = Math.max(scene.fog.near, ortFx.far); scene.fog.far = Math.max(scene.fog.far, ortFx.far * 2);
+  }
+  const groundFx = theme.ground && !ortFx ? theme.ground(tools, floorY) : null;
   const pillarMeshes = [];
   if (theme.pillars) {
     pillars.forEach((s, i) => {
