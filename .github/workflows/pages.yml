@@ -26,10 +26,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # ganze Geschichte, um die Updates zu zählen
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Dateien kopieren und stempeln
@@ -39,8 +39,8 @@ jobs:
           # Nummer zum Anzeigen: 0.<Updates auf main seit 47990b0>, z. B. 0.3 (jeder Merge oder Push auf main zählt eins)
           nummer="0.$(git rev-list --count --first-parent 47990b0..HEAD)"
           node .github/stempel.mjs _site "${GITHUB_SHA::12}" "$(git log -1 --format=%cI)" "$nummer"
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
