@@ -2,7 +2,8 @@
 // und die Bestzeit (schnellste Fahrt ins Ziel, für die Rangliste „Schnellste“) mit ihrer Aufnahme.
 // Nur fetch auf die drei Funktionen aus supabase/schema.sql, kein SDK. Ohne Netz, bei Fehlern oder Timeout läuft
 // alles wie ohne Rangliste: Fehler werden geschluckt, neue Rekorde warten in localStorage und gehen später raus.
-// Auf localhost (Tests, Entwicklung) ist die Rangliste aus, damit keine Testfahrten online landen;
+// Auf localhost (Tests, Entwicklung) und in der Vorschau eines PRs (<meta name="vorschau">, .github/workflows/vorschau.yml)
+// ist die Rangliste aus, damit keine Testfahrten online landen;
 // localStorage 'murmel-online' = 'an' schaltet sie dort ein (die Tests leiten die Anfragen dann auf page.route um).
 // Der Publishable Key ist öffentlich gedacht: die Tabelle ist gesperrt, erlaubt sind nur die drei Funktionen.
 import { score } from './score.js';
@@ -12,7 +13,8 @@ const KEY = 'sb_publishable_gJFi5aPRHaS0BcH7-s-UhA_4HSJ44vY';
 const STORE = 'murmel-online-v1';
 const TIMEOUT = 3000;
 
-const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
+const local = /^(localhost|127\.|\[::1\])/.test(location.hostname) ||
+  !!document.querySelector('meta[name="vorschau"]')?.content;
 const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 
 // Antwort des Servers: ok, abgelehnt (ungültig, nicht nochmal senden) oder nicht erreichbar (später nochmal)
