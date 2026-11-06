@@ -20,6 +20,6 @@ export default {
       { x: 5, z: -131, speed: 3 }, { x: 5, z: -134 }
     ],
     // Abstecher in die Büchsen-Bude zum Bonusstern
-    [...bisBude, { x: 5.5, z: -100.5, speed: 2, r: 0.6 }, { x: 9, z: -100.5, speed: 2, r: 0.5 }]
+    [...bisBude, { x: 5.5, z: -100.5, speed: 2, r: 0.6 }, { x: 8.2, z: -100.5, speed: 2, r: 0.6 }]
   ]
 };

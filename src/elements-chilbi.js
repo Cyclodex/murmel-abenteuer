@@ -14,7 +14,8 @@ export const CHILBI = {
   // radius, gondeln = Anzahl = Anzahl Plätze (Platz 0 unten, gondeln / 2 oben auf at + 2 · radius, dazwischen alle
   // 360 / gondeln Grad), size = [breit, tief] des Gondelbodens, time = s pro Schritt, pause = s Halt,
   // dir = 1: unten nach rechts weg und rechts hinauf, -1: links hinauf; offset = Startverzögerung, rim = Randhöhe.
-  // Wege vor und hinter einem Platz bis an die Gondel legen (Abstand der Radmitte tief / 2), auf gleicher Höhe.
+  // Einsteigen von vorne am untersten Platz, hinaus nach hinten an jedem Platz: Wege bis an die Gondel legen (tief / 2 von
+  // der Mitte des Platzes), auf gleicher Höhe. Rad und Stützen stehen vorne, hinter dem Rad ist alles frei.
   // Autopilot: einsteigen mit wait: ['phase', ['riesenrad', 0, 0, 0.2]] (Rad steht noch lange genug),
   // aussteigen mit wait: ['gondel', [0, platz]] (die Gondel mit der Murmel steht am Platz).
   // {type:'riesenrad', at, yaw?, radius?, gondeln?, size?, time?, pause?, dir?, offset?, rim?}
@@ -77,26 +78,26 @@ export const CHILBI = {
         const s = new T.Mesh(new T.CylinderGeometry(rad, rad, L, 8), m);
         s.position.copy(A).addScaledVector(d, 0.5); s.quaternion.setFromUnitVectors(UP, d.divideScalar(L)); grp.add(s); return s;
       };
-      // Gestell und Rad: lokal x = in der Radebene nach rechts, z = Achse; Mitte = Höhe der Aufhängungen
+      // Gestell und Rad: lokal x = in der Radebene nach rechts, z = Achse (+z = vorne, wo die Murmel herkommt); Mitte = Höhe
+      // der Aufhängungen. Rad und Stützen stehen nur vorne (einseitig gelagert wie ein modernes Aussichtsrad), die Gondeln
+      // hängen an Achsen nach hinten: hinter dem Rad ist an jedem Platz frei für den Weg hinaus.
       const root = new T.Group(); root.position.set(C[0], C[1] + HANG, C[2]); root.quaternion.set(...quatYawPitch(yaw, 0)); v.scene.add(root);
       const rad = new T.Group(); root.add(rad);
-      const lampen = LAMPEN.map(c => new T.MeshBasicMaterial({ color: c })), kugel = new T.SphereGeometry(0.16, 8, 6);
-      for (const z of [-(t / 2 + 0.4), t / 2 + 0.4]) {
-        for (const [rr, dick] of [[r, 0.13], [r * 0.5, 0.08]]) { const ring = new T.Mesh(new T.TorusGeometry(rr, dick, 8, 64), weiss); ring.position.z = z; rad.add(ring); }
-        for (let i = 0; i < n * 2; i++) { const a = i * Math.PI / n; stab(rad, [0, 0, z], [Math.sin(a) * r, -Math.cos(a) * r, z], 0.06, stahl); } // Speichen
-        for (let i = 0; i < n * 4; i++) { // Lämpchen am Rad
-          const a = (i + 0.5) * Math.PI / (n * 2), m = new T.Mesh(kugel, lampen[i % lampen.length]);
-          m.position.set(Math.sin(a) * r, -Math.cos(a) * r, z + Math.sign(z) * 0.16); rad.add(m);
-        }
-        const kappe = new T.Mesh(new T.CylinderGeometry(1, 1, 0.12, 24), M(0xE53935)); kappe.rotation.x = Math.PI / 2; kappe.position.z = z + Math.sign(z) * 0.1; rad.add(kappe);
+      const lampen = LAMPEN.map(c => new T.MeshBasicMaterial({ color: c })), kugel = new T.SphereGeometry(0.16, 8, 6), z = t / 2 + 0.4;
+      for (const [rr, dick] of [[r, 0.14], [r * 0.5, 0.08]]) { const ring = new T.Mesh(new T.TorusGeometry(rr, dick, 8, 64), weiss); ring.position.z = z; rad.add(ring); }
+      for (let i = 0; i < n * 2; i++) { const a = i * Math.PI / n; stab(rad, [0, 0, z], [Math.sin(a) * r, -Math.cos(a) * r, z], 0.06, stahl); } // Speichen
+      for (let i = 0; i < n * 4; i++) { // Lämpchen am Rad
+        const a = (i + 0.5) * Math.PI / (n * 2), m = new T.Mesh(kugel, lampen[i % lampen.length]);
+        m.position.set(Math.sin(a) * r, -Math.cos(a) * r, z + 0.18); rad.add(m);
       }
-      for (let i = 0; i < n; i++) { const a = i * TAU / n; stab(rad, [Math.sin(a) * r, -Math.cos(a) * r, -(t / 2 + 0.4)], [Math.sin(a) * r, -Math.cos(a) * r, t / 2 + 0.4], 0.07, stahl); } // Achsen der Gondeln
-      stab(rad, [0, 0, -(t / 2 + 1)], [0, 0, t / 2 + 1], 0.45, stahl); // Nabe
-      // Stützen vorne und hinten: am Einstieg unten so weit auseinander, dass der Weg zwischen ihnen durchpasst
+      for (let i = 0; i < n; i++) { const a = i * TAU / n; stab(rad, [Math.sin(a) * r, -Math.cos(a) * r, z], [Math.sin(a) * r, -Math.cos(a) * r, -(t / 2 - 0.1)], 0.08, stahl); } // Achsen der Gondeln
+      stab(rad, [0, 0, z - 0.3], [0, 0, z + 0.9], 0.45, stahl); // Nabe
+      const kappe = new T.Mesh(new T.CylinderGeometry(1, 1, 0.12, 24), M(0xE53935)); kappe.rotation.x = Math.PI / 2; kappe.position.z = z + 0.95; rad.add(kappe);
+      // Stützen: am Einstieg unten so weit auseinander, dass der Weg zwischen ihnen durchpasst
       const floorY = (v.game.level.killY ?? -8) - 1, tief = C[1] + HANG - floorY, breit = (b / 2 + 1.6) * tief / (r + HANG), blau = M(0x1E88E5);
-      for (const z of [-(t / 2 + 1), t / 2 + 1]) for (const k of [-1, 1]) {
-        stab(root, [0, 0, z], [k * breit, -tief, z], 0.22, blau);
-        const fuss = new T.Mesh(new T.BoxGeometry(1.6, 0.4, 1.6), stahl); fuss.position.set(k * breit, -tief + 0.2, z); root.add(fuss);
+      for (const k of [-1, 1]) {
+        stab(root, [0, 0, z + 0.6], [k * breit, -tief, z + 0.6], 0.24, blau);
+        const fuss = new T.Mesh(new T.BoxGeometry(1.6, 0.4, 1.6), stahl); fuss.position.set(k * breit, -tief + 0.2, z + 0.6); root.add(fuss);
       }
       // Gondeln: Wanne (Boden und Rand wie die Physik), Bügel bis zur Aufhängung, Dach
       const gondeln = el.bodies.map((body, i) => {

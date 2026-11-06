@@ -30,14 +30,14 @@ export default {
     { type: 'band', from: [0, 0, -6], to: [0, LIFT, -24], width: 3, walls: 0.8, speed: 4 },
     { type: 'weg', from: [0, LIFT, -24], to: [0, LIFT, -30], width: 3, walls: 0.8 },
     { type: 'checkpoint', at: [0, LIFT, -27.5], size: [3, 3, 2] },
-    stuetze(-1.4, -15, 2.2), stuetze(1.4, -15, 2.2), stuetze(-1.4, -25, LIFT - 1), stuetze(1.4, -25, LIFT - 1),
+    stuetze(-1.4, -15, 2.4), stuetze(1.4, -15, 2.4), stuetze(-1.4, -25, LIFT - 1), stuetze(1.4, -25, LIFT - 1),
     { type: 'deko', form: 'turm', at: [-7, BODEN, -27], scale: 1.5 },
 
     // Erste Abfahrt: rote Schiene, oben steil, unten immer flacher (sonst springt die Murmel am Knick)
     { type: 'rinne', from: [0, LIFT, -30], to: [0, 3.2, -39], r: 1.6, bogen: 75, farbe: 0xE53935 },
     { type: 'rinne', from: [0, 3.2, -39], to: [0, 2.3, -43], r: 1.6, bogen: 75, farbe: 0xE53935 },
     { type: 'rinne', from: [0, 2.3, -43], to: [0, LOOP, -47], r: 1.6, bogen: 75, farbe: 0xE53935 },
-    stuetze(0, -36, 3.6), stuetze(0, -45, 1.4),
+    stuetze(0, -36, 4), stuetze(0, -45, 1.7),
     // Turbo und Looping, Ausfahrt 5 m weiter rechts
     { type: 'weg', from: [0, LOOP, -47], to: [0, LOOP, -52], width: 3, walls: 0.8 },
     { type: 'turbo', at: [0, LOOP, -50.5], size: [2.6, 2], speed: 13 },
@@ -53,23 +53,24 @@ export default {
     sockel(9, LOOP, -58.5),
     { type: 'deko', form: 'zuckerwatte', at: [9, LOOP, -58.5] },
 
-    // Helix: eine ganze Runde rechts herum hinunter, wer schnell ist, fährt die Wand hoch
-    { type: 'rinne', at: [5, LOOP, -64], yaw: 0, turn: 360, radius: 6, rise: TAL - LOOP, r: 1.6, bogen: 80, farbe: 0xFDD835 },
-    stuetze(11, -64, TAL), stuetze(11, -71.8, -0.2), stuetze(18.8, -64, -1.4),
+    // Helix: eine ganze Runde rechts herum hinunter, wer schnell ist, fährt die Wand hoch (mit Vollgas fliegt man hinaus)
+    { type: 'rinne', at: [5, LOOP, -64], yaw: 0, turn: 360, radius: 6, rise: TAL - LOOP, r: 1.6, bogen: 90, farbe: 0xFDD835 },
+    stuetze(11, -64, LOOP), stuetze(11, -70, 0.3), stuetze(17, -64, -0.95), stuetze(11, -58, -2.2),
     { type: 'weg', from: [5, TAL, -64], to: [5, TAL, -71], width: 5, walls: 0.8 },
     { type: 'checkpoint', at: [5, TAL, -68], size: [5, 3, 2] },
 
-    // Schiessbude: die Kanone schiesst an den Zielscheiben vorbei hinauf auf das Zuckerwatte-Kissen
+    // Schiessbude: die Kanone schiesst im hohen Bogen hinauf auf das Zuckerwatte-Kissen (dort springt nichts mehr),
+    // links und rechts stehen die Zielscheiben
     { type: 'wand', from: [2.3, TAL, -71], to: [3.5, TAL, -71], look: 'zelt-blau' },
     { type: 'wand', from: [6.5, TAL, -71], to: [7.7, TAL, -71], look: 'zelt-blau' },
     { type: 'weg', from: [5, TAL, -71], to: [5, TAL, -77], width: 2.6, walls: 0.8, caps: 'end' },
-    { type: 'kanone', at: [5, TAL, -75], target: [5, BUDE, -92], time: 1.6 },
-    { type: 'weg', from: [5, BUDE, -87], to: [5, BUDE, -97], width: 4, walls: 0.8, caps: 'start', surface: 'zuckerwatte' },
-    sockel(0.8, BUDE, -84, 3, 2), sockel(9.2, BUDE, -88, 3, 2), sockel(0.8, BUDE, -94, 3, 2),
-    { type: 'deko', form: 'zielscheibe', at: [0.8, BUDE, -84], yaw: 180 },
-    { type: 'deko', form: 'zielscheibe', at: [9.2, BUDE, -88], yaw: 180 },
-    { type: 'deko', form: 'zielscheibe', at: [0.8, BUDE, -94], yaw: 180 },
-    // Büchsen-Bude rechts: in der Nische hinter den Büchsen liegt der Bonusstern
+    { type: 'kanone', at: [5, TAL, -75], target: [5, BUDE, -92], time: 2.2 },
+    { type: 'weg', from: [5, BUDE, -88], to: [5, BUDE, -97], width: 4, walls: 0.8, caps: 'start', surface: 'zuckerwatte' },
+    sockel(0.8, BUDE, -89.5, 3, 2), sockel(9.2, BUDE, -91.5, 3, 2), sockel(0.8, BUDE, -95, 3, 2),
+    { type: 'deko', form: 'zielscheibe', at: [0.8, BUDE, -89.5], yaw: 180 },
+    { type: 'deko', form: 'zielscheibe', at: [9.2, BUDE, -91.5], yaw: 180 },
+    { type: 'deko', form: 'zielscheibe', at: [0.8, BUDE, -95], yaw: 180 },
+    // Büchsen-Bude rechts: in der Nische schwebt der Bonusstern über den Büchsen (hineinfahren und sie umwerfen)
     { type: 'weg', from: [5, BUDE, -97], to: [5, BUDE, -104], width: 4 },
     { type: 'wand', from: [2.8, BUDE, -97], to: [2.8, BUDE, -104] },
     { type: 'wand', from: [7.2, BUDE, -97], to: [7.2, BUDE, -99.25] },
@@ -113,6 +114,6 @@ export default {
     { type: 'stern', at: [17, -0.5 + 0.9, -64] },
     { type: 'stern', at: [5, BUDE + 0.9, -92] },
     { type: 'stern', at: [5, BUDE + 0.9, -122] },
-    { type: 'stern', at: [8.9, BUDE + 0.9, -100.5], bonus: true, r: 1.4 }
+    { type: 'stern', at: [8.6, BUDE + 1.2, -100.5], bonus: true, r: 1.4 }
   ]
 };
