@@ -215,7 +215,9 @@ export const THEMES = {
         stein: 0xE8E8E8, vorhang: 0xE3C67B, topf: 0xC1683C, pflanze: 0x5E9E4A, kaktus: 0x3E7D3A, figur: 0x42A5F5,
         muschel: 0xF3DCC8, griff: 0xBDBDBD,
         'stift-gruen': 0x6BA368, kugelschreiber: 0x2F5DA8, locher: 0x7B8189, 'locher-dunkel': 0x3A3F45, ventilator: 0xE6ECEF,
-        mauspad: 0x37474F, filz: 0x9E7B65
+        mauspad: 0x37474F, filz: 0x9E7B65,
+        'schachtel-rot': 0xC62828, 'schachtel-gelb': 0xF9A825, 'schachtel-blau': 0x1565C0, 'schachtel-gruen': 0x2E7D32,
+        katapult: 0xD7B98E, sitzkissen: 0x7FA7C9, jacke: 0x8D3B3B, 'rennbahn-orange': 0xFF7F27, matte: 0x81C784
       }[look];
       // Lineal: durchsichtiges, hellgelbes Plastik
       if (look === 'lineal') return t.lambert(0xF5E9A6, { transparent: true, opacity: 0.8 });
