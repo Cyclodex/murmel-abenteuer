@@ -38,6 +38,8 @@ Folgen (berechnet):
   1.6 cm statt 1 m ist, läuft alles wie in Zeitlupe, Faktor √(100 / 1.6) = 7.9: Ein Fall von der Tischplatte dauert im
   Spiel 3.09 s, echt 0.39 s. Das passt zum Gefühl «klein sein in einem grossen Raum» (wie *Tinykin*). Die Schwerkraft
   62.5-mal stärker zu machen, wäre echt schnell, aber nicht mehr steuerbar.
+  **Entscheid (Benutzer):** vorerst so lassen (Physik wie im Original). Später verfeinern, je nach Höhe der Strecke;
+  dafür gibt es schon `level.physik.schwerkraft` pro Level.
 - **`d1` (#78)** rechnet mit 25 cm pro Einheit. Für die Kategorie muss es im neuen Massstab neu gebaut werden: Das Haus
   wird 15.6-mal grösser (25 / 1.6), die Strecke deckt nur noch ein Stück Dach ab (z. B. letzte Ziegelreihen → Dachrinne → Fallrohr →
   Regentonne).
@@ -92,8 +94,8 @@ Folgen (berechnet):
   alle Level der Welt zeigen denselben Raum.
 - Jedes Level ist ein Bereich dieses Orts (`level.bereich`, z. B. Schreibtisch, Regal, Bett, Fensterbank) mit
   eigener Strecke. Die Kamera sieht den Raum jedes Mal von einer anderen Stelle.
-- Vorschlag: Das Ziel eines Levels liegt dort, wo das nächste beginnt (Ziel Schreibtisch = Schublade, nächstes Level
-  beginnt beim Fallen aus der Schublade). So ergibt die Welt einen Weg durch den ganzen Raum.
+- Level dürfen aneinander anschliessen (Ziel des einen = Start des nächsten, z. B. Schublade), müssen aber nicht
+  (Entscheid Benutzer).
 - Nichts wird aus den bisherigen Leveln, Themen oder Props übernommen; auch `d1` aus #78 dient nur als Vorlage.
 
 ## 4. Schritte (je ein PR)
@@ -129,7 +131,6 @@ Folgen (berechnet):
 - `pruefe-level.mjs` 16/16 (alle Stärken × Murmeln), im PR.
 - Bildrate auf dem Handy nicht schlechter als in den heutigen Leveln (im Pilot messen, vorher/nachher).
 
-## 6. Offene Fragen an den Benutzer
+## 6. Später
 
-1. Zeitlupe durch den echten Massstab (Abschnitt 2) so lassen?
-2. Sollen die Level einer Welt aneinander anschliessen (Ziel des einen = Start des nächsten)?
+- Zeitlupe verfeinern, je nach Höhe der Strecke (`level.physik.schwerkraft`).
