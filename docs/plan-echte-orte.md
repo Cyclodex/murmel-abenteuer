@@ -63,22 +63,26 @@ Folgen (berechnet):
   Problem; unter Möbeln (Tisch, Bett) prüfen.
 
 ### 3.3 Abstürze im Raum
-- Wie heute: unter `killY` = runtergefallen, zurück zum Checkpoint.
-- Pro Level entschieden, je nach Bereich (siehe 3.5):
-  - Strecke auf einem Möbel (Tisch, Regal, Bett): Der Zimmerboden liegt bei `killY - 1`, runter vom Möbel = Absturz.
-  - Strecke auf dem Boden (z. B. unter dem Bett): Der Boden ist Teil der Strecke (`parts`), `killY` liegt darunter.
-    Abstürze nur durch Löcher, die es dort gibt (Heizungsgitter, Treppenabgang).
+**Entscheid (Benutzer):** Der Boden ist Absturz.
+- Wie heute: unter `killY` = runtergefallen, zurück zum Checkpoint. Der Zimmerboden liegt bei `killY - 1`, die Murmel wird
+  kurz vor dem Boden zurückgesetzt. Strecken liegen darum immer auf Möbeln oder Dingen, nie auf dem Boden.
 
 ### 3.4 Licht
 - Draussen wie heute (Sonne). Drinnen: `ort.licht` mit Fensterlicht und Deckenlampe, Nebel weiter weg als der Raum
   (Nebel im Zimmer sieht falsch aus). Schattenkamera der Sonne (±12 um die Murmel) bleibt.
 
 ### 3.5 Kategorie «Echte Orte»
+**Entscheid (Benutzer):** Umschalter auf der Karte, Kategorie von Anfang an offen.
 - Heute ist die Karte eine Liste von Welten (`WORLDS` in `src/levels/index.js`, eine Reihe pro Welt in `showMap()`,
   `src/main.js:204`). Neu bekommt jede Welt `kategorie`: `'bahn'` (Standard, alle heutigen Welten) oder `'orte'`.
-- Karte: zwei Abschnitte mit Überschrift, zuerst «Bahnen», darunter «Echte Orte 🏠». Die Welten der Kategorie stehen in
-  `WORLDS` hinter den heutigen, so ändert sich an Reihenfolge und Freischalten der bisherigen Level nichts (`isOpen` geht
-  nach der Stelle in `LEVELS`).
+- Karte: Umschalter oben «🎢 Bahnen / 🏠 Echte Orte». `showMap()` zeigt nur die Welten der gewählten Kategorie. Die Wahl
+  wird gemerkt (Einstellungen in `src/progress.js`). «▶️ Weiter» (`markNext()`, `src/main.js:307`) sucht im DOM der
+  Karte und bleibt damit von selbst in der gewählten Kategorie.
+- Offen von Anfang an: kein `need`; das erste Level jeder Welt ist offen wie heute (`isOpen`, `src/main.js:151`).
+- Die Welten der Kategorie stehen in `WORLDS` hinter den heutigen, so ändert sich an Reihenfolge und Freischalten der
+  bisherigen Level nichts (`isOpen` geht nach der Stelle in `LEVELS`).
+- Knopf «Nächstes Level» im Gewinn-Fenster nimmt heute `levelIdx + 1` (`src/main.js:438`, `:515`): am Ende der letzten
+  Bahn-Welt darf er nicht in die Kategorie «Echte Orte» springen (und umgekehrt).
 - Sterne, Bestzeiten, Rangliste, Geister und Sticker laufen pro Level bzw. pro Welt und brauchen nichts Neues.
 - Bisherige Level und Welten bleiben unverändert, auch Themen und `scatter`.
 
@@ -86,7 +90,7 @@ Folgen (berechnet):
 **Entscheid (Benutzer):** Räume dürfen auf mehrere Level aufgeteilt werden, alles wird neu gebaut.
 - Eine Welt der Kategorie ist ein Ort (z. B. Kinderzimmer). Der Ort steht einmal als Daten an der Welt (`world.ort`),
   alle Level der Welt zeigen denselben Raum.
-- Jedes Level ist ein Bereich dieses Orts (`level.bereich`, z. B. Schreibtisch, Regal, Bett, Boden unter dem Bett) mit
+- Jedes Level ist ein Bereich dieses Orts (`level.bereich`, z. B. Schreibtisch, Regal, Bett, Fensterbank) mit
   eigener Strecke. Die Kamera sieht den Raum jedes Mal von einer anderen Stelle.
 - Vorschlag: Das Ziel eines Levels liegt dort, wo das nächste beginnt (Ziel Schreibtisch = Schublade, nächstes Level
   beginnt beim Fallen aus der Schublade). So ergibt die Welt einen Weg durch den ganzen Raum.
@@ -94,8 +98,9 @@ Folgen (berechnet):
 
 ## 4. Schritte (je ein PR)
 
-0. **Kategorie auf der Karte**: `kategorie` an den Welten, zwei Abschnitte in `showMap()`. Test: Karte zeigt beide
-   Abschnitte, bisherige Welten unverändert in «Bahnen».
+0. **Kategorie auf der Karte**: `kategorie` an den Welten, Umschalter in `showMap()`, Wahl gemerkt, «Nächstes Level»
+   bleibt in der Kategorie. Tests: Umschalter wechselt die Welten, Wahl bleibt nach Neuladen, bisherige Welten unverändert
+   unter «Bahnen».
 1. **`ort` + Massstab**: `src/orte.js`, `world.ort` und `level.bereich`, Masse in cm, `far`/Nebel aus der Grösse des Orts.
 2. **`raum` + Kamera**: Bauer für Wände, Boden, Decke, Fenster, Tür, einfache Möbel (Kisten-Formen); einseitige Wände;
    `kulisse` mit `fade()`. Neuer Test «Kamera im Raum»: auf der Route des Levels in Abständen prüfen, dass der Strahl
@@ -107,7 +112,7 @@ Folgen (berechnet):
 4. **Bauteile aus echten Dingen** (Stufe 2): `buch` (Klotz mit Buchrücken, stapelbar), `lineal` (schmaler Weg mit
    Zentimetern), `bett` (Matratze + Decke), `tisch` (Platte + Beine als Körper). Je ein Prüfstand-Level `p-<name>`, 16/16.
 5. **Weitere Bereiche im Kinderzimmer** (Stufe 3, echte Wege): Regal (Bretter, Spielzeug), Bett (Matratze federt, neue
-   Oberfläche `matratze`), Boden unter dem Bett (Teppich bremst, Staubflusen), Fensterbank. Jeder Bereich ein Level.
+   Oberfläche `matratze`), Nachttisch, Fensterbank. Jeder Bereich ein Level.
 6. **Weitere Orte, alles neu gebaut**, je eine Welt mit mehreren Bereichen, z. B.:
    - Dach: Ziegel, Dachrinne, Fallrohr → Regentonne (Ideen aus #78, neu im echten Massstab).
    - Küche: Ablage, Spüle, Herd.
@@ -128,5 +133,3 @@ Folgen (berechnet):
 
 1. Zeitlupe durch den echten Massstab (Abschnitt 2) so lassen?
 2. Sollen die Level einer Welt aneinander anschliessen (Ziel des einen = Start des nächsten)?
-3. Kategorie «Echte Orte» von Anfang an offen, oder erst ab einer Anzahl Sterne (wie Vulkan mit `need`)?
-4. Karte: zwei Abschnitte untereinander (Vorschlag) oder Umschalter «Bahnen / Echte Orte»?
