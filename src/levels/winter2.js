@@ -1,5 +1,8 @@
-// Winter 2: Eisweiher. Neu: Bobbahn (Rinne in S-Kurven), zugefrorener Weiher mit Eislöchern (spiegelglatt!),
-// Skilift (Plattform fährt schräg hinauf zur Berghütte).
+// Winter 2: Eisweiher. Bobbahn mit flachen Kurven: wer zu schnell ist, fliegt über den Rand hinaus (bremsen!).
+// Der Weiher ist voller Eisrisse: nur ein Streifen Eis hält, diagonal im Zickzack, ohne Rand und spiegelglatt.
+// Dann zwei treibende Eisschollen ohne Rand, selbst aus Eis: die erste fährt über den Weiher, die zweite quer
+// zum Steg hinüber. Takt abwarten, aufspringen, stillhalten, am anderen Ufer absteigen. Zum Schluss eine
+// randlose Eiskurve zur Fischerhütte.
 export default {
   id: 'wi2', name: 'Eisweiher', emoji: '⛸️', theme: 'winter',
   start: [0, 7, 2], killY: -6,
@@ -10,67 +13,68 @@ export default {
     { type: 'deko', form: 'huette', at: [-6.6, 7, 1], yaw: -90, scale: 0.8 },
     { type: 'deko', form: 'torstange', at: [-2.2, 7.8, -3.6], farbe: 0xE53935 },
     { type: 'deko', form: 'torstange', at: [2.2, 7.8, -3.6], farbe: 0x1E88E5 },
-    // Bobbahn: gerade hinunter, dann S-Kurven (rechts, links herum zurück, rechts)
+    // Bobbahn: steil hinunter, dann S-Kurven mit flachem Rand (zu schnell = hinausfliegen)
     { type: 'rinne', from: [0, 7, -4], to: [0, 5, -12], r: 1.6, bogen: 75, farbe: 0xBFE6FA },
-    { type: 'rinne', at: [0, 5, -12], yaw: 0, turn: 90, radius: 5, rise: -1.25, r: 1.6, bogen: 75, farbe: 0xBFE6FA },
-    { type: 'rinne', at: [5, 3.75, -17], yaw: -90, turn: -180, radius: 5, rise: -2.5, r: 1.6, bogen: 75, farbe: 0xBFE6FA },
-    { type: 'rinne', at: [5, 1.25, -27], yaw: 90, turn: 90, radius: 5, rise: -1.25, r: 1.6, bogen: 75, farbe: 0xBFE6FA },
+    { type: 'rinne', at: [0, 5, -12], yaw: 0, turn: 90, radius: 5, rise: -1.25, r: 1.6, bogen: 45, farbe: 0xBFE6FA },
+    { type: 'rinne', at: [5, 3.75, -17], yaw: -90, turn: -180, radius: 5, rise: -2.5, r: 1.6, bogen: 45, farbe: 0xBFE6FA },
+    { type: 'rinne', at: [5, 1.25, -27], yaw: 90, turn: 90, radius: 5, rise: -1.25, r: 1.6, bogen: 45, farbe: 0xBFE6FA },
     // Auslauf im Pulverschnee (bremst und schluckt Hüpfer)
     { type: 'weg', from: [0, 0, -32], to: [0, 0, -40], width: 4, walls: 0.8, surface: 'schnee' },
     { type: 'checkpoint', at: [0, 0, -37], size: [4, 3, 2] },
 
-    // Eisweiher: Eis mit drei Fischerlöchern, rundherum Schnee; auf der Schneeinsel hinter dem Loch der Bonusstern
-    { type: 'feld', at: [0, 0, -40], cell: 2, walls: 0.8, thick: 0.5, map: [
-      'nnnnnnn',
-      'neeeeen',
-      'ne.eeen',
-      'neeeeen',
-      'neeenen',
-      'n.ee.en',
-      'neeeeen',
-      'neeeeen',
-      'nnnnnnn'
+    // Eisrisse: nur der diagonale Streifen hält (Zickzack, ohne Rand); Abstecher zu den Sternen
+    { type: 'feld', at: [0, 0, -40], cell: 2.4, map: [
+      '..nnn..',
+      '..ee...',
+      '...ee.e',
+      '....eee',
+      '....ee.',
+      '...ee..',
+      '..ee...',
+      '.ee....',
+      'ee.....',
+      'eee....',
+      '.ee....',
+      '..ee...',
+      '..nnn..'
     ] },
-    { type: 'wand', from: [-7.4, 0, -40.2], to: [-2.4, 0, -40.2] },
-    { type: 'wand', from: [2.4, 0, -40.2], to: [7.4, 0, -40.2] },
-    { type: 'wand', from: [-7.4, 0, -57.8], to: [-2.9, 0, -57.8] },
-    { type: 'wand', from: [2.9, 0, -57.8], to: [7.4, 0, -57.8] },
-    { type: 'klotz', at: [0, -0.7, -49], size: [14, 0.2, 18], look: 'pfuetze', deko: true }, // Wasser unter dem Eis
-    { type: 'deko', form: 'pinguin', at: [-6.1, 0, -47], yaw: -90, scale: 0.6, fest: true },
-    { type: 'deko', form: 'pinguin', at: [4.2, 0, -47], yaw: 90, scale: 0.6, fest: true },
-    { type: 'deko', form: 'fisch', at: [-4.3, 0, -53.2], yaw: 20, scale: 0.35 },
+    { type: 'klotz', at: [0, -0.7, -71], size: [20, 0.2, 64], look: 'pfuetze', deko: true }, // offenes Wasser
+    { type: 'deko', form: 'pinguin', at: [-9.6, 0, -60], yaw: -90, scale: 0.6 },
+    { type: 'deko', form: 'pinguin', at: [9.8, 0, -47], yaw: 90, scale: 0.6 },
+    { type: 'deko', form: 'fisch', at: [4.3, -0.5, -52], yaw: 20, scale: 0.35 },
     // Ufer mit Tannen, Iglu und Schneemann (nur Kulisse)
-    { type: 'klotz', at: [-11.4, -0.5, -49], size: [8, 1, 20], look: 'schnee', deko: true },
-    { type: 'klotz', at: [11.4, -0.5, -49], size: [8, 1, 20], look: 'schnee', deko: true },
-    { type: 'deko', form: 'iglu', at: [-11.2, 0, -50], yaw: -90, scale: 0.7 },
-    { type: 'deko', form: 'tanne', at: [-10.6, 0, -43] },
-    { type: 'deko', form: 'tanne', at: [-12.4, 0, -56], scale: 0.8 },
-    { type: 'deko', form: 'tanne', at: [11.8, 0, -55.5] },
-    { type: 'deko', form: 'schneemann', at: [10.2, 0, -45.5], yaw: 90 },
+    { type: 'klotz', at: [-14, -0.5, -60], size: [8, 1, 44], look: 'schnee', deko: true },
+    { type: 'klotz', at: [14, -0.5, -60], size: [8, 1, 44], look: 'schnee', deko: true },
+    { type: 'deko', form: 'iglu', at: [-13.8, 0, -54], yaw: -90, scale: 0.7 },
+    { type: 'deko', form: 'tanne', at: [-13, 0, -44] },
+    { type: 'deko', form: 'tanne', at: [-14.5, 0, -70], scale: 0.8 },
+    { type: 'deko', form: 'tanne', at: [14, 0, -66] },
+    { type: 'deko', form: 'schneemann', at: [12.8, 0, -50], yaw: 90 },
+    { type: 'weg', from: [0, 0, -71.2], to: [0, 0, -75], width: 4, walls: 0.8 },
+    { type: 'checkpoint', at: [0, 0, -73], size: [4, 3, 2] },
 
-    // Talstation, Skilift schräg hinauf über die Schlucht
-    { type: 'weg', from: [0, 0, -58], to: [0, 0, -64], width: 5, walls: 0.8 },
-    { type: 'checkpoint', at: [0, 0, -60], size: [5, 3, 2] },
-    { type: 'plattform', from: [0, 0, -66], to: [0, 3, -74], size: [4.5, 4], time: 3, pause: 2.5, rim: 0.5, offset: 7 },
-    // Liftmasten mit Querbalken und Seil (nur Kulisse)
-    { type: 'klotz', at: [-4.7, -0.25, -63], size: [0.5, 13.5, 0.5], look: 'stamm', deko: true },
-    { type: 'klotz', at: [4.7, -0.25, -63], size: [0.5, 13.5, 0.5], look: 'stamm', deko: true },
-    { type: 'klotz', at: [0, 6.7, -63], size: [10.4, 0.4, 0.5], look: 'stamm', deko: true },
-    { type: 'klotz', at: [-4.7, 1.25, -77], size: [0.5, 16.5, 0.5], look: 'stamm', deko: true },
-    { type: 'klotz', at: [4.7, 1.25, -77], size: [0.5, 16.5, 0.5], look: 'stamm', deko: true },
-    { type: 'klotz', at: [0, 9.7, -77], size: [10.4, 0.4, 0.5], look: 'stamm', deko: true },
-    { type: 'wand', from: [0, 6.3, -63], to: [0, 9.3, -77], height: 0.12, thick: 0.12, look: 'band' },
-    // Bergstation mit Hütte
-    { type: 'weg', from: [0, 3, -76], to: [0, 3, -90], width: 8, walls: 0.8, caps: 'end' },
-    { type: 'checkpoint', at: [0, 3, -78], size: [8, 3, 2] },
-    { type: 'deko', form: 'huette', at: [0, 3, -86.8], yaw: 180, scale: 0.75, fest: true },
-    { type: 'ziel', at: [0, 3, -82] },
+    // Erste Eisscholle: treibt über den Weiher, ohne Rand und glatt
+    { type: 'plattform', from: [0, 0, -77], to: [0, 0, -87], size: [3.6, 3.6], time: 4.5, pause: 3.5, rim: 0, surface: 'eis', offset: 13.8 },
+    { type: 'weg', from: [0, 0, -89], to: [0, 0, -93], width: 3.6, walls: 0.6 },
+    { type: 'checkpoint', at: [0, 0, -91], size: [3.6, 3, 2] },
+    // Zweite Eisscholle: vom schmalen Eissteg quer hinüber zum anderen Steg
+    { type: 'weg', from: [0, 0, -93], to: [0, 0, -97], width: 1.6, surface: 'eis' },
+    { type: 'plattform', from: [0, 0, -99], to: [9, 0, -99], size: [3.6, 3.6], time: 4, pause: 3.5, rim: 0, surface: 'eis', offset: 8.5 },
+    { type: 'weg', from: [9, 0, -101], to: [9, 0, -104], width: 1.6, surface: 'eis' },
+    // randlose Eiskurve zur Fischerhütte
+    { type: 'kurve', at: [9, 0, -104], yaw: 0, turn: -90, radius: 5, width: 1.8, surface: 'eis' },
+    { type: 'weg', from: [4, 0, -109], to: [-6, 0, -109], width: 6, walls: 0.8, caps: 'end', surface: 'schnee' },
+    { type: 'deko', form: 'huette', at: [-4.5, 0, -114.5], yaw: 0, scale: 0.75 },
+    { type: 'ziel', at: [-2, 0, -109] },
+    { type: 'klotz', at: [4, -0.7, -100], size: [24, 0.2, 30], look: 'pfuetze', deko: true },
+    { type: 'deko', form: 'tanne', at: [-8, -1, -100] },
+    { type: 'deko', form: 'tanne', at: [16, -1, -110], scale: 0.9 },
 
-    { type: 'stern', at: [0, 7.9, -1] },
-    { type: 'stern', at: [10, 3.4, -22] },
-    { type: 'stern', at: [-1, 0.9, -47] },
-    { type: 'stern', at: [1, 0.9, -53] },
-    { type: 'stern', at: [0, 2.4, -70] },
-    { type: 'stern', at: [2, 0.9, -49], bonus: true }
+    { type: 'stern', at: [0, 6.6, -8] },
+    { type: 'stern', at: [-2.4, 0.9, -48.6] },
+    { type: 'stern', at: [0, 0.9, -82] },
+    { type: 'stern', at: [4.5, 0.9, -99] },
+    { type: 'stern', at: [7.54, 0.9, -107.54] },
+    { type: 'stern', at: [7.2, 0.9, -65.4], bonus: true }
   ]
 };

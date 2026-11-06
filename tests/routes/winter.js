@@ -1,7 +1,14 @@
 // Autopilot-Routen der Welt Winter.
 
 // Eisweiher: Bobbahn folgen bis auf den Schnee vor dem Weiher
-const bob = [{ x: 0, z: -3, speed: 3 }, { follow: true, bisY: 0.8, speed: 5 }, { x: 0, z: -37, speed: 4 }, { x: 0, z: -41, speed: 2.5 }];
+const bob = [{ x: 0, z: -3, speed: 3 }, { follow: true, bisY: 0.8, speed: 5 }, { x: 0, z: -37, speed: 3 }, { x: 0, z: -41, speed: 1.5 }];
+// Eisrisse: Mitte des Eisstreifens, Reihe für Reihe (Kachel 2.4)
+const eisrisse = [
+  { x: -1.2, z: -43.6, speed: 1.5, r: 0.6 }, { x: -3.6, z: -46, speed: 1.5, r: 0.6 }, { x: -2.4, z: -48.4, speed: 1.2, r: 0.6 },
+  { x: -6, z: -49.8, speed: 1.2, r: 0.7 }, { x: -3.6, z: -53.2, speed: 1.5, r: 0.6 }, { x: -1.2, z: -55.6, speed: 1.5, r: 0.6 },
+  { x: 1.2, z: -58, speed: 1.5, r: 0.6 }, { x: 3.6, z: -60.4, speed: 1.5, r: 0.6 }, { x: 3.6, z: -62.8, speed: 1.2, r: 0.6 },
+  { x: 1.2, z: -65.2, speed: 1.5, r: 0.6 }, { x: -1.2, z: -67.6, speed: 1.5, r: 0.6 }
+];
 
 export default {
   // Schlittelhang: Slalom um die Stangen, rechts am Schneemann vorbei, über das Eis, in die Nische vor dem Iglu (Bonusstern) und ins Ziel
@@ -11,16 +18,20 @@ export default {
     { x: 0, z: -52, speed: 3.5 }, { x: 0, z: -59, speed: 3.5 }, { x: 1.46, z: -63.54 }, { x: 5, z: -65 }, { x: 8, z: -65, speed: 3 },
     { x: 11, z: -66.5, speed: 2 }, { x: 11, z: -70.5, speed: 2, r: 0.5 }, { x: 11, z: -66, speed: 2 }, { x: 16, z: -65 }
   ],
-  // Eisweiher: im Slalom um die Eislöcher, mit dem Skilift hinauf. Einsteigen gleich am Anfang der Pause des Lifts
-  // (platAtFrom gälte auch im letzten Moment der Pause, dann führe die Murmel dem Lift in die Lücke nach)
+  // Eisweiher: Bobbahn mit Tempo 5 (schneller fliegt man in den flachen Kurven hinaus), im Zickzack über den Eisstreifen
+  // (Abstecher zum Stern), Schollen gleich am Anfang ihrer Pause betreten und auf der Scholle stillhalten
   wi2: [
     [
-      ...bob, { x: 0, z: -44.5, speed: 2.2, r: 0.8 }, { x: -1, z: -47, speed: 2.2, r: 0.8 }, { x: 0.2, z: -50, speed: 2.2, r: 0.8 },
-      { x: 1, z: -53, speed: 2.2, r: 0.8 }, { x: 0, z: -57, speed: 2.5 }, { x: 0, z: -62.3, speed: 2.5, r: 0.6 },
-      { x: 0, z: -66, speed: 2, wait: ['phase', ['plattform', 0, 0, 0.07]] }, { x: 0, z: -78, speed: 2, wait: 'platAtTo' }, { x: 0, z: -82, speed: 3 }
+      ...bob, ...eisrisse,
+      { x: 0, z: -70, speed: 1.5 }, { x: 0, z: -74.4, speed: 1.5, r: 0.5 },
+      { x: 0, z: -77, speed: 1.5, r: 0.6, wait: ['phase', ['plattform', 0, 0, 0.04]] }, { x: 0, z: -90.5, speed: 2, wait: 'platAtTo' },
+      { x: 0, z: -96.4, speed: 1.2, r: 0.5 },
+      { x: 0, z: -99, speed: 1.5, r: 0.6, wait: ['phase', ['plattform', 1, 0, 0.04]] }, { x: 9, z: -99, speed: 1.5, r: 0.6, wait: ['platAtTo', 1] },
+      { x: 9, z: -102, speed: 1.5, r: 0.6 }, { x: 9, z: -104, speed: 1.5, r: 0.6 }, { x: 7.54, z: -107.54, speed: 1.5, r: 0.6 },
+      { x: 4, z: -109, speed: 1.5, r: 0.6 }, { x: -2, z: -109, speed: 3 }
     ],
-    // Umweg zum Bonusstern auf der Schneeinsel hinter dem Eisloch
-    [...bob, { x: 0, z: -44.5, speed: 1.8, r: 0.8 }, { x: -1, z: -47, speed: 1.5, r: 0.7 }, { x: -0.3, z: -49.6, speed: 1.2, r: 0.6 }, { x: 2, z: -49.2, speed: 1.2, r: 0.5 }]
+    // Abstecher zum Bonusstern auf dem Eiszipfel rechts
+    [...bob, ...eisrisse.slice(0, 9), { x: 7.2, z: -62.8, speed: 1.2, r: 0.5 }, { x: 7.2, z: -65.2, speed: 1, r: 0.5 }]
   ],
   // Skischanze: zwischen den Schneebällen durch, über den Grat, Schanze (im Flug nicht lenken),
   // im Auslauf der Abstecher zum Bonusstern vor dem Iglu
