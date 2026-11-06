@@ -225,13 +225,13 @@ Fenster und Türen zueinander passen (aus dem Kinderzimmer sieht man in den Gart
 - **Gebaut wird nicht in Spielreihenfolge:** Pilot bleibt das Kinderzimmer (Schreibtisch). Die übrigen Welten kommen
   danach dazu und werden an ihrer Stelle eingereiht.
 
-### 8.2 Estrich
+### 8.1 Estrich
 - Unter dem Satteldach: Boden auf 5.5 m, 10 × 9 m = 625 × 562.5 Einheiten, Höhe unter dem First 2.60 m (4.5 · tan 30°)
   = 162.38 Einheiten, zur Traufe hin bis 0.
 - Dinge: Sparren und Pfetten (Balken als Strecke), Umzugskisten, Koffer, alte Möbel unter Tüchern, Weihnachtsdeko,
   Dachfenster mit Lichtstrahl, Staub, Estrichluke mit Falttreppe über dem Gang im OG.
 
-### 8.3 Kinderzimmer (OG, Südwest-Ecke)
+### 8.2 Kinderzimmer (OG, Südwest-Ecke)
 4 × 3.5 × 2.5 m = 250 × 218.75 × 156.25 Einheiten. Fenster nach Süden (Brüstung 0.9 m), Tür nach Norden zum Gang.
 
 | Möbel | cm (B × T × H) | Einheiten | Bereich / Level |
