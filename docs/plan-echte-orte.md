@@ -208,10 +208,30 @@ Fenster und Türen zueinander passen (aus dem Kinderzimmer sieht man in den Gart
   (5.5 + 4.5 · tan 30°), Keller bis −2.5 m. Garten im Süden.
 - Räume: UG Werkstatt, Waschküche, Vorratskeller; EG Eingang, WC, Küche, Wohnzimmer, Esszimmer; OG Kinderzimmer,
   Elternzimmer, Badezimmer, Büro. Treppe in allen Geschossen an derselben Stelle.
-- Welten der Kategorie (Vorschlag, in dieser Reihenfolge): Kinderzimmer, Küche, Badezimmer, Werkstatt, Wohnzimmer,
-  Dach + Garten.
+- **Weg durchs ganze Haus (Idee Benutzer):** Die Welten folgen der Murmel von oben nach unten, vom Dach in den Estrich,
+  durch alle Stockwerke bis in den Keller. Spielreihenfolge der Welten:
 
-### 8.1 Kinderzimmer (OG, Südwest-Ecke)
+| # | Welt | Geschoss | Übergang zur nächsten Welt (Vorschlag) |
+|---|---|---|---|
+| 1 | Dach | aussen, Traufe 5.5 bis First 8.10 m | durch das Dachfenster in den Estrich |
+| 2 | Estrich | unter dem Dach | durch die Estrichluke (Falttreppe) in den Gang im OG |
+| 3 | Kinderzimmer | OG | durch die Tür in den Gang |
+| 4 | Badezimmer | OG | Treppe hinunter, Geländer als Rutsche |
+| 5 | Küche | EG | |
+| 6 | Wohnzimmer | EG | Kellertreppe oder Wäscheschacht |
+| 7 | Werkstatt / Waschküche | UG | Ende im Keller |
+
+- Der Übergang ist jeweils das Ziel der einen und der Start der nächsten Welt (darf, muss nicht, siehe 3.6).
+- **Gebaut wird nicht in Spielreihenfolge:** Pilot bleibt das Kinderzimmer (Schreibtisch). Die übrigen Welten kommen
+  danach dazu und werden an ihrer Stelle eingereiht.
+
+### 8.2 Estrich
+- Unter dem Satteldach: Boden auf 5.5 m, 10 × 9 m = 625 × 562.5 Einheiten, Höhe unter dem First 2.60 m (4.5 · tan 30°)
+  = 162.38 Einheiten, zur Traufe hin bis 0.
+- Dinge: Sparren und Pfetten (Balken als Strecke), Umzugskisten, Koffer, alte Möbel unter Tüchern, Weihnachtsdeko,
+  Dachfenster mit Lichtstrahl, Staub, Estrichluke mit Falttreppe über dem Gang im OG.
+
+### 8.3 Kinderzimmer (OG, Südwest-Ecke)
 4 × 3.5 × 2.5 m = 250 × 218.75 × 156.25 Einheiten. Fenster nach Süden (Brüstung 0.9 m), Tür nach Norden zum Gang.
 
 | Möbel | cm (B × T × H) | Einheiten | Bereich / Level |
