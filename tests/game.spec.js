@@ -1086,6 +1086,7 @@ test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
 });
 
 test('Checkpoint: Figur je Welt schläft, jubelt beim Erreichen, Band reisst, Neustart setzt zurück', async ({ page }) => {
+  test.setTimeout(120_000); // neun Welten, je Level gut 6 s in der Action: mit 60 s lief der Test knapp ins Limit
   const errors = watchErrors(page);
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
