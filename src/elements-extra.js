@@ -3,6 +3,8 @@
 import { DEG, quatYawPitch, rotate, add, sub, scale, lerp3, toLocal, fwdOf } from './math.js';
 import { TYPES, segment, kinematicBody, ballPos } from './elements.js';
 import { rohrSolids, abflussPts, ABFLUSS } from './elements-bahn.js';
+import { buildProp } from './props.js';
+import { faktor, immer } from './takt.js';
 
 const R = 0.5;
 const UP = [0, 1, 0];
@@ -89,7 +91,10 @@ export const EXTRA = {
   },
 
   // Förderband: Weg, der die Murmel in seine Richtung mitnimmt. speed in m/s (Standard 8), grip = wie stark (pro Sekunde, Standard 10).
-  // {type:'band', from, to, width, walls?, caps?, speed?, grip?}
+  // look: 'schleifband' = Schleifpapier statt Gummiband (Werkstatt)
+  // takt = [[dauer, faktor], …]: Faktor auf speed, zyklisch ab Level-Start (negativ = läuft rückwärts, 0 = steht), offset dazu.
+  // Autopilot: wait ['frei', 'band', n, rest] = läuft die nächsten rest s vorwärts.
+  // {type:'band', from, to, width, walls?, caps?, speed?, grip?, look?, takt?, offset?}
   band: {
     solids(d) {
       const out = TYPES.weg.solids({ ...d, look: 'band' });
@@ -97,47 +102,56 @@ export const EXTRA = {
       return out;
     },
     init(el) { el.seg = segment(el.from, el.to); el.dir = norm(sub(el.to, el.from)); },
+    reset(el) { el.t = 0; el.f = faktor(el, 0); },
+    frei: (el, rest) => immer(rest, s => faktor(el, el.t + s) > 0),
     step(el, g, h) {
+      el.t += h; el.f = faktor(el, el.t);
       const u = g.groundBody && g.groundBody.userData;
       if (!u || u.band !== el) return;
       const v = g.ball.velocity, al = v.x * el.dir[0] + v.y * el.dir[1] + v.z * el.dir[2], k = Math.min(1, (el.grip ?? 10) * h);
-      const dv = ((el.speed ?? 8) - al) * k;
-      if (dv > 0) { v.x += el.dir[0] * dv; v.y += el.dir[1] * dv; v.z += el.dir[2] * dv; }
+      const sp = (el.speed ?? 8) * el.f, dv = (sp - al) * k;
+      if (sp >= 0 ? dv > 0 : dv < 0) { v.x += el.dir[0] * dv; v.y += el.dir[1] * dv; v.z += el.dir[2] * dv; }
     },
     view(el, v) {
       const T = v.THREE, w = el.width ?? 4, s = el.seg;
+      const [grund, pfeil, naht] = el.look === 'schleifband' ? ['#8A5A3C', '#F1DBAE', '#6E4428'] : ['#3A3F47', '#FFD23F', '#2B2F36'];
       const tex = v.canvasTex(64, 64, (x, W, H) => {
-        x.fillStyle = '#3A3F47'; x.fillRect(0, 0, W, H);
-        x.fillStyle = '#FFD23F'; x.beginPath(); x.moveTo(14, 40); x.lineTo(32, 20); x.lineTo(50, 40); x.lineTo(42, 46); x.lineTo(32, 34); x.lineTo(22, 46); x.closePath(); x.fill();
-        x.fillStyle = '#2B2F36'; x.fillRect(0, 0, W, 4);
+        x.fillStyle = grund; x.fillRect(0, 0, W, H);
+        if (el.look === 'schleifband') { x.fillStyle = naht; for (let i = 0; i < 90; i++) x.fillRect((i * 37) % W, (i * 23) % H, 2, 2); } // Körnung
+        x.fillStyle = pfeil; x.beginPath(); x.moveTo(14, 40); x.lineTo(32, 20); x.lineTo(50, 40); x.lineTo(42, 46); x.lineTo(32, 34); x.lineTo(22, 46); x.closePath(); x.fill();
+        x.fillStyle = naht; x.fillRect(0, 0, W, 4);
       });
       tex.repeat.set(Math.max(1, Math.round(w / 2)), s.L / 1.5);
       const m = new T.Mesh(new T.PlaneGeometry(w, s.L), new T.MeshLambertMaterial({ map: tex }));
       m.quaternion.set(...s.q); m.rotateX(-Math.PI / 2);
       m.position.set(...add(s.mid, scale(s.up, 0.02))); v.scene.add(m);
-      return { tick(dt) { tex.offset.y = (tex.offset.y - dt * (el.speed ?? 8) / 1.5) % 1; } };
+      return { tick(dt) { tex.offset.y = (tex.offset.y - dt * (el.speed ?? 8) * (el.f ?? 1) / 1.5) % 1; } };
     }
   },
 
   // Wind (Ventilator): in der Zone wird die Murmel geschoben. up:true = Aufwind nach oben.
   // at = Mitte der Zone am Boden, size = [breit, hoch, tief], yaw = Blasrichtung, strength = Beschleunigung m/s²
   // look = 'schlauch' (Gartenschlauch) oder 'hahn' (Wasserhahn): Wasserstrahl statt Ventilator, wäscht stärker
-  // {type:'wind', at, size?, yaw?, up?, strength?, look?}
+  // takt = [[dauer, faktor], …]: Böen, Stärke = strength * faktor, zyklisch ab Level-Start (z. B. [[3, 0], [1.5, 1], [2, 0.4]]), offset dazu.
+  // Autopilot: wait ['frei', 'wind', n, rest] = Faktor bleibt die nächsten rest s höchstens 0.2.
+  // {type:'wind', at, size?, yaw?, up?, strength?, look?, takt?, offset?}
   wind: {
     init(el) {
       el.size = el.size || [3, 4, 6]; el.yw = (el.yaw || 0) * DEG;
       el.dir = el.up ? UP : fwdOf(el.yw);
     },
-    reset(el) { el.inside = false; },
+    reset(el) { el.inside = false; el.t = 0; el.f = faktor(el, 0); },
+    frei: (el, rest) => immer(rest, s => faktor(el, el.t + s) <= 0.2),
     // bläst es am Punkt p? (auch für die Kamera: fällt die Murmel in den Wind, fliegt sie nicht frei)
     feld(el, p) {
       const l = toLocal(p, el.at, el.yw), [b, hh, t] = el.size;
       return Math.abs(l[0]) < b / 2 && l[1] > 0 && l[1] < hh && Math.abs(l[2]) < t / 2;
     },
     step(el, g, h, ev) {
-      const inside = EXTRA.wind.feld(el, ballPos(g));
+      el.t += h; el.f = faktor(el, el.t);
+      const inside = el.f > 0 && EXTRA.wind.feld(el, ballPos(g)); // Böe aus: bläst nicht
       if (inside) {
-        const a = (el.strength ?? (el.up ? 16 : 8)) * h, v = g.ball.velocity;
+        const a = (el.strength ?? (el.up ? 16 : 8)) * el.f * h, v = g.ball.velocity;
         v.x += el.dir[0] * a; v.y += el.dir[1] * a; v.z += el.dir[2] * a;
         g.washK += el.look ? 6 : 3; // Wind bläst den Dreck weg, Wasser wäscht ihn ab
         if (!el.inside) ev.push('wind');
@@ -187,9 +201,10 @@ export const EXTRA = {
       const sp = (el.strength ?? 8) * 0.6;
       return {
         tick(dt) {
-          blades.rotation.z += dt * 12;
+          const f = Math.max(0, el.f ?? 1); mat.visible = f > 0.05;
+          blades.rotation.z += dt * 12 * Math.max(f, 0.1);
           for (const s of streaks) {
-            if (el.up) { s.y += dt * sp; if (s.y > hh) s.y = 0; } else { s.z -= dt * sp; if (s.z < -t / 2) s.z = t / 2; }
+            if (el.up) { s.y += dt * sp * f; if (s.y > hh) s.y = 0; } else { s.z -= dt * sp * f; if (s.z < -t / 2) s.z = t / 2; }
             s.m.position.set(...add(el.at, rotate(q, [s.x, s.y, s.z])));
           }
         }
@@ -197,7 +212,13 @@ export const EXTRA = {
     }
   },
 
-  // Drehender Balken, der die Murmel sanft schubst. {type:'balken', at (Drehpunkt am Boden), length?, speed?:Grad/s, height?}
+  // Drehender Balken, der die Murmel sanft schubst. form = Gegenstand aus src/props.js, der sich mitdreht (bekommt laenge = length,
+  // hoehe = height; z. B. 'kaeseharfe', 'zeiger'); mit enden: true steht je eine Figur an beiden Enden, Gesicht in Drehrichtung
+  // (z. B. 'pferd' für ein Karussell), scale = deren Grösse. Alles nur Grafik.
+  // takt = [[dauer, faktor], …]: Faktor auf speed, zyklisch ab Level-Start (negativ = dreht andersrum, 0 = steht), offset dazu.
+  // Autopilot: wait ['frei', 'balken', n, rest, [x, z, r?]] = kommt die nächsten rest s nicht näher als r an [x, z]
+  // (statt [x, z] auch eine Strecke [[x1, z1], [x2, z2], r?]).
+  // {type:'balken', at (Drehpunkt am Boden), length?, speed?:Grad/s, height?, farbe?, form?, enden?, scale?, takt?, offset?}
   balken: {
     init(el, g) {
       const L = el.length ?? 6, hh = el.height ?? 0.6;
@@ -205,17 +226,44 @@ export const EXTRA = {
       el.body.position.set(...el.at);
       el.body.userData = { surface: el.surface };
     },
-    reset(el) { el.a = (el.yaw || 0) * DEG; },
+    reset(el) { el.a = (el.yaw || 0) * DEG; el.t = 0; el.f = faktor(el, 0); },
     pre(el, g, h) {
-      const w = (el.speed ?? 40) * DEG;
+      el.f = faktor(el, el.t);
+      const w = (el.speed ?? 40) * DEG * el.f;
       el.body.quaternion.set(...quatYawPitch(el.a, 0));
       el.body.angularVelocity.set(0, w, 0);
-      el.a += w * h;
+      el.a += w * h; el.t += h;
+    },
+    // Abstand von [x, z] zur Balkenachse (Winkel -a) bei Winkel a; ausserhalb der Länge zählt der Abstand zum Ende
+    abstand(el, a, x, z) {
+      const dx = x - el.at[0], dz = z - el.at[2], c = Math.cos(-a), s = Math.sin(-a);
+      const l = dx * c + dz * s, q = -dx * s + dz * c, L = (el.length ?? 6) / 2;
+      return Math.hypot(Math.max(0, Math.abs(l) - L), q);
+    },
+    // Autopilot: in den nächsten rest s nie näher als r an den Punkt [x, z] oder an die Strecke [[x1, z1], [x2, z2]]
+    // (r = halbe Balkendicke + Murmel + Luft); rechnet die Schritte von pre() voraus, mit Takt
+    frei(el, rest, [p, q, r = 0.2 + R + 0.4] = []) {
+      const pts = [];
+      if (!Array.isArray(p)) pts.push([p, q]);
+      else { const n = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 0.25)); for (let i = 0; i <= n; i++) pts.push([p[0] + (q[0] - p[0]) * i / n, p[1] + (q[1] - p[1]) * i / n]); }
+      const w = (el.speed ?? 40) * DEG, h = 1 / 60;
+      let a = el.a, t = el.t;
+      for (let s = 0; s <= rest + 1e-9; s += h) {
+        if (pts.some(([x, z]) => TYPES.balken.abstand(el, a, x, z) < r)) return false;
+        a += w * faktor(el, t) * h; t += h;
+      }
+      return true;
     },
     view(el, v) {
       const T = v.THREE, hub = new T.Mesh(new T.CylinderGeometry(0.35, 0.45, (el.height ?? 0.6) + 0.3, 16), v.mats.pole);
       hub.position.set(el.at[0], el.at[1] + ((el.height ?? 0.6) + 0.3) / 2, el.at[2]); v.scene.add(hub);
-      return v.bodyGroup(el.body);
+      const bg = v.bodyGroup(el.body);
+      if (el.form && el.enden) for (const k of [-1, 1]) { // Figuren an den Enden, Gesicht in Drehrichtung
+        const p = buildProp(T, el.form, el);
+        p.scale.setScalar(el.scale ?? 0.6); p.position.set(k * ((el.length ?? 6) / 2 - 0.8), (el.height ?? 0.6) + 0.05, 0);
+        p.rotation.y = k * Math.sign(el.speed ?? 40) > 0 ? 0 : Math.PI; bg.grp.add(p);
+      } else if (el.form) bg.grp.add(buildProp(T, el.form, { laenge: el.length ?? 6, hoehe: el.height ?? 0.6 }));
+      return bg;
     }
   },
 
@@ -307,7 +355,8 @@ export const EXTRA = {
   // Dominos: weisse Steine mit Punkten, die umfallen. count Reihen von from bis to, bis zu quer (ungerade) Steine
   // nebeneinander (abstand = Mitte zu Mitte), jede zweite Reihe um einen halben Abstand versetzt mit einem Stein weniger:
   // ein fallender Stein trifft zwei der nächsten Reihe. Vorne beginnt es als Dreieck (1, 2, 3 …), damit alle umfallen.
-  // Einzelner Stein: at, yaw. {type:'domino', from, to, count?, quer?, abstand?, size?:[b,h,t]}
+  // Einzelner Stein: at, yaw. form: 'dose' = Büchsen statt Dominosteine (nur Grafik, size z. B. [0.9, 1.2, 0.9]).
+  // {type:'domino', from, to, count?, quer?, abstand?, size?:[b,h,t], form?}
   domino: {
     init(el, g) {
       if (el.at) el.from = el.to = el.at;
@@ -348,7 +397,13 @@ export const EXTRA = {
       const T = v.THREE, he = el.bodies[0].shapes[0].halfExtents;
       const geo = new T.BoxGeometry(he.x * 2, he.y * 2, he.z * 2);
       const white = new T.MeshPhongMaterial({ color: 0xF7F4EC, shininess: 60 });
+      const blech = new T.MeshPhongMaterial({ color: 0xCFD8DC, shininess: 140, specular: 0xffffff }), dosenGeo = new T.CylinderGeometry(he.x, he.x, he.y * 2, 20);
       const meshes = el.bodies.map((b, i) => {
+        if (el.form === 'dose') { // Büchse: Blech mit buntem Etikett
+          const m = new T.Mesh(dosenGeo, blech), etikett = new T.Mesh(new T.CylinderGeometry(he.x + 0.015, he.x + 0.015, he.y * 1.1, 20), new T.MeshPhongMaterial({ color: DOSEN_FARBEN[i % DOSEN_FARBEN.length], shininess: 40 }));
+          m.add(etikett); m.castShadow = true; v.scene.add(m);
+          return m;
+        }
         const [o, u] = DOMINO_PAARE[(i * 11 + 5) % DOMINO_PAARE.length];
         const face = new T.MeshPhongMaterial({ map: dominoTex(v, o, u), shininess: 60 });
         const m = new T.Mesh(geo, [white, white, white, white, face, face]);
@@ -360,6 +415,7 @@ export const EXTRA = {
   }
 };
 
+const DOSEN_FARBEN = [0xE53935, 0x1E88E5, 0xFDD835, 0x43A047, 0xFB8C00];
 // Alle 28 Steine eines Domino-Spiels (Punkte oben, unten)
 export const DOMINO_PAARE = [];
 for (let a = 0; a <= 6; a++) for (let b = a; b <= 6; b++) DOMINO_PAARE.push([a, b]);

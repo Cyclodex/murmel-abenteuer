@@ -34,6 +34,12 @@ export const SONGS = {
       67, null, 71, 74, 79, 78, 76, 74, 72, 71, 69, 71, 67, null, null, null],
     bass: [43, 50, 47, 50, 48, 55, 50, 55, 43, 50, 47, 50, 48, 50, 43, null]
   },
+  werkstatt: { // hämmernd, munter
+    bpm: 108, lead: 'pluck', drums: true,
+    melody: [67, null, 67, 72, null, 72, 76, null, 74, null, 74, 77, null, 76, 74, null,
+      72, null, 76, 79, null, 76, 72, null, 74, 77, 76, 74, 72, null, null, null],
+    bass: [48, null, 55, 48, 50, null, 57, 50, 48, null, 55, 48, 53, 55, 48, null]
+  },
   kueche: { // flott, hüpfend
     bpm: 124, lead: 'pluck', drums: true,
     melody: [72, 72, 76, null, 79, null, 76, 72, 74, 74, 77, null, 81, null, 77, 74,
@@ -58,11 +64,29 @@ export const SONGS = {
       81, 79, 77, 76, 74, null, 76, 77, 79, null, 72, null, 72, null, null, null],
     bass: [48, null, 55, null, 50, null, 55, null, 48, null, 55, null, 53, 55, 48, null]
   },
+  winter: { // Schlittenfahrt: Glöckchen, die Tss-Schläge klingen wie Schellen
+    bpm: 104, lead: 'box', drums: true,
+    melody: [79, null, 76, 79, 84, null, 79, null, 81, null, 77, 81, 79, null, null, null,
+      79, null, 76, 79, 84, 86, 88, null, 86, 84, 81, 83, 84, null, null, null],
+    bass: [48, 55, 52, 55, 53, 57, 55, 59, 48, 55, 52, 55, 53, 55, 48, null]
+  },
   vulkan: { // spannend, Moll, treibend
     bpm: 118, lead: 'pluck', drums: true,
     melody: [69, null, 72, 69, 76, null, 74, 72, 71, null, 74, 71, 77, 76, 74, null,
       69, null, 72, 76, 81, null, 80, 77, 76, 74, 72, 71, 69, null, null, null],
     bass: [45, 45, 52, 45, 43, 43, 50, 43, 41, 41, 48, 41, 40, 47, 45, null]
+  },
+  chilbi: { // Drehorgel-Walzer: sechs Achtel pro Takt, Bass hm-ta-ta, ohne Schlagzeug
+    bpm: 138, lead: 'box',
+    melody: [72, null, 76, null, 79, null, 84, null, 79, null, 76, null, 74, null, 77, null, 79, null, 83, null, 79, null, 77, null,
+      72, null, 76, null, 79, null, 81, null, 84, null, 81, null, 79, 77, 74, null, 71, null, 72, null, null, null, null, null],
+    bass: [48, 55, 55, 48, 55, 55, 43, 50, 50, 43, 50, 50, 48, 55, 55, 41, 53, 53, 43, 50, 50, 48, 55, null]
+  },
+  schweiz: { // Ländler: hüpfende Dreiklänge wie ein Jodel
+    bpm: 116, lead: 'pluck', drums: true,
+    melody: [67, 72, 76, 72, 79, 76, 72, null, 67, 71, 74, 71, 77, 74, 71, null,
+      67, 72, 76, 79, 84, 79, 76, 72, 74, 77, 74, 71, 72, null, null, null],
+    bass: [48, 55, 52, 55, 43, 50, 47, 50, 48, 55, 52, 55, 43, 50, 48, null]
   },
   spielzimmer: {
     bpm: 100, lead: 'box', drums: true,
@@ -81,10 +105,15 @@ const ROLL = {
   sand: { f0: 1400, fv: 50, q: 0.5, vol: 0.12, rumble: 0.6 },
   seife: { f0: 2200, fv: 120, q: 3, vol: 0.12, rumble: 0.2 },
   handtuch: { f0: 160, fv: 20, q: 0.6, vol: 0.08, rumble: 0.5 },
+  schnee: { f0: 420, fv: 35, q: 0.5, vol: 0.13, rumble: 0.6 }, // dumpfes Knirschen
+  saegemehl: { f0: 700, fv: 40, q: 0.5, vol: 0.1, rumble: 0.5 },
   flussbett: { f0: 900, fv: 90, q: 0.6, vol: 0.16, rumble: 0.4 },
+  schoggi: { f0: 300, fv: 40, q: 0.6, vol: 0.14, rumble: 0.8 },
   keramik: { f0: 1300, fv: 140, q: 1.6, vol: 0.15, rumble: 0.3 },
   kunststoff: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 },
-  trichter: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 }
+  trichter: { f0: 650, fv: 110, q: 1.2, vol: 0.17, rumble: 0.5 },
+  ziegel: { f0: 420, fv: 60, q: 0.8, vol: 0.18, rumble: 1.2 },
+  dachrinne: { f0: 1100, fv: 130, q: 2, vol: 0.16, rumble: 0.4 }
 };
 
 export function createAudio(opts = {}) {
@@ -181,10 +210,29 @@ export function createAudio(opts = {}) {
       for (let i = 0; i < 6; i++) tone(260 + i * 90, t + i * 0.07, 0.07, 0.3, 'sine', 700 + i * 150);
       [79, 83, 86, 91].forEach((n, i) => bell(midi(n), t + 0.5 + i * 0.07, 0.14, 0.45));
     },
+    'cp-schneemann': t => { // Schellen klingeln, der Hut ploppt hoch, Glöckchen
+      for (let i = 0; i < 4; i++) { hiss(t + i * 0.09, 0.05, 0.35, 'highpass', 6000); bell(midi(96 + (i % 2) * 4), t + i * 0.09, 0.1, 0.2); }
+      tone(300, t + 0.4, 0.1, 0.4, 'sine', 900);
+      [79, 84, 88, 91].forEach((n, i) => bell(midi(n), t + 0.55 + i * 0.08, 0.16, 0.45));
+    },
     'cp-geysir': t => { // Grollen, Dampf zischt hoch, Pling
       tone(70, t, 0.5, 0.5, 'sine', 40); hiss(t, 0.3, 0.3, 'lowpass', 300, 150, 0.7);
       hiss(t + 0.1, 0.7, 0.45, 'bandpass', 400, 3500, 1.2);
       bell(midi(91), t + 0.8, 0.2, 0.6); bell(midi(98), t + 0.9, 0.15, 0.5);
+    },
+    'cp-lukas': t => { // Hammerschlag, der Klotz saust hoch, Glocke bimmelt
+      hiss(t, 0.06, 0.6, 'lowpass', 900, 200, 0.8); tone(130, t, 0.1, 0.6, 'sine', 60);
+      tone(320, t + 0.03, 0.24, 0.16, 'triangle', 1500);
+      bell(midi(93), t + 0.27, 0.3, 0.9); bell(midi(93), t + 0.48, 0.2, 0.7); bell(midi(98), t + 0.66, 0.16, 0.7);
+    },
+    'cp-schraube': t => { // Akkuschrauber surrt hoch, Ratsche klickt, Pling
+      tone(180, t, 0.45, 0.22, 'sawtooth', 520); hiss(t, 0.45, 0.2, 'bandpass', 900, 2600, 2);
+      for (let i = 0; i < 4; i++) tone(1500, t + 0.5 + i * 0.06, 0.03, 0.2, 'square', 1100);
+      bell(midi(88), t + 0.8, 0.2, 0.6); bell(midi(95), t + 0.9, 0.15, 0.5);
+    },
+    'cp-murmeltier': t => { // drei schrille Pfiffe, Kuhglocke
+      for (const d of [0, 0.16, 0.32]) tone(2400, t + d, 0.11, 0.22, 'sine', 3300);
+      bell(midi(77), t + 0.55, 0.22, 0.5); bell(midi(72), t + 0.72, 0.2, 0.6); bell(midi(77), t + 0.89, 0.18, 0.7);
     },
     turbo: t => { hiss(t, 0.4, 1.0, 'bandpass', 400, 3500, 1.5); tone(180, t, 0.35, 0.3, 'sawtooth', 700); },
     click: t => { hiss(t, 0.03, 0.7, 'highpass', 2500); tone(1200, t, 0.04, 0.2, 'square', 900); tone(midi(72), t + 0.08, 0.2, 0.18, 'triangle'); },

@@ -14,6 +14,7 @@
 // Winkel in Level-Daten sind in Grad. yaw 0 = nach vorne (-z), positiv = nach links drehen.
 import { buildCheckpoint } from './checkpoint-figuren.js';
 import { DEG, quatYawPitch, rotate, add, scale, lerp3, yawOf, toLocal, fwdOf, rightOf, ease, mulQ } from './math.js';
+import { hinUndHer } from './takt.js';
 
 const R = 0.5; // Murmel-Radius
 const TAU = Math.PI * 2;
@@ -56,12 +57,12 @@ export const ballPos = g => [g.ball.position.x, g.ball.position.y, g.ball.positi
 
 export const TYPES = {
   // Weg von A nach B (Oberkante). Wenn die Höhe sich ändert, wird er zur Rampe.
-  // {type:'weg', from, to, width, walls?:Höhe, caps?:'start'|'end'|'both', thick?, surface?:'eis'|'schlamm', look?}
+  // {type:'weg', from, to, width, walls?:Höhe, caps?:'start'|'end'|'both', thick?, surface?:'eis'|'schlamm', look?, deko?:true = nur Grafik}
   weg: {
     solids(d) {
       const s = segment(d.from, d.to), w = d.width ?? 4, th = d.thick ?? 1;
       const look = d.look || (d.surface && d.surface !== 'normal' ? d.surface : (Math.abs(s.pitch) > 1e-3 ? 'ramp' : 'floor'));
-      const out = [{ pos: add(s.mid, scale(s.up, -th / 2)), half: [w / 2, th / 2, s.L / 2], quat: s.q, look, surface: d.surface, track: track(s) }];
+      const out = [{ pos: add(s.mid, scale(s.up, -th / 2)), half: [w / 2, th / 2, s.L / 2], quat: s.q, look, surface: d.surface, track: track(s), deko: !!d.deko }];
       const h = d.walls || 0;
       if (h > 0) {
         // Seitenwände enden an den Abschlusswänden (keine Überlappung -> kein Flimmern an den Ecken)
@@ -299,7 +300,7 @@ export const TYPES = {
   },
 
   // Bewegte Plattform: pendelt zwischen from und to (Mitte der Oberkante).
-  // {type:'plattform', from, to, size:[b,t], yaw?, time?:Fahrzeit s, pause?:s, rim?:Randhöhe, surface?, offset?:Startverzögerung s}
+  // {type:'plattform', from, to, size:[b,t], yaw?, time?:Fahrzeit s (Zahl oder Liste), pause?:s (Zahl oder Liste), rim?:Randhöhe, surface?, offset?:Startverzögerung s}
   plattform: {
     init(el, g) {
       const size = el.size || [4, 4];
@@ -312,13 +313,7 @@ export const TYPES = {
     reset(el) {
       el.t = el.offset || 0; el.body.position.set(...TYPES.plattform.posAt(el, el.t)); el.body.velocity.set(0, 0, 0); el.lastV = [0, 0, 0];
     },
-    posAt(el, t) {
-      const move = el.time ?? 3, pause = el.pause ?? 1.5, per = 2 * (move + pause), u = t % per;
-      if (u < pause) return el.from;
-      if (u < pause + move) return lerp3(el.from, el.to, ease((u - pause) / move));
-      if (u < 2 * pause + move) return el.to;
-      return lerp3(el.to, el.from, ease((u - 2 * pause - move) / move));
-    },
+    posAt: (el, t) => hinUndHer(el, t), // time/pause: Zahl oder Liste (src/takt.js)
     pre(el, g, h) {
       el.t += h;
       driveTo(el.body, TYPES.plattform.posAt(el, el.t), h);

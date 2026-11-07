@@ -7,11 +7,13 @@
 //   pillars         = Looks für Säulen unter flachen Bahnstücken (null = keine)
 //   props           = riesige Gegenstände (src/props.js) auf dem Untergrund rund um die Bahn: [[form, farbe?], ...]
 import { buildProp, PROP_SIZE } from './props.js';
+import { schweiz } from './themes-schweiz.js';
 
 export const COLORS = { rot: 0xE53935, blau: 0x1E88E5, gelb: 0xFDD835, gruen: 0x43A047, orange: 0xFB8C00, lila: 0x8E24AA };
 const PASTELL = { rosa: 0xF8BBD0, mint: 0xB2DFDB, hellblau: 0xBBDEFB, gelb: 0xFFF59D, lila: 0xD1C4E9, weiss: 0xFAFAFA };
 const NEON = { blau: 0x00E5FF, pink: 0xFF4FD8, gruen: 0x76FF03, gelb: 0xFFEA00 };
 const BASALT = { dunkel: 0x2E2A2B, hell: 0x4A4344, rot: 0x6B2E22 };
+const LATTE = { natur: 0xE2B77A, dunkel: 0x9A6B3C, rot: 0xD9534A, blau: 0x3F8FD0, gruen: 0x5BAA5F, gelb: 0xF2C230 };
 const KORALLE = { rot: 0xFF6F61, orange: 0xFFA25C, rosa: 0xFF8FB8, lila: 0xB388FF, gelb: 0xFFD54F };
 
 export function rnd(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
@@ -72,12 +74,67 @@ const basaltTex = (THREE, base, glow) => canvasTex(THREE, 256, 256, (x, w, h) =>
     x.fillRect(i * 64 + 2 + r() * 2, j * 64 + 2 + r() * 2, 59, 59);
   }
 });
+// Sägeblatt: Stahl, oben eine Reihe Zähne (Klötze sind alle 2 m gekachelt, ein Balken ist 0.6 hoch: nur das untere Drittel ist zu sehen)
+const sawTex = THREE => canvasTex(THREE, 256, 256, (x, w, h) => {
+  x.fillStyle = '#C3CAD1'; x.fillRect(0, 0, w, h);
+  x.fillStyle = '#EEF2F5'; x.fillRect(0, h * 0.9, w, h * 0.04);
+  x.fillStyle = '#4A525A';
+  for (let i = 0; i < 16; i++) { const a = i * w / 16; x.beginPath(); x.moveTo(a, h * 0.7); x.lineTo(a + w / 16, h * 0.7); x.lineTo(a + w / 32, h * 0.78); x.fill(); }
+});
 // Lava: fliessende, glühende Flecken
+// Dachziegel (Biberschwanz): zwei Reihen je 1 m, versetzt, unten rund
+const ziegelTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  const r = rnd(29);
+  x.fillStyle = '#7A3323'; x.fillRect(0, 0, w, h);
+  for (let row = 0; row < 2; row++) for (let k = -1; k < 2; k++) {
+    const x0 = k * 64 + (row ? 32 : 0), y0 = row * 64, c = 168 + Math.floor(r() * 26);
+    x.fillStyle = `rgb(${c},${Math.round(c * 0.46)},${Math.round(c * 0.33)})`;
+    x.beginPath(); x.moveTo(x0 + 2, y0); x.lineTo(x0 + 62, y0); x.lineTo(x0 + 62, y0 + 40); x.arc(x0 + 32, y0 + 40, 30, 0, Math.PI); x.lineTo(x0 + 2, y0); x.fill();
+  }
+});
+const backsteinTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  const r = rnd(37);
+  x.fillStyle = '#D8CFC2'; x.fillRect(0, 0, w, h);
+  for (let row = 0; row < 4; row++) for (let k = -1; k < 2; k++) {
+    const c = 150 + Math.floor(r() * 40);
+    x.fillStyle = `rgb(${c},${Math.round(c * 0.42)},${Math.round(c * 0.3)})`;
+    x.fillRect(k * 64 + (row % 2 ? 32 : 0) + 2, row * 32 + 2, 60, 28);
+  }
+});
+const solarTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  x.fillStyle = '#C7D0D8'; x.fillRect(0, 0, w, h);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.fillStyle = (i + j) % 2 ? '#16335E' : '#1B3E70'; x.fillRect(i * 32 + 1.5, j * 32 + 1.5, 29, 29); }
+});
 const lavaTex = THREE => dots(THREE, '#E8480C', ['#FF7A1A', '#FFB020', '#B8290A', '#FFD54A'], 160, 6, 22, 23);
+// Zeltstoff: senkrechte Streifen in Farbe und Weiss (4 pro 2 m)
+const ZELT = { rot: '#E53935', blau: '#1E88E5', gelb: '#FDD835', gruen: '#43A047' };
+const zeltTex = (THREE, farbe) => canvasTex(THREE, 64, 64, (x, w, h) => {
+  x.fillStyle = '#FAFAFA'; x.fillRect(0, 0, w, h); x.fillStyle = farbe;
+  for (let i = 0; i < 4; i += 2) x.fillRect(i * w / 4, 0, w / 4, h);
+  x.fillStyle = 'rgba(0,0,0,0.12)'; x.fillRect(0, 0, w, 3); // Saum
+});
+// Pfosten: Ringe in Rot und Weiss
+const pfostenTex = THREE => canvasTex(THREE, 64, 64, (x, w, h) => {
+  x.fillStyle = '#FAFAFA'; x.fillRect(0, 0, w, h); x.fillStyle = '#E53935';
+  for (let i = 0; i < 4; i += 2) x.fillRect(0, i * h / 4, w, h / 4);
+});
 const hedgeTex = THREE => dots(THREE, '#2E7D32', ['#388E3C', '#1B5E20', '#43A047', '#4CAF50'], 260, 4, 11, 5, 128);
+// Winter: Piste mit den Rillen der Pistenraupe (längs), Mauer aus Schneeblöcken wie beim Iglu
+const pisteTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  x.fillStyle = '#CFE1F0'; x.fillRect(0, 0, w, h);
+  x.fillStyle = '#A3C1DC'; for (let i = 0; i < 16; i++) x.fillRect(i * 8 + 5, 0, 2, h);
+});
+const snowBlockTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => {
+  x.fillStyle = '#E6F0F8'; x.fillRect(0, 0, w, h);
+  x.strokeStyle = '#86A9C9'; x.lineWidth = 3;
+  for (let j = 0; j < 4; j++) {
+    x.beginPath(); x.moveTo(0, j * 32 + 1.5); x.lineTo(w, j * 32 + 1.5); x.stroke();
+    for (let i = 0; i < 2; i++) { const px = i * 64 + (j % 2) * 32 + 1.5; x.beginPath(); x.moveTo(px, j * 32); x.lineTo(px, j * 32 + 32); x.stroke(); }
+  }
+});
 
 // Riesige Gegenstände verstreut auf dem Untergrund (unter und neben der Bahn), fest je Welt
-function scatter(t, y, list, seed, n = 26) {
+export function scatter(t, y, list, seed, n = 26) {
   if (!list || !list.length) return;
   const r = rnd(seed);
   for (let i = 0; i < n; i++) {
@@ -149,6 +206,58 @@ export const THEMES = {
     ground(t, y) { const tex = tiles(t.THREE, '#303030', '#F2F2F2', 2); tex.repeat.set(60, 60); t.plane(tex, y); scatter(t, y, THEMES.kueche.props, 7); }
   },
 
+  chilbi: {
+    // Abend auf dem Festplatz: dunkler Himmel mit Sternen und Mond, Lichterketten zwischen den Buden,
+    // helle Holzbohlen als Bahn, Wände aus gestreiftem Zeltstoff
+    sky: 0x2B1F5E, fog: [55, 140], hemi: [0xFFE6C4, 0x54417F, 0.9], sun: 0.75,
+    walls: ['zelt-rot', 'zelt-blau', 'zelt-gelb', 'zelt-gruen'],
+    floor: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#E6BC80', '#8A5A2A') }),
+    ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#F4D8A6', '#9A6A3A') }),
+    pillars: ['pfosten'],
+    props: [['bude'], ['bude', 0x1E88E5], ['zelt'], ['ballons'], ['zuckerwatte'], ['popcorn'], ['lolli'], ['herz'], ['pferd'], ['putschauto', 0xFDD835], ['bude', 0x43A047], ['zelt', 0x1E88E5], ['ballons', 0x8E24AA]],
+    look(t, look) {
+      const [k, c] = look.split('-');
+      if (k === 'zelt') return t.lambert(0xffffff, { map: zeltTex(t.THREE, ZELT[c] ?? ZELT.rot) });
+      if (look === 'pfosten') return t.lambert(0xffffff, { map: pfostenTex(t.THREE) });
+      if (look === 'zuckerwatte') return t.lambert(0xffffff, { map: dots(t.THREE, '#F8A5C8', ['#FBC4DC', '#F48FB8', '#FFD9E8'], 220, 4, 12, 27, 128) });
+      return null;
+    },
+    ground(t, y) {
+      const T = t.THREE, tex = dots(T, '#3A6650', ['#325A47', '#447358', '#5A5240'], 500, 1, 4, 29); tex.repeat.set(50, 50);
+      t.plane(tex, y);
+      scatter(t, y, THEMES.chilbi.props, 13, 34);
+      // Lichterketten: vier Reihen Pfosten, dazwischen hängen bunte Lämpchen durch (weit unter der Bahn)
+      const farben = [0xFFE082, 0xFF5A8A, 0x80D8FF, 0xB9F6CA], reihen = [-38, -13, 13, 38], z0 = 30, z1 = -150, feld = 15, je = 9, H = 5;
+      const n = reihen.length * Math.round((z0 - z1) / feld) * je, m = new T.Matrix4();
+      const lampen = farben.map(c => new T.InstancedMesh(new T.SphereGeometry(0.22, 8, 6), new T.MeshBasicMaterial({ color: c }), Math.ceil(n / farben.length)));
+      const pfosten = new T.InstancedMesh(new T.CylinderGeometry(0.12, 0.16, H, 6), t.lambert(0xFAFAFA), reihen.length * (Math.round((z0 - z1) / feld) + 1));
+      let i = 0, p = 0;
+      for (const x of reihen) for (let z = z0; z >= z1; z -= feld) {
+        pfosten.setMatrixAt(p++, m.makeTranslation(x, y + H / 2, z));
+        if (z - feld < z1) continue;
+        for (let k = 0; k < je; k++) { const u = (k + 0.5) / je; lampen[i % farben.length].setMatrixAt(Math.floor(i / farben.length), m.makeTranslation(x, y + H - 0.1 - 1.3 * Math.sin(Math.PI * u), z - u * feld)); i++; }
+      }
+      t.scene.add(pfosten, ...lampen);
+      // Sterne und Mond am Abendhimmel
+      const r = rnd(41), ns = 260, pos = new Float32Array(ns * 3);
+      for (let k = 0; k < ns; k++) { const a = r() * Math.PI * 2, b = Math.acos(r() * 0.95), d = 150; pos.set([Math.sin(b) * Math.cos(a) * d, Math.cos(b) * d, Math.sin(b) * Math.sin(a) * d], k * 3); }
+      const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.BufferAttribute(pos, 3));
+      const himmel = new T.Group();
+      himmel.add(new T.Points(geo, new T.PointsMaterial({ color: 0xFFF6D8, size: 1, fog: false })));
+      const mond = new T.Mesh(new T.SphereGeometry(7, 24, 16), new T.MeshBasicMaterial({ color: 0xFFF3C4, fog: false })); mond.position.set(60, 75, -115); himmel.add(mond);
+      t.scene.add(himmel);
+      let zeit = 0;
+      return {
+        tick(dt, cam) {
+          himmel.position.copy(cam.position);
+          zeit += dt; // Lauflicht: eine Farbe nach der anderen wird kurz dunkler
+          const s = Math.floor(zeit * 2.5) % farben.length;
+          lampen.forEach((l, j) => l.material.color.setHex(farben[j]).multiplyScalar(j === s ? 0.4 : 1));
+        }
+      };
+    }
+  },
+
   weltraum: {
     sky: 0x070B24, fog: [90, 220], hemi: [0xAFC4FF, 0x1A1030, 0.6], sun: 0.9,
     walls: ['neon-blau', 'neon-pink', 'neon-gruen', 'neon-gelb'],
@@ -197,6 +306,46 @@ export const THEMES = {
       // Badvorleger
       const T = t.THREE, mat = new T.Mesh(new T.PlaneGeometry(30, 18), t.lambert(0xF48FB1)); mat.rotation.x = -Math.PI / 2; mat.position.set(-20, y + 0.05, -30); t.scene.add(mat);
       scatter(t, y, THEMES.badezimmer.props, 9);
+    }
+  },
+
+  winter: {
+    // Holzstege (eben) und gewalzte Pisten (Rampen) zwischen Schneemauern über einer Schneelandschaft, es schneit
+    sky: 0xBFDDF3, fog: [55, 135], hemi: [0xffffff, 0x8FA9C4, 0.7], sun: 0.7,
+    walls: ['schneeblock'],
+    floor: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#B98A5A', '#5E3B1E') }),
+    ramp: t => t.lambert(0xffffff, { map: pisteTex(t.THREE) }),
+    pillars: ['stamm'],
+    bank: 0xDCEAF4,
+    props: [['tanne'], ['schneemann'], ['tanne'], ['iglu'], ['schlitten'], ['huette'], ['tanne'], ['muetze'], ['pinguin'], ['tasse', 0xE53935], ['schlitten', 0x1E88E5], ['muetze', 0x1E88E5]],
+    look(t, look) {
+      if (look === 'schneeblock') return t.lambert(0xffffff, { map: snowBlockTex(t.THREE) });
+      if (look === 'stamm') return t.lambert(0x6B4A2E);
+      if (look === 'platform') return phong(t.THREE, 0xD32F2F, { shininess: 60 }); // Plattform = rote Gondel des Skilifts
+      if (look === 'eisblock') return phong(t.THREE, 0xBFE6FA, { shininess: 120, specular: 0xffffff, transparent: true, opacity: 0.8 });
+      return null;
+    },
+    ground(t, y) {
+      const tex = dots(t.THREE, '#CADDED', ['#B9D0E4', '#DCE9F4', '#AFC8DF'], 300, 3, 9, 27); tex.repeat.set(40, 40);
+      t.plane(tex, y);
+      scatter(t, y, THEMES.winter.props, 13, 30);
+      // Schneeflocken fallen rund um die Kamera
+      const T = t.THREE, n = 140, r = rnd(33), H = 26, im = new T.InstancedMesh(new T.OctahedronGeometry(0.09), new T.MeshBasicMaterial({ color: 0xFFFFFF }), n);
+      const b = Array.from({ length: n }, () => ({ x: (r() - 0.5) * 50, y: r() * H, z: (r() - 0.5) * 50, sp: 1.2 + r() * 1.3, ph: r() * 6.3 }));
+      const m = new T.Matrix4(), p = new T.Vector3(), q = new T.Quaternion(), sc = new T.Vector3(1, 1, 1);
+      im.frustumCulled = false; t.scene.add(im);
+      let time = 0;
+      return {
+        tick(dt, cam) {
+          time += dt;
+          b.forEach((o, i) => {
+            o.y -= o.sp * dt; if (o.y < 0) o.y += H;
+            p.set(cam.position.x + o.x + Math.sin(time * 0.8 + o.ph) * 0.6, cam.position.y - H / 2 + o.y, cam.position.z + o.z);
+            im.setMatrixAt(i, m.compose(p, q, sc));
+          });
+          im.instanceMatrix.needsUpdate = true;
+        }
+      };
     }
   },
 
@@ -266,6 +415,123 @@ export const THEMES = {
         }
       };
     }
+  },
+
+  // Dach: echte Kulisse statt Gegenständen im Leeren. Das Level liegt auf dem Dach eines Hauses (Masse in level.haus),
+  // darunter der Garten, ringsum Nachbarhäuser, Bäume und Wolken.
+  dach: {
+    sky: 0x9FD4F7, fog: [80, 190], hemi: [0xffffff, 0x6f8f5a, 0.85],
+    walls: ['zink'],
+    floor: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#C9A06A', '#7A5530') }),
+    ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#C9A06A', '#7A5530') }),
+    pillars: null,
+    look(t, look) {
+      const T = t.THREE;
+      if (look === 'ziegel') return t.lambert(0xffffff, { map: ziegelTex(T) });
+      if (look === 'backstein') return t.lambert(0xffffff, { map: backsteinTex(T) });
+      if (look === 'putz') return t.lambert(0xF4EFE6);
+      if (look === 'zink') return phong(T, 0x8E9AA3, { shininess: 110, specular: 0x666666 });
+      if (look === 'fenster') return phong(T, 0x7FB4E6, { shininess: 160, specular: 0xffffff, emissive: 0x10202c });
+      if (look === 'solar') return phong(T, 0xffffff, { map: solarTex(T), shininess: 180, specular: 0xBFD8FF });
+      return null;
+    },
+    ground(t, y) {
+      const T = t.THREE, r = rnd(41);
+      const gras = dots(T, '#6CBF4B', ['#5EAE3F', '#7ACB57', '#5AA23A'], 500, 1, 3, 9); gras.repeat.set(50, 50);
+      t.plane(gras, y);
+      const box = (sx, sy, sz, m, x, yy, z) => { const o = new T.Mesh(new T.BoxGeometry(sx, sy, sz), m); o.position.set(x, yy, z); t.scene.add(o); return o; };
+      const putz = t.lambert(0xF4EFE6), glas = THEMES.dach.look(t, 'fenster'), weiss = t.lambert(0xffffff), holz = t.lambert(0x7A5530);
+      // Ziegelfläche in beliebiger Grösse (Textur so oft wiederholt, dass ein Ziegel 1 m breit bleibt)
+      const ziegel = (b, l) => { const tx = ziegelTex(T); tx.repeat.set(b / 2, l / 2); return t.lambert(0xffffff, { map: tx }); };
+      // Giebeldach als Prisma: Dreieck (Breite b, Höhe h) quer, Länge l entlang x
+      const prisma = (b, h, l, m) => {
+        const s = new T.Shape(); s.moveTo(-b / 2, 0); s.lineTo(b / 2, 0); s.lineTo(0, h); s.lineTo(-b / 2, 0);
+        const g = new T.ExtrudeGeometry(s, { depth: l, bevelEnabled: false }); g.translate(0, 0, -l / 2);
+        const o = new T.Mesh(g, m); o.rotation.y = Math.PI / 2; return o;
+      };
+
+      // ----- das Haus unter dem Level -----
+      const h = t.level && t.level.haus;
+      if (h) {
+        const [x0, x1] = h.x, [zf, zb] = h.z, n = h.neigung ?? 0.5, tief = (zb - zf) / 2, mx = (x0 + x1) / 2, mz = (zf + zb) / 2, b = x1 - x0;
+        const yTop = -1.3 - n * (h.first - zf); // Oberkante der Mauern: knapp unter den Ziegeln an der Traufe
+        box(b, yTop - y, zb - zf, putz, mx, (yTop + y) / 2, mz);
+        const giebel = prisma(zb - zf, n * tief, b, putz); giebel.position.set(mx, yTop, mz); giebel.rotation.y = -Math.PI / 2; t.scene.add(giebel);
+        // hintere Dachfläche (die vordere ist das Level): vom First hinunter bis über die Rückwand
+        const L = Math.hypot(tief + 0.8, n * (tief + 0.8)), hinten = box(b + 1.2, 0.8, L, ziegel(b + 1.2, L), mx, 0, 0);
+        hinten.rotation.x = Math.atan(n);
+        hinten.position.set(mx, -n * (tief + 0.8) / 2 - 0.45, h.first + (tief + 0.8) / 2);
+        // Pfosten unter dem Holzdeck
+        for (const px of [-2.2, 2.2]) box(0.5, n * (5.5 - h.first) - 0.9, 0.5, holz, px, -(n * (5.5 - h.first) + 0.9) / 2, 5.5);
+        // Fenster und Tür vorne, Fenster an der Seite
+        const fenster = (x, yy, z, quer) => { box(quer ? 0.1 : 4.6, 5.1, quer ? 4.6 : 0.1, weiss, x, yy, z); box(quer ? 0.2 : 4, 4.5, quer ? 4 : 0.2, glas, x, yy, z); };
+        for (const fx of [x0 + 4, x1 - 4]) fenster(fx, y + 8, zf - 0.03);
+        box(3.6, 7.6, 0.2, t.lambert(0x8D4B2D), mx, y + 3.8, zf - 0.05);
+        for (const fz of [zf + 8, zb - 8]) { fenster(x1 + 0.03, y + 8, fz, true); fenster(x0 - 0.03, y + 8, fz, true); }
+        // Gartenweg von der Tür zur Hecke
+        const platten = tiles(T, '#C9C4BA', '#B8B2A6', 2, '#8F897D'); platten.repeat.set(2, 9);
+        const weg = new T.Mesh(new T.PlaneGeometry(4, 22), t.lambert(0xffffff, { map: platten })); weg.rotation.x = -Math.PI / 2; weg.position.set(mx, y + 0.04, zf - 11); t.scene.add(weg);
+        const hecke = hedgeTex(T); hecke.repeat.set(30, 2);
+        for (const s of [-1, 1]) box(34, 3.4, 2.4, t.lambert(0xffffff, { map: hecke }), mx + s * 19.5, y + 1.7, zf - 23);
+      }
+
+      // ----- Nachbarhäuser, Bäume, Blumen, Wolken -----
+      for (const [x, z, b, d, hh, wand, dach, yaw] of [[-62, -8, 24, 20, 15, 0xF2E3C6, 0x8E4A38, 0.1], [66, 6, 22, 18, 13, 0xE8EEF2, 0x5C6470, -0.15],
+        [-18, -84, 26, 18, 14, 0xF7D9C4, 0x9C4F3A, Math.PI / 2], [34, -88, 22, 20, 16, 0xE4EBD8, 0x6B4A3A, Math.PI / 2 + 0.1], [8, 70, 26, 20, 15, 0xF0E6D8, 0x8E4A38, Math.PI / 2]]) {
+        const g = new T.Group(), body = new T.Mesh(new T.BoxGeometry(b, hh, d), t.lambert(wand)); body.position.y = hh / 2;
+        const roof = prisma(d + 1.6, d * 0.42, b + 1.6, t.lambert(dach)); roof.position.y = hh;
+        g.add(body, roof);
+        for (const s of [-1, 1]) for (const fx of [-b / 4, b / 4]) { const f = new T.Mesh(new T.BoxGeometry(3.6, 4.2, 0.2), glas); f.position.set(fx, hh * 0.55, s * (d / 2 + 0.05)); g.add(f); }
+        g.position.set(x, y, z); g.rotation.y = yaw; t.scene.add(g);
+      }
+      for (const [x, z, s] of [[-24, -34, 1.7], [32, -44, 1.5], [-30, 8, 1.6], [36, 24, 1.8], [-44, -60, 1.5], [58, -52, 1.6], [-8, 44, 1.5]]) {
+        const g = buildProp(T, 'baum'); g.position.set(x, y, z); g.scale.setScalar(s); g.rotation.y = r() * 6.3; t.scene.add(g);
+      }
+      const blume = new T.SphereGeometry(0.35, 8, 6);
+      for (const col of [0xFF5A8A, 0xFFD23F, 0xFFFFFF, 0xB388FF]) {
+        const im = new T.InstancedMesh(blume, t.lambert(col), 40), m = new T.Matrix4();
+        for (let i = 0; i < 40; i++) { m.makeTranslation((r() - 0.5) * 150, y + 0.3, (r() - 0.5) * 150 - 20); im.setMatrixAt(i, m); }
+        t.scene.add(im);
+      }
+      const wolke = new T.MeshBasicMaterial({ color: 0xffffff, fog: false, transparent: true, opacity: 0.9 }), kugel = new T.SphereGeometry(1, 12, 8), wolken = new T.Group();
+      for (let i = 0; i < 7; i++) {
+        const a = r() * Math.PI * 2, d = 90 + r() * 50, g = new T.Group();
+        for (let k = 0; k < 4; k++) { const m = new T.Mesh(kugel, wolke); m.scale.set(9 + r() * 7, 4 + r() * 2, 6 + r() * 4); m.position.set((k - 1.5) * 9, r() * 2, r() * 4); g.add(m); }
+        g.position.set(Math.cos(a) * d, 35 + r() * 25, Math.sin(a) * d - 20); wolken.add(g);
+      }
+      t.scene.add(wolken);
+      return { tick(dt) { wolken.rotation.y += dt * 0.004; } };
+    }
+  },
+
+  werkstatt: {
+    // Werkbank: helle Bretter über der grünen Schneidematte, Ränder aus bunten Holzlatten, ringsum riesiges Werkzeug
+    sky: 0xD3DCE0, fog: [55, 130], hemi: [0xffffff, 0x8a7a66, 0.85],
+    walls: ['latte-natur', 'latte-rot', 'latte-natur', 'latte-blau', 'latte-natur', 'latte-gruen'],
+    floor: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#EFDCB0', '#A8834C') }),
+    ramp: t => t.lambert(0xffffff, { map: woodTex(t.THREE, '#CFA064', '#6E4A22') }),
+    pillars: ['latte-dunkel'],
+    props: [['hammer'], ['schraube'], ['farbdose'], ['mutter'], ['bleistift'], ['saege'], ['farbdose', 0x1E88E5], ['schraubenzieher'], ['werkzeugkasten'],
+      ['holzstapel'], ['rollmeter'], ['schraube', 0xD4A93A], ['saegeblatt'], ['farbdose', 0xFDD835], ['schraubenzieher', 0x43A047]],
+    look(t, look) {
+      const [k, c] = look.split('-');
+      // Holzlatten, zum Teil gestrichen
+      if (k === 'latte') return t.lambert(LATTE[c] ?? LATTE.natur, { map: woodTex(t.THREE, '#FFFFFF', '#8A8A8A') });
+      // Sägeblatt (balken mit farbe: 'saege'): Stahl mit Zähnen an der Oberkante
+      if (look === 'klotz-saege') return phong(t.THREE, 0xffffff, { map: sawTex(t.THREE), shininess: 120, specular: 0xffffff });
+      // Schleifband (band): Schleifpapier
+      if (look === 'band') return t.lambert(0xffffff, { map: dots(t.THREE, '#8A5A3C', ['#7A4C30', '#9C6A48', '#6E4428'], 600, 0.6, 1.4, 27, 128) });
+      // Stahl (schieber, klotz mit look: 'stahl')
+      if (look === 'stahl' || look === 'schieber') return phong(t.THREE, 0xB8C0C8, { shininess: 130, specular: 0xffffff });
+      return null;
+    },
+    ground(t, y) {
+      // Schneidematte mit Raster
+      const tex = tiles(t.THREE, '#2F7F62', '#2F7F62', 4, '#8FD0B0'); tex.repeat.set(30, 30); t.plane(tex, y);
+      scatter(t, y, THEMES.werkstatt.props, 13, 30);
+    }
   }
 };
 
+// Welt Schweiz: ein Thema mit Varianten je Level (src/themes-schweiz.js)
+THEMES.schweiz = schweiz;

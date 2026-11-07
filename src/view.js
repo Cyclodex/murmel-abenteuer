@@ -39,9 +39,20 @@ const pebbleTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => { // Flussbet
   const r = rnd(12);
   for (let i = 0; i < 70; i++) { const c = 110 + Math.floor(r() * 70); x.fillStyle = `rgb(${c},${c + 5},${c + 8})`; x.beginPath(); x.ellipse(r() * w, r() * h, 3 + r() * 6, 2 + r() * 4, r() * 3, 0, 7); x.fill(); }
 });
+const sawdustTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => { // Sägemehl: helle Späne
+  x.fillStyle = '#E3C590'; x.fillRect(0, 0, w, h);
+  const r = rnd(15);
+  for (let i = 0; i < 260; i++) { x.fillStyle = ['#CFAE74', '#F1DBAE', '#B8935A', '#F7E8C6'][i % 4]; x.save(); x.translate(r() * w, r() * h); x.rotate(r() * 3.1); x.fillRect(-3, -1, 3 + r() * 5, 1.5 + r()); x.restore(); }
+});
 const towelTex = THREE => canvasTex(THREE, 64, 64, (x, w, h) => { // Frottee mit Streifen
   x.fillStyle = '#F7A8C4'; x.fillRect(0, 0, w, h); x.fillStyle = '#FFFFFF'; x.fillRect(0, 26, w, 12);
   const r = rnd(4); x.fillStyle = 'rgba(0,0,0,0.06)'; for (let i = 0; i < 300; i++) x.fillRect(r() * w, r() * h, 1, 1);
+});
+const snowTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => { // Pulverschnee: weiche Buckel, Glitzer
+  x.fillStyle = '#F4F8FC'; x.fillRect(0, 0, w, h);
+  const r = rnd(15);
+  for (let i = 0; i < 26; i++) { x.fillStyle = 'rgba(120,160,205,0.3)'; x.beginPath(); x.ellipse(r() * w, r() * h, 6 + r() * 10, 3 + r() * 5, 0, 0, 7); x.fill(); }
+  x.fillStyle = '#A9CBEA'; for (let i = 0; i < 90; i++) x.fillRect(r() * w, r() * h, 2, 2);
 });
 const soapTex = THREE => canvasTex(THREE, 128, 128, (x, w, h) => { // Seifenschaum
   x.fillStyle = '#CFEFFF'; x.fillRect(0, 0, w, h);
@@ -125,7 +136,8 @@ export function createBallMesh(THREE) {
 }
 
 export function createView(THREE, renderer, game) {
-  const theme = THEMES[game.level.theme] || THEMES.standard;
+  // Thema der Welt; ein Level kann eine Variante davon wählen (variante, z. B. schweiz: kaeserei, uhrwerk, schoggi)
+  const basis = THEMES[game.level.theme] || THEMES.standard, theme = { ...basis, ...(basis.varianten || {})[game.level.variante] };
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(theme.sky);
   scene.fog = new THREE.Fog(theme.sky, theme.fog[0], theme.fog[1]);
@@ -143,7 +155,7 @@ export function createView(THREE, renderer, game) {
   let wallIdx = 0;
   // Werkzeuge für die Welt-Themen (themes.js)
   const tools = {
-    THREE, scene, lambert,
+    THREE, scene, lambert, level: game.level, // level: Welten mit echter Kulisse lesen daraus ihre Masse (z. B. haus im Dach)
     // Boden unter dem Level. Reicht in der Weitsicht bis hinter den Nebel, sonst sieht man seine Kante: Kamera bis ~5 Level-Radien
     // von der Mitte (0.64 davon waagrecht), Nebel bis 2 Radien hinter der Mitte -> 11 Radien ringsum.
     // tex.repeat ist für 240 m gedacht und wächst mit, damit die Kacheln gleich gross bleiben
@@ -186,6 +198,8 @@ export function createView(THREE, renderer, game) {
     else if (look === 'ufer') m = lambert(theme.bank ?? 0x6D8F4E);
     else if (look === 'sand') m = lambert(0xffffff, { map: sandTex(THREE) });
     else if (look === 'handtuch') m = lambert(0xffffff, { map: towelTex(THREE) });
+    else if (look === 'schnee') m = lambert(0xffffff, { map: snowTex(THREE) });
+    else if (look === 'saegemehl') m = lambert(0xffffff, { map: sawdustTex(THREE) });
     else if (look === 'seife') m = new THREE.MeshPhongMaterial({ map: soapTex(THREE), shininess: 100, specular: 0xffffff });
     else if (look === 'platform') m = new THREE.MeshPhongMaterial({ color: COLORS.gelb, shininess: 40 });
     else if (look === 'seesaw') m = new THREE.MeshPhongMaterial({ color: COLORS.orange, shininess: 40 });
@@ -310,6 +324,9 @@ export function createView(THREE, renderer, game) {
   const splash = { schlamm: createTrailFx(THREE, scene), pfuetze: createTrailFx(THREE, scene) };
   splash.schlamm.set({ shape: 'kugel', colors: [0x5B3A1E, 0x7D5A36, 0x4A2F18], size: 0.2, life: 0.5, every: 0.3, spread: 2.2, rise: 2.5, gravity: 12 });
   splash.pfuetze.set({ shape: 'kugel', colors: [0xBDEBFF, 0x7FC4F5, 0xFFFFFF], size: 0.18, life: 0.45, every: 0.2, spread: 2.5, rise: 3, gravity: 12, opacity: 0.8 });
+  // Späne stieben im Sägemehl auf
+  splash.saegemehl = createTrailFx(THREE, scene);
+  splash.saegemehl.set({ shape: 'kugel', colors: [0xE3C590, 0xF1DBAE, 0xC9A66B], size: 0.14, life: 0.5, every: 0.25, spread: 2, rise: 2.2, gravity: 9 });
 
   // ---------- Geistermurmeln: fahren beste Fahrten mit (src/ghost.js), mit Namensschild darüber ----------
   let ghosts = [];

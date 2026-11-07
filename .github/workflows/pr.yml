@@ -1,4 +1,4 @@
-# Schnelle Tests für jeden PR: alle Playwright-Tests ausser den 16 Autopilot-Tests (npm run test:schnell)
+# Schnelle Tests für jeden PR: alle Playwright-Tests ausser den 26 Autopilot-Tests (npm run test:schnell)
 # und pruefe-level.mjs für die Level, deren Datei oder Route der PR ändert (verteilt auf 8 Jobs, tests/verteile-level.mjs).
 # Die volle Suite mit Autopilot durch alle Level läuft nachts (tests.yml).
 name: Tests (PR)

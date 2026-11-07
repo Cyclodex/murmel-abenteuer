@@ -21,13 +21,19 @@ export const SURFACES = {
   sand: { friction: 0.7, bounce: 0.3, grip: 0.9, drag: 1.4, dirt: 0.03 },
   seife: { friction: 0.02, bounce: 1, grip: 0.4, drag: -0.15, wash: 0.8, roll: 0.2 },
   handtuch: { friction: 0.9, bounce: 0.1, grip: 1, drag: 1.8, wash: 0.3 },
+  schnee: { friction: 0.7, bounce: 0.15, grip: 0.9, drag: 1.3, wash: 0.5 }, // Pulverschnee: bremst, schluckt Sprünge, putzt die Murmel
+  zuckerwatte: { friction: 0.9, bounce: 0.05, grip: 1, drag: 2.6 }, // klebt: bremst stark, nichts springt
+  saegemehl: { friction: 0.8, bounce: 0.15, grip: 0.9, drag: 1.7 }, // Sägemehl: weich und zäh, schluckt Schwung und Aufprall
   nagel: { friction: 0.3, bounce: 0.55, grip: 1, drag: 0 }, // Nägel der Nagelwand schlucken etwas Schwung
   flussbett: { friction: 0.4, bounce: 0.05, grip: 1, drag: 0, wash: 0.5 }, // Grund im Fluss: Wasser schluckt den Aufprall
+  schoggi: { friction: 0.4, bounce: 0.05, grip: 1, drag: 0, dirt: 0.15 }, // Grund im Schoggifluss (fluss mit dreck): wie flussbett, macht aber dreckig
   keramik: { friction: 0.3, bounce: 1, grip: 1, drag: 0.9, wash: 0.5 }, // nasses Lavabo: hart (Bälle springen), ein Wasserfilm bremst etwas
   kunststoff: { friction: 0.3, bounce: 1, grip: 1, drag: 0 }, // Kugelbahn: Rinne
   rohr: { friction: 0.3, bounce: 1, grip: 0, drag: 0 }, // geschlossenes Rohr (Abfluss): drinnen lenkt man nicht
   trichter: { friction: 0.3, bounce: 1, grip: 1, drag: 0.5 }, // Spiraltrichter: bremst etwas, damit die Murmel nach innen kreist
-  spirale: { friction: 0.4, bounce: 1, grip: 1, drag: 0.3, wash: 0.015 } // Boden von Spirale und geneigter Kurve: bremst etwas, sonst zu schnell für die Kurve
+  spirale: { friction: 0.4, bounce: 1, grip: 1, drag: 0.3, wash: 0.015 }, // Boden von Spirale und geneigter Kurve: bremst etwas, sonst zu schnell für die Kurve
+  ziegel: { friction: 0.6, bounce: 0.5, grip: 1, drag: 1.2 }, // Dachziegel: rau, bremsen stark (auf dem steilen Dach bleibt die Murmel lenkbar, ~3.4 m/s ohne Gas)
+  dachrinne: { friction: 0.4, bounce: 0.25, grip: 1, drag: 0.2, wash: 0.5 } // nasse Dachrinne mit Laub: schluckt den Aufprall (auch Flummi bleibt drin)
 };
 const DIRT_STILL = 0.08; // so viel Dreck pro Sekunde auch im Stehen im Schlamm
 const WASH_WATER = 0.6;  // Unterwasser: Abwaschen pro Sekunde

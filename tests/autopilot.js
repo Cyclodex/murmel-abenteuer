@@ -1,28 +1,38 @@
 // Autopilot für Tests (und zum Zuschauen: Spiel mit ?autopilot öffnen): fährt eine Liste von Wegpunkten ab und prüft so, ob ein Level schaffbar ist.
-// Wegpunkt: {x, z, speed?, r?, free?, wait?}
+// Wegpunkt: {x, z, speed?, r?, free?, wait?, follow?}
 //   speed = Wunschtempo (m/s), r = Radius "erreicht", free = nicht lenken (z. B. im Looping),
-//   wait = Name einer Bedingung aus WAITS, vorher wird angehalten.
+//   wait = Name einer Bedingung aus WAITS, vorher wird angehalten,
+//   follow: true = der Bahn folgen bis bisY; follow: [type, n, abstand?] = hinter dem n-ten Teil vom Typ type herfahren
+//   (z. B. Schieber mit Pfad), bis [x, z] erreicht ist.
+import { TYPES } from '../src/bauteile.js';
 import uebung from './routes/uebung.js';
 import spielzimmer from './routes/spielzimmer.js';
 import garten from './routes/garten.js';
 import kueche from './routes/kueche.js';
 import badezimmer from './routes/badezimmer.js';
+import dach from './routes/dach.js';
 import weltraum from './routes/weltraum.js';
 import unterwasser from './routes/unterwasser.js';
+import winter from './routes/winter.js';
 import vulkan from './routes/vulkan.js';
+import chilbi from './routes/chilbi.js';
+import werkstatt from './routes/werkstatt.js';
+import schweiz from './routes/schweiz.js';
 import pruefstand from './routes/pruefstand/index.js';
 
 const WAITS = {
   // n-te Plattform steht am Start bzw. am Ziel
   platAtFrom: (g, n = 0) => { const e = g.els.filter(x => x.type === 'plattform')[n]; return dist3(e.body.position, e.from) < 0.05 && speed(e.body.velocity) < 0.01; },
   platAtTo: (g, n = 0) => { const e = g.els.filter(x => x.type === 'plattform')[n]; return dist3(e.body.position, e.to) < 0.05 && speed(e.body.velocity) < 0.01; },
-  // alle Brücken oben (oder nur die mit dieser id: wait: ['bridgeUp', 'b1'])
-  bridgeUp: (g, id) => g.els.filter(x => x.type === 'bruecke' && (id === undefined || x.id === id)).every(e => e.k >= 1),
+  // alle Brücken oben und Messbänder ausgefahren (oder nur die mit dieser id: wait: ['bridgeUp', 'b1'])
+  bridgeUp: (g, id) => g.els.filter(x => (x.type === 'bruecke' || x.type === 'messband') && (id === undefined || x.id === id)).every(e => e.k >= 1),
   hoehe: (g, y) => g.ball.position.y > y,
   tiefer: (g, y) => g.ball.position.y < y,
   // die Murmel ist durchs Loch in den n-ten Abfluss (roehre mit down) gefallen und rollt im Rohr
   abfluss: (g, n = 0) => g.els.filter(x => x.type === 'roehre' && x.down)[n].drin,
   amBoden: g => !!g.groundBody && Math.abs(g.ball.velocity.y) < 0.3,
+  // die Murmel ist höchstens r von [x, z] entfernt (z. B. auf dem Zahnrad mitfahren, bis die Ausfahrt da ist)
+  nahe: (g, [x, z, r = 1]) => Math.hypot(g.ball.position.x - x, g.ball.position.z - z) < r,
   // Takt eines bewegten Teils: wait: ['phase', [type, n, a, b]] = n-tes Teil vom Typ type ist in der Phase a..b (0..1) seines Takts
   // (Plattform/Schieber: 0 = Pause bei from, Hammer: 0 = oben, zuschlagen ab up/per, Felsen: 0 = neuer Felsen)
   phase: (g, [type, n, a, b]) => {
@@ -31,10 +41,20 @@ const WAITS = {
     const u = ((t % per) + per) % per / per;
     return a <= b ? u >= a && u <= b : u >= a || u <= b;
   },
+  // Takt mit Listen: wait: ['frei', type, n, rest, arg?] = das n-te Teil vom Typ type meldet, dass die nächsten rest s sicher
+  // sind (Methode frei(el, rest, arg) des Bauteils: Hammer oben, Schieber weg von arg = [x, z, r?] bzw. steht still,
+  // Felsen: nächster Start später und letzter an arg = [x, z] vorbei, Falltür zu, Wind/Band/Pendel/Riesenrad/Schraubstock;
+  // Bauteile ohne Typ-Methode, z. B. aus elements-stoss.js, haben el.frei(rest))
+  frei: (g, [type, n = 0, rest = 1, arg]) => { const el = g.els.filter(x => x.type === type)[n]; return TYPES[type].frei ? TYPES[type].frei(el, rest, arg) : el.frei(rest); },
+  // Riesenrad n: die Gondel mit der Murmel steht am Platz platz (0 = unten, gondeln / 2 = oben) und hält noch mindestens rest s
+  gondel: (g, [n, platz, rest = 1]) => { const e = g.els.filter(x => x.type === 'riesenrad')[n]; return e.platz === platz && e.halt >= rest; },
   // Falltür n ist zu (und nicht gerade am Aufgehen)
   tuerZu: (g, n = 0) => { const e = g.els.filter(x => x.type === 'falltuer')[n]; return e.state === 'zu' && e.a < 0.01; },
   // der drehende Balken (oder Rasensprenger) ist gerade am Punkt [x, z] vorbei (10°..80° danach), bis er zurückkommt bleibt Zeit
-  balkenWeg: (g, [x, z]) => g.els.filter(e => e.type === 'balken' || e.type === 'sprenger').every(e => {
+  // Balken mit takt (Tempo wechselt, steht, dreht andersrum): stattdessen frei für die nächsten rest s (Standard 1.5, r wie frei),
+  // statt [x, z] auch eine Strecke [[x1, z1], [x2, z2]] (alle Balken bleiben ihr fern; nur für Balken, nicht Sprenger)
+  balkenWeg: (g, [x, z, rest = 1.5, r]) => g.els.filter(e => e.type === 'balken' || e.type === 'sprenger').every(e => {
+    if (e.type === 'balken' && (e.takt || Array.isArray(x))) return TYPES.balken.frei(e, rest, [x, z, r]);
     const dx = x - e.at[0], dz = z - e.at[2];
     if (Math.hypot(dx, dz) > (e.length ?? 6) / 2 + 1) return true;
     const dir = Math.sign(e.speed ?? 40), pa = Math.atan2(dz, dx); // Balkenachse liegt bei Winkel -a
@@ -55,7 +75,8 @@ export function createPilot(g, wps) {
     drive() {
       const cur = Math.min(pilot.i, wps.length - 1), w = wps[cur], p = g.ball.position, v = g.ball.velocity;
       let ix = 0, iz = 0;
-      const [wName, wArg] = w.wait ? [].concat(w.wait) : [];
+      const [wName, ...wRest] = w.wait ? [].concat(w.wait) : [];
+      const wArg = wName === 'frei' ? wRest : wRest[0]; // frei: flache Liste ['frei', type, n, rest, arg?]
       const waiting = wName && !ok.has(cur) && !WAITS[wName](g, wArg);
       if (wName && !waiting) ok.add(cur);
       pilot.waiting = waiting ? wName : null;
@@ -63,20 +84,28 @@ export function createPilot(g, wps) {
       const tgt = waiting ? wps[Math.max(0, cur - 1)] : w; // auch am Ende der Route (i über das Listenende hinaus)
       const dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1e-6;
       const onKin = g.groundBody && g.groundBody.type === g.C.Body.KINEMATIC;
-      if (w.follow && !waiting) { // der Bahn folgen (Spirale), bis die Murmel tief genug ist
+      if (Array.isArray(w.follow) && !waiting) { // hinter einem bewegten Teil herfahren (Abstand in seiner Fahrtrichtung)
+        const [type, n = 0, ab = 2.5] = w.follow, b = g.els.filter(x => x.type === type)[n].body, bv = b.velocity, bs = Math.hypot(bv.x, bv.z);
+        if (bs > 0.3 || !pilot.fdir) pilot.fdir = bs > 0.3 ? [bv.x / bs, bv.z / bs] : [0, 0];
+        const ex = b.position.x - pilot.fdir[0] * ab - p.x, ez = b.position.z - pilot.fdir[1] * ab - p.z, ed = Math.hypot(ex, ez) || 1e-6;
+        const sp = Math.min(w.speed ?? 6, ed * 1.5 + bs);
+        ix = clamp((ex / ed * sp - v.x) * 1.2); iz = clamp((ez / ed * sp - v.z) * 1.2);
+        const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
+      } else if (w.follow && !waiting) { // der Bahn folgen (Spirale), bis die Murmel tief genug ist
         const y = g.track.yaw, fx = -Math.sin(y), fz = -Math.cos(y), rx = Math.cos(y), rz = -Math.sin(y), sp = w.speed ?? 4;
         const lat = -(g.track.lateral || 0) * 1.5;
         ix = clamp((fx * sp - v.x) * 0.8 + rx * lat); iz = clamp((fz * sp - v.z) * 0.8 + rz * lat);
         if (p.y < w.bisY) pilot.i++;
       } else if (waiting && onKin) { // mitfahren: relativ zur Plattform stillhalten
-        const pv = g.groundBody.velocity;
+        // drehendes Teil (Zahnrad): Tempo der Fläche unter der Murmel
+        const gb = g.groundBody, pv = gb.userData && gb.userData.dreht ? gb.getVelocityAtWorldPoint(p, new g.C.Vec3()) : gb.velocity;
         ix = clamp(-(v.x - pv.x) * 0.5); iz = clamp(-(v.z - pv.z) * 0.5);
       } else if (!tgt.free || waiting) {
         const sp = waiting ? Math.min(2, d * 2) : Math.min(w.speed ?? 4, d * 1.5 + 1);
         ix = clamp((dx / d * sp - v.x) * 1.2); iz = clamp((dz / d * sp - v.z) * 1.2);
         const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
       }
-      if (!waiting && !w.follow && d < (w.r ?? 1.2)) pilot.i++;
+      if (!waiting && w.follow !== true && d < (w.r ?? 1.2)) { pilot.i++; pilot.fdir = null; }
       return [ix, iz];
     },
     // nach dem Runterfallen beim nächstgelegenen Wegpunkt weitermachen
@@ -246,4 +275,4 @@ export const ROUTES = {
 };
 
 // Routen der schweren Level und der Badezimmer-Welt liegen je Welt in tests/routes/
-Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, weltraum, unterwasser, vulkan, pruefstand);
+Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, dach, weltraum, unterwasser, winter, chilbi, werkstatt, schweiz, vulkan, pruefstand);

@@ -6,12 +6,13 @@
 // Figur-Koordinaten: steht auf y = 0, Gesicht nach -z (wie in props.js).
 import { DEG, rotate, add, sub, scale, rightOf, toLocal, ease } from './math.js';
 import { PROPS, PROP_SIZE, mat, mesh, group, cyl } from './props.js';
+import { murmeltier } from './figur-murmeltier.js';
 
 const R = 0.5;          // Murmel-Radius
 const JUBEL = 1.8;      // s Jubel nach dem Erreichen, danach winken
 const GRAU = 0xBBBBBB, GRUEN = 0x3BB273;
 const FIG_R = 1.1, FIG_H = 3.2; // Platzbedarf der Figur (Radius, Höhe)
-export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', vulkan: 'geysir' };
+export const FIGUR_JE_WELT = { spielzimmer: 'springteufel', garten: 'zwerg', kueche: 'toaster', badezimmer: 'ente', weltraum: 'astronaut', unterwasser: 'oktopus', winter: 'schneemann', chilbi: 'lukas', werkstatt: 'schraube', schweiz: 'murmeltier', vulkan: 'geysir' };
 // Figur eines Checkpoints: el.figur oder die der Welt (bestimmt auch den Jubel-Klang 'cp-' + Figur in audio.js)
 export const figurVon = (el, theme) => FIGUREN[el.figur] ? el.figur : FIGUR_JE_WELT[theme] || 'zwerg';
 
@@ -304,6 +305,65 @@ export const FIGUREN = {
     };
   },
 
+  // Schneemann: döst mit dem Hut im Gesicht, dann fliegt der Hut hoch, er hüpft und schwenkt die Fahne am Astarm
+  schneemann(T, F) {
+    const schnee = mat(T, 0xFFFFFF, { shininess: 10 }), kohle = mat(T, 0x222222), ast = mat(T, 0x6D4C41);
+    const augen = [-1, 1].map(k => { const a = auge(T, 0.07); a.position.set(k * 0.13, 0.08, -0.28); return a; });
+    const nase = mesh(T, new T.ConeGeometry(0.07, 0.4, 8), mat(T, 0xFF7A1A), 0, -0.02, -0.48); nase.rotation.x = -Math.PI / 2;
+    const hut = group(T, mesh(T, cyl(T, 0.42, 0.42, 0.06, 16), kohle), mesh(T, cyl(T, 0.27, 0.27, 0.4, 16), kohle, 0, 0.22, 0), mesh(T, cyl(T, 0.275, 0.275, 0.08, 16), mat(T, 0xE53935), 0, 0.08, 0));
+    const kopf = group(T, mesh(T, new T.SphereGeometry(0.33, 16, 12), schnee), ...augen, nase, hut); kopf.position.y = 1.72;
+    const schal = mesh(T, new T.TorusGeometry(0.3, 0.09, 8, 16), mat(T, 0xE53935), 0, 1.45, 0); schal.rotation.x = Math.PI / 2;
+    const arme = [-1, 1].map(k => { const a = group(T, mesh(T, cyl(T, 0.035, 0.035, 0.7, 6), ast, 0, -0.35, 0)); a.position.set(k * 0.4, 1.3, 0); a.rotation.z = k * 0.9; return a; });
+    const arm = arme[1], fahne = F.make(1.6); fahne.position.y = -0.45; fahne.rotation.z = Math.PI; arm.add(fahne);
+    const g = group(T, mesh(T, new T.SphereGeometry(0.6, 18, 14), schnee, 0, 0.5, 0), mesh(T, new T.SphereGeometry(0.45, 18, 14), schnee, 0, 1.1, 0),
+      ...[0.95, 1.18].map(y => mesh(T, new T.SphereGeometry(0.05, 8, 6), kohle, 0, y, -0.43)), schal, kopf, ...arme);
+    return {
+      g, kopf: [0, 2.3, 0], sockel: 0xBFE6FA,
+      pose(z, t) {
+        augen.forEach(a => a.auf(z === 'schlaf' ? 0 : 1));
+        hut.position.set(0, 0.27, 0); hut.rotation.set(0, 0, 0);
+        if (z === 'schlaf') {
+          const b = Math.sin(t * 2);
+          g.position.y = 0; g.rotation.z = 0; kopf.rotation.set(0.3 + 0.04 * b, 0, 0);
+          hut.position.set(0, 0.2, -0.1); hut.rotation.x = -0.5; arm.rotation.z = 2.3 + 0.03 * b;
+        } else if (z === 'jubel') {
+          g.position.y = huepf(t, 0.45, 0.5); g.rotation.z = 0; kopf.rotation.set(0, 0, 0.15 * Math.sin(t * 12));
+          if (t < 1) { hut.position.y = 0.27 + 3.2 * t * (1 - t); hut.rotation.y = t * 12; }
+          arm.rotation.z = 2.8 + 0.5 * Math.sin(t * 14);
+        } else {
+          g.position.y = 0.04 * Math.abs(Math.sin(t * 4)); g.rotation.z = 0.06 * Math.sin(t * 2);
+          kopf.rotation.set(0, 0.25 * Math.sin(t * 1.5), 0); arm.rotation.z = 2.7 + 0.35 * Math.sin(t * 4);
+        }
+      }
+    };
+  },
+
+  // Hau den Lukas: der Klotz döst unten an der Skala, schiesst hoch an die Glocke und lässt sie bimmeln
+  lukas(T, F) {
+    const gold = mat(T, 0xFFC928, { shininess: 140, specular: 0xffffff }), UNTEN = 0.72, OBEN = 2.5;
+    const augen = [-1, 1].map(k => { const a = auge(T, 0.1); a.position.set(k * 0.24, 0.32, -0.46); return a; });
+    const klotz = mesh(T, new T.BoxGeometry(0.36, 0.2, 0.12), mat(T, 0x212121), 0, UNTEN, 0.06);
+    const glocke = group(T, mesh(T, new T.SphereGeometry(0.3, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), gold, 0, -0.3, 0), mesh(T, new T.SphereGeometry(0.08, 8, 6), gold, 0, -0.34, 0));
+    glocke.position.set(0, 3.05, 0.1);
+    const fahne = F.make(1.1); fahne.position.set(0.32, 2.1, 0.2);
+    const g = group(T, mesh(T, new T.BoxGeometry(1.1, 0.55, 0.9), mat(T, 0xE53935), 0, 0.275, 0), mesh(T, cyl(T, 0.26, 0.26, 0.1, 14), mat(T, 0xFDD835), 0, 0.6, -0.2),
+      mesh(T, new T.BoxGeometry(0.5, 2.2, 0.12), mat(T, 0xFAFAFA), 0, 1.65, 0.2), ...augen, klotz, glocke, fahne);
+    [0x43A047, 0xFDD835, 0xFB8C00, 0xE53935].forEach((c, i) => g.add(mesh(T, new T.BoxGeometry(0.4, 0.42, 0.04), mat(T, c), 0, 0.95 + i * 0.5, 0.125)));
+    return {
+      g, kopf: [0, 1.1, -0.5], sockel: 0xFDD835,
+      pose(z, t) {
+        augen.forEach(a => a.auf(z === 'schlaf' ? 0 : 1));
+        if (z === 'schlaf') { g.position.y = 0; klotz.position.y = UNTEN + 0.02 * Math.sin(t * 2); glocke.rotation.z = 0; }
+        else if (z === 'jubel') {
+          const u = t - 0.25; // nach 0.25 s schlägt der Klotz an die Glocke
+          g.position.y = huepf(t, 0.45, 0.25);
+          klotz.position.y = u < 0 ? UNTEN + (OBEN - UNTEN) * (t / 0.25) : OBEN - 0.35 * Math.abs(Math.sin(u * 8)) * Math.exp(-3 * u);
+          glocke.rotation.z = u < 0 ? 0 : 0.6 * Math.sin(u * 18) * Math.exp(-2 * u);
+        } else { g.position.y = 0; klotz.position.y = OBEN - 0.06 + 0.04 * Math.sin(t * 5); glocke.rotation.z = 0.15 * Math.sin(t * 4); }
+      }
+    };
+  },
+
   // Geysir: raucht im Schlaf ein wenig, dann schiesst die Dampfsäule die Fahne hoch, sie landet auf der Spitze
   geysir(T, F) {
     const stein = mat(T, 0x3E3438, { flatShading: true });
@@ -346,8 +406,36 @@ export const FIGUREN = {
         }
       }
     };
+  },
+
+  // Schraube: steckt tief im Holzklotz und döst, dreht sich jubelnd heraus und wirbelt die Fahne herum
+  schraube(T, F) {
+    const stahl = mat(T, 0xC3CAD1, { shininess: 140, specular: 0xffffff });
+    const augen = [-1, 1].map(k => { const a = auge(T, 0.1); a.position.set(k * 0.2, 0.12, -0.44); return a; });
+    const kopf = group(T, mesh(T, new T.SphereGeometry(0.5, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), stahl), mesh(T, cyl(T, 0.5, 0.5, 0.08, 18), stahl, 0, -0.04, 0),
+      mesh(T, new T.BoxGeometry(0.7, 0.08, 0.12), mat(T, 0x555B62), 0, 0.5, 0), ...augen);
+    const gewinde = group(T, mesh(T, cyl(T, 0.2, 0.2, 1.5, 12), stahl, 0, -0.75, 0));
+    for (let i = 0; i < 6; i++) { const r = mesh(T, new T.TorusGeometry(0.23, 0.05, 6, 14), stahl, 0, -0.2 - i * 0.22, 0); r.rotation.x = Math.PI / 2 + 0.2; gewinde.add(r); }
+    const fahne = F.make(1.2); fahne.position.set(0.3, 0.3, 0); fahne.rotation.z = -0.3;
+    const schraube = group(T, gewinde, kopf, fahne);
+    const klotz = mesh(T, new T.BoxGeometry(1.5, 0.6, 1.5), mat(T, 0xD9B07A, { shininess: 10 }), 0, 0.3, 0);
+    const TIEF = 0.68, HOCH = 1.63; // Kopf-Unterkante: eingeschraubt, herausgedreht
+    return {
+      g: group(T, klotz, schraube), kopf: [0, 1.3, 0], sockel: 0xC89858,
+      pose(z, t) {
+        augen.forEach(a => a.auf(z === 'schlaf' ? 0 : 1));
+        if (z === 'schlaf') { schraube.position.y = TIEF + 0.02 * Math.sin(t * 2); schraube.rotation.y = 0.05 * Math.sin(t * 1.3); }
+        else if (z === 'jubel') {
+          const k = ease(t / 0.9); // drei Umdrehungen heraus, danach hüpfen
+          schraube.position.y = TIEF + (HOCH - TIEF) * k + (t > 0.9 ? huepf(t - 0.9, 0.4, 0.3) : 0); schraube.rotation.y = -k * Math.PI * 6;
+        } else { schraube.position.y = HOCH + 0.04 * Math.abs(Math.sin(t * 4)); schraube.rotation.y = 0.5 * Math.sin(t * 2); }
+      }
+    };
   }
 };
+
+// Murmeltier der Welt Schweiz (src/figur-murmeltier.js)
+FIGUREN.murmeltier = murmeltier;
 
 // ---------- Zielband: zwei Pfosten am Wegrand, das Band beult sich mit der Murmel aus und reisst ----------
 function zielband(T, v, hw, root) {

@@ -63,6 +63,7 @@ test('Spiel startet, Karte erscheint, Murmel rollt mit der Pfeiltaste', async ({
 });
 
 test('Jedes Level lässt sich mit Grafik laden und zeichnen', async ({ page }) => {
+  test.setTimeout(180_000); // 56 Level, in der Action gut 1 s pro Level: mit 60 s lief der Test ins Limit
   const errors = watchErrors(page);
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
@@ -282,7 +283,7 @@ test('Ohne localStorage läuft das Spiel trotzdem', async ({ page }) => {
 
 // Autopilot pro Welt (laufen parallel): jede Stärke mit der Standard-Murmel, jede Murmel mit Stärke normal.
 // Neue Welt: hier eintragen (der Test darunter meldet vergessene Welten).
-const WELTEN = ['uebung', 'spielzimmer', 'garten', 'kueche', 'badezimmer', 'weltraum', 'unterwasser', 'vulkan'];
+const WELTEN = ['uebung', 'spielzimmer', 'garten', 'kueche', 'badezimmer', 'dach', 'weltraum', 'unterwasser', 'winter', 'chilbi', 'werkstatt', 'schweiz', 'vulkan'];
 
 test('Jedes Level hat eine Route und gehört zu einer Welt aus WELTEN', async ({ page }) => {
   await page.goto('/');
@@ -328,7 +329,7 @@ for (const welt of WELTEN) for (const art of ['normal', 'schwer']) {
 
 // Prüfstand: jedes Bauteil einzeln (src/levels/pruefstand/, eine Gruppe pro Datei) mit jeder Stärke und jeder Murmel.
 // Kurze Level, darum auch in npm run test:schnell und bei jedem PR.
-const PRUEF_GRUPPEN = ['bahn', 'beweglich', 'kraefte', 'welt'];
+const PRUEF_GRUPPEN = ['bahn', 'beweglich', 'kraefte', 'welt', 'werkstatt', 'schweiz'];
 for (const gruppe of PRUEF_GRUPPEN) {
   test(`Prüfstand ${gruppe}: jedes Bauteil mit jeder Stärke und jeder Murmel`, async ({ page }) => {
     test.setTimeout(300_000);
@@ -758,6 +759,35 @@ test('Fallen: Hammer quetscht, Falltür klappt auf, Loch im Feld, Schieber schie
   expect(sch.ev).toContain('fall');
 });
 
+test('Werkstatt: Schraubstock quetscht beim Zufahren, Messband trägt erst eingehängt, Sägemehl bremst', async ({ page }) => {
+  await page.goto('/');
+  const weg = { type: 'weg', from: [0, 0, 4], to: [0, 0, -30], width: 3 };
+  // Schraubstock (1 s offen, 1.2 s zufahren): Murmel steht zwischen den Backen -> platt, dann zurück zum Checkpoint
+  const stock = { type: 'schraubstock', at: [0, 0, -3], pause: 1 };
+  const q = await fahre(page, [weg, stock, { type: 'checkpoint', at: [0, 0, 2], size: [3, 3, 2] }], [0, 0, 2], 4, [0, 0], 'g.spawn([0, 1, -3]); g.st.cp = 0;');
+  expect(q.ev.filter(e => e === 'quetsch' || e === 'zurueck')).toEqual(['quetsch', 'zurueck']);
+  expect(q.falls).toBe(1); // zählt als Absturz (Punkte)
+  expect(q.p[2]).toBeGreaterThan(0); // wieder am Checkpoint
+  // mit Schwung durch, solange er offen ist
+  const durch = await fahre(page, [weg, stock], [0, 0, 2], 2, [0, 0], schwung(6));
+  expect(durch.ev).not.toContain('quetsch');
+  expect(durch.p[2]).toBeLessThan(-5);
+  // Messband: Gehäuse hinter der Murmel, Schalter am Start. Ausgefahren trägt es über die Lücke, ohne Schalter fällt die Murmel hinein
+  const band = [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -6], width: 9 }, { type: 'messband', from: [-2.3, 0, 0], to: [-2.3, 0, -14], width: 3, id: 'm', kante: 6 },
+    { type: 'weg', from: [-2.3, 0, -14], to: [-2.3, 0, -24], width: 4, walls: 0.8, caps: 'end' }];
+  const traegt = 'return g.els[1].body.collisionFilterGroup'; // 1 = eingehängt, trägt
+  const mit = await fahre(page, [...band, { type: 'schalter', at: [-2.3, 0, -2], id: 'm' }], [-2.3, 0, -2], 7, [0, -0.4], '', traegt);
+  expect(mit.ev).toEqual(['click', 'bridge']);
+  expect(mit.aus).toBe(1);
+  expect(mit.p[2]).toBeLessThan(-14); // über das Band gerollt
+  const ohne = await fahre(page, band, [-2.3, 0, -2], 5, [0, -0.4], '', traegt);
+  expect(ohne.ev).toEqual(['fall']);
+  expect(ohne.aus).toBe(0);
+  // Sägemehl bremst: gleicher Schwung, viel kürzerer Weg
+  const roll = async surface => (await fahre(page, [{ type: 'weg', from: [0, 0, 4], to: [0, 0, -40], width: 4, surface }], [0, 0, 2], 3, [0, 0], schwung(8))).p[2];
+  expect(await roll('saegemehl')).toBeGreaterThan(await roll() + 5);
+});
+
 test('Nagelwand: jede Murmel fällt hindurch, prallt an Nägeln ab und kommt unten an', async ({ page }) => {
   await page.goto('/');
   const r = await page.evaluate(async () => {
@@ -1086,11 +1116,12 @@ test('Runterfallen setzt am Checkpoint wieder ein', async ({ page }) => {
 });
 
 test('Checkpoint: Figur je Welt schläft, jubelt beim Erreichen, Band reisst, Neustart setzt zurück', async ({ page }) => {
+  test.setTimeout(120_000); // neun Welten, je Level gut 6 s in der Action: mit 60 s lief der Test knapp ins Limit
   const errors = watchErrors(page);
   await page.goto('/');
   await page.waitForFunction(() => window.murmel && window.murmel.game);
   const cp = () => page.evaluate(() => ({ ...window.murmel.view.scene.getObjectByName('checkpoint').userData }));
-  const welten = { ausflug: 'zwerg', sz2: 'springteufel', g1: 'zwerg', k1: 'toaster', b1: 'ente', w1: 'astronaut', u1: 'oktopus', v1: 'geysir' };
+  const welten = { ausflug: 'zwerg', sz2: 'springteufel', g1: 'zwerg', k1: 'toaster', b1: 'ente', w1: 'astronaut', u1: 'oktopus', wi1: 'schneemann', c1: 'lukas', ws1: 'schraube', sch1: 'murmeltier', v1: 'geysir' };
   for (const [id, figur] of Object.entries(welten)) {
     await page.evaluate(i => { const m = window.murmel; m.startLevel(m.LEVELS.findIndex(l => l.id === i)); }, id);
     await expect.poll(cp, { message: id }).toMatchObject({ figur, zustand: 'schlaf', band: 'ganz' });
@@ -1166,19 +1197,20 @@ test('Alle Klänge sind hörbar und übersteuern nicht (offline gerendert)', asy
       fn(a); const buf = await ctx.startRendering(); a.music(null); return +peak(buf).toFixed(3);
     };
     const out = {};
-    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir']) out[n] = await render(a => a.sfx(n));
+    for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-schneemann', 'cp-geysir', 'cp-lukas', 'cp-schraube', 'cp-murmeltier']) out[n] = await render(a => a.sfx(n));
     out.hitLeise = await render(a => a.sfx('hit', 0.1));
     out.hitStark = await render(a => a.sfx('hit', 1));
     out.rollen = await render(a => a.roll(6, true, 'normal'), 1);
     out.rollenEis = await render(a => a.roll(6, true, 'eis'), 1);
     out.rollenPfuetze = await render(a => a.roll(6, true, 'pfuetze'), 1);
+    out.rollenSchnee = await render(a => a.roll(6, true, 'schnee'), 1);
     out.rollenLuft = await render(a => a.roll(6, false, 'normal'), 1);
     out.aus = await render(a => { a.setMode('aus'); a.sfx('win'); });
-    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser', 'vulkan', 'badezimmer']) out['musik_' + song] = await render(a => a.music(song), 1);
+    for (const song of ['karte', 'standard', 'spielzimmer', 'garten', 'kueche', 'weltraum', 'unterwasser', 'winter', 'vulkan', 'badezimmer', 'chilbi', 'werkstatt', 'schweiz']) out['musik_' + song] = await render(a => a.music(song), 1);
     out.musikOhne = await render(a => { a.setMode('ohneMusik'); a.music('standard'); }, 1);
     return out;
   });
-  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-geysir', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_vulkan', 'musik_badezimmer']) {
+  for (const n of ['tap', 'start', 'star', 'bonus', 'jump', 'fall', 'cp', 'turbo', 'click', 'bridge', 'win', 'unlock', 'roehre', 'plopp', 'wieder', 'wind', 'magnet', 'laden', 'boom', 'tock', 'jubel', 'platsch', 'sauber', 'klapp', 'quetsch', 'rumpel', 'zisch', 'spritz', 'gurgel', 'spuel', 'cp-zwerg', 'cp-springteufel', 'cp-toaster', 'cp-ente', 'cp-astronaut', 'cp-oktopus', 'cp-schneemann', 'cp-geysir', 'hitStark', 'rollen', 'rollenEis', 'rollenPfuetze', 'rollenSchnee', 'musik_karte', 'musik_standard', 'musik_spielzimmer', 'musik_garten', 'musik_kueche', 'musik_weltraum', 'musik_unterwasser', 'musik_winter', 'musik_vulkan', 'musik_badezimmer', 'cp-lukas', 'musik_chilbi', 'cp-schraube', 'musik_werkstatt', 'cp-murmeltier', 'musik_schweiz']) {
     expect(r[n], n).toBeGreaterThan(0.02);
     expect(r[n], n).toBeLessThan(1);
   }

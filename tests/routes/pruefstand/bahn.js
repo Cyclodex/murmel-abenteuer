@@ -14,5 +14,5 @@ export default {
   'p-roehre': [{ x: 0, z: -4 }, { x: 0, z: -8, speed: 3 }, { x: 0, z: -29 }],
   'p-band': [{ x: 0, z: -4 }, { x: 0, z: -8, speed: 4 }, { x: 0, z: -18, speed: 4 }, { x: 0, z: -23, speed: 3 }],
   'p-treppe': [{ x: 0, z: -4, speed: 2 }, { x: 0, z: -19, speed: 2.5 }, { x: 0, z: -25, speed: 2 }],
-  'p-oberflaechen': [{ x: 0, z: -4, speed: 3 }, { x: 0, z: -16, speed: 3 }, { x: 0, z: -28, speed: 3 }, { x: 0, z: -31, speed: 2 }]
+  'p-oberflaechen': [{ x: 0, z: -4, speed: 3 }, { x: 0, z: -16, speed: 3 }, { x: 0, z: -28, speed: 3 }, { x: 0, z: -32, speed: 3 }, { x: 0, z: -35, speed: 2 }]
 };
