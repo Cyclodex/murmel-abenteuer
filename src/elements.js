@@ -194,11 +194,14 @@ export const TYPES = {
     }
   },
 
-  // Klotz: Mittelpunkt + Grösse. {type:'klotz', at, size:[b,h,t], yaw?, look?, text?, surface?, deko?}
+  // Klotz: Mittelpunkt + Grösse. {type:'klotz', at, size:[b,h,t], yaw?, look?, text?, surface?, deko?, richtung?}
   // look z. B. 'floor', 'wall', 'lego-rot', 'klotz-blau', 'abc' (mit text:'A'). deko:true = nur Grafik, keine Physik
+  // richtung (Grad, wie startYaw): Fahrfläche, die Kamera schaut darauf in diese Richtung (wie auf einem Weg).
+  // Nur für die Kamera (blick): kein Hangabtrieb, keine Säulen, für Checkpoint-Figuren kein Weg.
   klotz: {
     solids(d) {
-      return [{ pos: d.at, half: scale(d.size, 0.5), quat: quatYawPitch((d.yaw || 0) * DEG, 0), look: d.look || 'floor', text: d.text, surface: d.surface, deko: !!d.deko }];
+      const tr = d.richtung == null ? undefined : { yaw: d.richtung * DEG, mid: d.at, right: rightOf(d.richtung * DEG), blick: true };
+      return [{ pos: d.at, half: scale(d.size, 0.5), quat: quatYawPitch((d.yaw || 0) * DEG, 0), look: d.look || 'floor', text: d.text, surface: d.surface, deko: !!d.deko, track: tr }];
     }
   },
 
@@ -332,11 +335,11 @@ export const TYPES = {
 
   // Wippe: Brett, das sich um die Mitte (at, Oberkante) dreht. Am Anfang ist die Einfahrt unten;
   // fährt die Murmel über die Mitte, kippt die Wippe nach vorne.
-  // {type:'wippe', at, size:[b, länge], yaw?, angle?:Grad, rim?}
+  // {type:'wippe', at, size:[b, länge], yaw?, angle?:Grad, rim?, look?} look = Brett (z. B. Lineal), dann ohne Pfosten
   wippe: {
     init(el, g) {
       const size = el.size || [4, 8];
-      el.body = kinematicBody(g, boardParts(size[0], size[1], 0.4, el.rim ?? 0.5, 'seesaw'), el.surface);
+      el.body = kinematicBody(g, boardParts(size[0], size[1], 0.4, el.rim ?? 0.5, el.look || 'seesaw'), el.surface);
       el.yaw = (el.yaw || 0) * DEG;
       el.body.position.set(...el.at);
       el.body.userData = { surface: el.surface, track: { yaw: el.yaw, mid: el.at, right: rightOf(el.yaw) } };
@@ -354,6 +357,7 @@ export const TYPES = {
     },
     view(el, v) {
       const T = v.THREE, g0 = v.bodyGroup(el.body);
+      if (el.look) return g0; // eigener Drehpunkt im Level (z. B. Radiergummi)
       const foot = new T.Mesh(new T.CylinderGeometry(0.1, 0.6, 3, 12), v.mats.pole);
       foot.position.set(el.at[0], el.at[1] - 1.9, el.at[2]); v.scene.add(foot);
       return g0;

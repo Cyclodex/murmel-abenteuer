@@ -3,6 +3,7 @@ import { TYPES } from './bauteile.js';
 import { R, SURFACES, RESPAWN_T } from './game.js';
 import { boxesOverlap } from './math.js';
 import { THEMES, COLORS, canvasTex, rnd, woodTex } from './themes.js';
+import { bauOrt } from './orte/bau.js';
 import { createTrailFx } from './trails.js';
 import { ghostAt } from './ghost.js';
 
@@ -203,7 +204,7 @@ export function createView(THREE, renderer, game) {
   }
 
   const v = {
-    THREE, scene, game, goal: null,
+    THREE, scene, game, goal: null, mat, // mat(look): Material eines Looks (für Bauteile mit look)
     mats: {
       pad: lambert(0xFF5A8A), star: lambert(0xFFC928, { emissive: 0x6a4a00 }), bonusStar: lambert(0xC77DFF, { emissive: 0x3a1060 }),
       goal: lambert(0x3BB273, { emissive: 0x1a5a30 }), goalFlag: lambert(0x3BB273), pole: lambert(0x8A8A8A), wall: lambert(0xA8743A)
@@ -271,7 +272,7 @@ export function createView(THREE, renderer, game) {
       }
     }
     // Säulen unter flachen Bahnstücken (nur Optik)
-    if (theme.pillars && s.track && !s.deko && Math.abs(s.quat[0]) < 1e-3 && Math.abs(s.quat[2]) < 1e-3 && s.half[2] >= 2) pillars.push(s);
+    if (theme.pillars && s.track && !s.track.blick && !s.deko && Math.abs(s.quat[0]) < 1e-3 && Math.abs(s.quat[2]) < 1e-3 && s.half[2] >= 2) pillars.push(s);
   }
   const studGeo = new THREE.CylinderGeometry(STUD_R, STUD_R, STUD_H, 16);
   for (const [col, list] of Object.entries(studs)) {
@@ -280,7 +281,13 @@ export function createView(THREE, renderer, game) {
     scene.add(im);
   }
   const floorY = (game.level.killY ?? -8) - 1;
-  const groundFx = theme.ground ? theme.ground(tools, floorY) : null;
+  // Echter Ort (src/orte/): Raum als Kulisse statt Untergrund; Kamera und Nebel reichen durch den ganzen Raum
+  const ortFx = game.level.ort ? bauOrt(THREE, scene, game.level.ort, game.level.bereich) : null;
+  if (ortFx) {
+    camera.far = Math.max(camera.far, ortFx.far); camera.updateProjectionMatrix();
+    scene.fog.near = Math.max(scene.fog.near, ortFx.far); scene.fog.far = Math.max(scene.fog.far, ortFx.far * 2);
+  }
+  const groundFx = theme.ground && !ortFx ? theme.ground(tools, floorY) : null;
   const pillarMeshes = [];
   if (theme.pillars) {
     pillars.forEach((s, i) => {
@@ -382,6 +389,8 @@ export function createView(THREE, renderer, game) {
   let watch = false, flyT = -1, flyArc = 0, lastTime = 0;
   // Bauteil-Kamera (z. B. Looping, Nagelwand): Anteil 0..1, Blickpunkt, Ort, wie weit vor dem Blickpunkt noch gezeichnet wird
   const elLook = new THREE.Vector3(), elPos = new THREE.Vector3(), occluders = [...blockers, ...pillarMeshes], faded = new Set();
+  const moebel = ortFx ? ortFx.moebel : []; // Möbel des Orts (z. B. Kopfteil des Betts): immer ausblenden, wenn im Weg
+  occluders.push(...moebel);
   let elW = 0, elClear = 0;
   // Abstand so, dass `fit` Meter um den Blickpunkt ins Bild passen
   function elementCam(p) {
@@ -394,13 +403,15 @@ export function createView(THREE, renderer, game) {
     return true;
   }
   // Was bei der Bauteil-Kamera zwischen Kamera und Murmel liegt, wird halb durchsichtig (statt die Kamera zu versetzen)
-  function fade(on, target) {
-    if (!on && !faded.size) return;
+  // Möbel des Orts auch ohne Bauteil-Kamera (ort = true)
+  function fade(on, target, ort = false) {
+    const list = on ? occluders : ort ? moebel : null;
+    if (!list?.length && !faded.size) return;
     const hits = new Set();
-    if (on) {
+    if (list?.length) {
       dir.subVectors(camera.position, target); const d = dir.length();
       ray.set(target, dir.divideScalar(d)); ray.far = d;
-      for (const h of ray.intersectObjects(occluders, false)) hits.add(h.object);
+      for (const h of ray.intersectObjects(list, false)) hits.add(h.object);
     }
     for (const m of faded) if (!hits.has(m)) { m.material = m.userData.mat0; faded.delete(m); }
     for (const m of hits) if (!faded.has(m)) { m.userData.mat0 = m.material; m.material = seeThrough(m.material); faded.add(m); }
@@ -418,7 +429,7 @@ export function createView(THREE, renderer, game) {
   function still() {
     camera.position.copy(camPos); camera.lookAt(lookPt);
     if (camera.near !== 0.1) { camera.near = 0.1; camera.updateProjectionMatrix(); }
-    fade(false);
+    fade(false, lookPt, true);
     sun.position.set(lookPt.x + 6, lookPt.y + 14, lookPt.z + 6); sun.target.position.copy(lookPt);
     renderer.render(scene, camera);
   }
@@ -597,7 +608,7 @@ export function createView(THREE, renderer, game) {
     // in der Weitsicht weiter vorne beginnen (genug Tiefenauflösung auf die grosse Entfernung)
     const near = Math.max(0.1 + Math.max(0, camPos.distanceTo(elLook) - elClear - 0.1) * w * (1 - ow), 0.1 + ovD * 0.004 * ow);
     if (camera.near !== near || ow > 0) { camera.near = near; camera.updateProjectionMatrix(); }
-    fade(w > 0 && ow < 0.5, target);
+    fade(w > 0 && ow < 0.5, target, ow < 0.5);
     if (shadowWide) { const s = lvR / 8; sun.position.set(lvC.x + 6 * s, lvC.y + 14 * s, lvC.z + 6 * s); sun.target.position.copy(lvC); }
     else { sun.position.set(target.x + 6, target.y + 14, target.z + 6); sun.target.position.copy(target); }
     renderer.render(scene, camera);

@@ -31,6 +31,9 @@ import weltraumS from './schwer/weltraum.js';
 import unterwasserS from './schwer/unterwasser.js';
 import vulkanS from './schwer/vulkan.js';
 import { PRUEFSTAND } from './pruefstand/index.js';
+import kz1 from './zuhause/kinderzimmer1.js';
+import kz2 from './zuhause/kinderzimmer2.js';
+import kz3 from './zuhause/kinderzimmer3.js';
 
 // Prüfstand (ein Level pro Bauteil, für Tests) nur mit ?pruefstand in der Adresse als eigene Welt
 const PRUEF = typeof location !== 'undefined' && new URLSearchParams(location.search).has('pruefstand');
@@ -38,9 +41,11 @@ const PRUEF = typeof location !== 'undefined' && new URLSearchParams(location.se
 // Kategorien der Karte (Umschalter oben): Bahnen = alle bisherigen Welten, Echte Orte = Welten, die an einem echten Ort spielen
 // (Haus vom Dach bis in den Keller, siehe docs/plan-echte-orte.md). Welt ohne kategorie = 'bahn'.
 // bald = Hinweis, solange die Kategorie noch keine Welt hat
-// Echte Orte sind noch in Arbeit: im Browser nur mit Schlüssel (src/freischalten.js), sonst weder Umschalter noch Welten
-// (auch nicht in Album und Rangliste). In Node (pruefe-level, richtzeiten) immer dabei.
-export const ORTE_AN = typeof window === 'undefined' || (() => { try { return localStorage.getItem('murmel-orte') === 'an'; } catch (e) { return false; } })();
+// Echte Orte sind noch in Arbeit: im Browser nur in der Vorschau eines PRs (<meta name="vorschau">, .github/workflows/vorschau.yml)
+// oder mit Schlüssel (src/freischalten.js), sonst weder Umschalter noch Welten (auch nicht in Album und Rangliste).
+// In Node (pruefe-level, richtzeiten) immer dabei.
+export const ORTE_AN = typeof window === 'undefined' || !!document.querySelector('meta[name="vorschau"]')?.content ||
+  (() => { try { return localStorage.getItem('murmel-orte') === 'an'; } catch (e) { return false; } })();
 export const KATEGORIEN = [
   { id: 'bahn', name: 'Bahnen', emoji: '🎢' },
   { id: 'orte', name: 'Echte Orte', emoji: '🏠', bald: 'Hier entsteht ein ganzes Haus: vom Dach über den Estrich durch alle Stockwerke bis in den Keller.' }
@@ -57,6 +62,8 @@ export const WORLDS = [
   { id: 'unterwasser', name: 'Unterwasser', emoji: '🌊', levels: [u1, u2, u3], hard: unterwasserS },
   // Profi-Welt: erst ab need Sternen offen
   { id: 'vulkan', name: 'Vulkan', emoji: '🌋', need: 50, levels: [v1, v2, v3], hard: vulkanS },
+  // Echte Orte: das Haus vom Dach bis in den Keller (docs/plan-echte-orte.md), nur freigeschaltet sichtbar
+  { id: 'kinderzimmer', name: 'Kinderzimmer', emoji: '🛏️', kategorie: 'orte', levels: [kz1, kz2, kz3] },
   ...(PRUEF ? [{ id: 'pruefstand', name: 'Prüfstand', emoji: '🔧', levels: PRUEFSTAND }] : [])
 ].filter(w => ORTE_AN || kategorie(w) !== 'orte');
 

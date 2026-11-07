@@ -93,5 +93,30 @@ export default [
     { type: 'kanone', at: [0, 0, -7], target: [0, 4, -24], time: 1.6 },
     { type: 'weg', from: [0, 4, -19], to: [0, 4, -38], width: 4, walls: 0.6, caps: 'both' },
     { type: 'ziel', at: [0, 4, -34] }
+  ]),
+  // Zielbare Kanone: Richtung und Weite selbst wählen. Gerade aus und kurz (wie am Anfang eingestellt) landet die Murmel
+  // auf dem Teller (Umweg: Treppe hinunter zurück vor die Kanone), 35° rechts und 28 weit auf der Landebahn mit Checkpoint,
+  // zu weit oder daneben im Abgrund. Teller und Landebahn auf hoehe 2.
+  lv('kanone-ziel', 'Kanone mit Zielen', [
+    { type: 'klotz', at: [-5.75, -0.5, 1], size: [16.5, 1, 10] }, // Startplatz
+    { type: 'klotz', at: [0, -0.5, -6.5], size: [5, 1, 5] }, // Kanonenplatz
+    { type: 'wand', from: [-14, 0, 6], to: [2.5, 0, 6] },
+    { type: 'wand', from: [-14, 0, -4], to: [-14, 0, 6] },
+    { type: 'wand', from: [2.5, 0, 6], to: [2.5, 0, -9.2] },
+    { type: 'wand', from: [2.5, 0, -9.2], to: [-2.5, 0, -9.2] },
+    { type: 'wand', from: [-2.5, 0, -9.2], to: [-2.5, 0, -4] },
+    { type: 'wand', from: [-2.5, 0, -4], to: [-10.3, 0, -4] },
+    { type: 'kanone', at: [0, 0, -7], zielen: { winkel: 40, weite: [8, 44], zeit: 3.5, hoehe: 2 } },
+    // nah: Teller, Treppe zurück auf den Startplatz
+    { type: 'klotz', at: [-2, 1.5, -18.5], size: [24, 1, 13] },
+    { type: 'wand', from: [-10.3, 2, -12], to: [10, 2, -12] },
+    { type: 'wand', from: [10, 2, -12], to: [10, 2, -25] },
+    { type: 'wand', from: [10, 2, -25], to: [-14, 2, -25] },
+    { type: 'wand', from: [-14, 2, -25], to: [-14, 2, -12] },
+    { type: 'treppe', from: [-12, 2, -12], to: [-12, 0, -4], steps: 4, width: 3, walls: 0.6 },
+    // richtig: Landebahn 35° rechts, 22 bis 40 weit ab der Kanone
+    { type: 'weg', from: [12.62, 2, -25.02], to: [22.94, 2, -39.77], width: 6, walls: 0.8, caps: 'both' },
+    { type: 'checkpoint', at: [17.78, 2, -32.39], yaw: -35 },
+    { type: 'ziel', at: [21.22, 2, -37.31] }
   ])
 ];

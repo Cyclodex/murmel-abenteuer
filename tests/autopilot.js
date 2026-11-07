@@ -1,7 +1,10 @@
 // Autopilot für Tests (und zum Zuschauen: Spiel mit ?autopilot öffnen): fährt eine Liste von Wegpunkten ab und prüft so, ob ein Level schaffbar ist.
-// Wegpunkt: {x, z, speed?, r?, free?, wait?}
+// Wegpunkt: {x, z, speed?, r?, free?, wait?, aim?}
 //   speed = Wunschtempo (m/s), r = Radius "erreicht", free = nicht lenken (z. B. im Looping),
 //   wait = Name einer Bedingung aus WAITS, vorher wird angehalten.
+//   aim = {x, z}: Zielpunkt im Level für eine zielbare Kanone (kanone mit zielen). Der Wegpunkt liegt bei der Kanone und gilt
+//   als erreicht, sobald sie die Murmel lädt. Solange sie lädt und zielt, lenkt der Autopilot nicht, sondern setzt
+//   el.aimAt = [x, z]: Die Kanone dreht Rohr und Weite selbst dorthin (begrenzt auf winkel/weite) und schiesst nach zeit s.
 import uebung from './routes/uebung.js';
 import spielzimmer from './routes/spielzimmer.js';
 import garten from './routes/garten.js';
@@ -11,6 +14,7 @@ import weltraum from './routes/weltraum.js';
 import unterwasser from './routes/unterwasser.js';
 import vulkan from './routes/vulkan.js';
 import pruefstand from './routes/pruefstand/index.js';
+import zuhause from './routes/zuhause.js';
 
 const WAITS = {
   // n-te Plattform steht am Start bzw. am Ziel
@@ -59,6 +63,14 @@ export function createPilot(g, wps) {
       const waiting = wName && !ok.has(cur) && !WAITS[wName](g, wArg);
       if (wName && !waiting) ok.add(cur);
       pilot.waiting = waiting ? wName : null;
+      // zielbare Kanone hat die Murmel: Zielpunkt setzen, nicht lenken
+      const kan = g.els.find(e => e.type === 'kanone' && e.zielen && (e.state === 'laden' || e.state === 'zielen'));
+      if (w.aim && !waiting) pilot.aim = w.aim;
+      if (kan) {
+        if (pilot.aim) kan.aimAt = [pilot.aim.x, pilot.aim.z];
+        if (w.aim && !waiting) pilot.i++;
+        return [0, 0];
+      }
       // Beim Warten den vorherigen Wegpunkt halten
       const tgt = waiting ? wps[Math.max(0, cur - 1)] : w; // auch am Ende der Route (i über das Listenende hinaus)
       const dx = tgt.x - p.x, dz = tgt.z - p.z, d = Math.hypot(dx, dz) || 1e-6;
@@ -76,12 +88,12 @@ export function createPilot(g, wps) {
         ix = clamp((dx / d * sp - v.x) * 1.2); iz = clamp((dz / d * sp - v.z) * 1.2);
         const l = Math.hypot(ix, iz); if (l > 1) { ix /= l; iz /= l; }
       }
-      if (!waiting && !w.follow && d < (w.r ?? 1.2)) pilot.i++;
+      if (!waiting && !w.follow && !w.aim && d < (w.r ?? 1.2)) pilot.i++;
       return [ix, iz];
     },
     // nach dem Runterfallen beim nächstgelegenen Wegpunkt weitermachen
     fell() {
-      ok.clear();
+      ok.clear(); pilot.aim = null;
       let best = 0, bd = 1e9;
       wps.forEach((q, k) => { if (q.x === undefined) return; const dd = Math.hypot(q.x - g.ball.position.x, q.z - g.ball.position.z); if (dd < bd) { bd = dd; best = k; } });
       pilot.i = best;
@@ -246,4 +258,4 @@ export const ROUTES = {
 };
 
 // Routen der schweren Level und der Badezimmer-Welt liegen je Welt in tests/routes/
-Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, weltraum, unterwasser, vulkan, pruefstand);
+Object.assign(ROUTES, uebung, spielzimmer, garten, kueche, badezimmer, weltraum, unterwasser, vulkan, pruefstand, zuhause);

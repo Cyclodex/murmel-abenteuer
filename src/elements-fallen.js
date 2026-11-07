@@ -99,7 +99,7 @@ export const FALLEN = {
   // Hammer: schwingt von der Seite auf den Weg. Ist die Murmel darunter, wird sie zerquetscht (zurück zum Checkpoint).
   // at = Aufschlagpunkt (Mitte, Oberkante des Wegs), yaw = Wegrichtung, side = 1: Stiel rechts, -1: links,
   // length = Drehpunkt bis Kopfmitte, size = Kopf [quer, hoch, längs], up/down = s oben warten / unten liegen, offset = Startverzögerung
-  // {type:'hammer', at, yaw?, side?, length?, size?, up?, down?, offset?, farbe?}
+  // {type:'hammer', at, yaw?, side?, length?, size?, up?, down?, offset?, farbe?, look?} look = Kopf und Hebel (z. B. Locher), ohne Pfosten
   hammer: {
     init(el, g) {
       const [hb, hh, ht] = el.size || [2.4, 1.4, 1.6], L = el.length ?? 4, s = el.side ?? 1;
@@ -142,12 +142,13 @@ export const FALLEN = {
       // Holzhammer: runder Kopf (Schlagfläche unten), Holzstiel, Pfosten am Drehpunkt
       const T = v.THREE, p = el.pivot, [hb, hh, ht] = el.hsize, L = el.L, s = el.s, grp = new T.Group();
       const COL = { rot: 0xE53935, blau: 0x1E88E5, gelb: 0xFDD835, gruen: 0x43A047, orange: 0xFB8C00, lila: 0x8E24AA };
-      const headMat = new T.MeshPhongMaterial({ color: COL[el.farbe] ?? COL.rot, shininess: 60 }), ringMat = new T.MeshPhongMaterial({ color: 0x424242, shininess: 90 });
+      const headMat = el.look ? v.mat(el.look) : new T.MeshPhongMaterial({ color: COL[el.farbe] ?? COL.rot, shininess: 60 }), ringMat = new T.MeshPhongMaterial({ color: 0x424242, shininess: 90 });
       const r = Math.min(hb, ht) / 2 + 0.1;
       const head = new T.Mesh(new T.CylinderGeometry(r, r, hh, 24), headMat); head.position.x = -s * L; head.castShadow = true;
       for (const y of [-hh / 2 + 0.12, hh / 2 - 0.12]) { const band = new T.Mesh(new T.CylinderGeometry(r + 0.05, r + 0.05, 0.18, 24), ringMat); band.position.set(-s * L, y, 0); grp.add(band); }
-      const stiel = new T.Mesh(new T.CylinderGeometry(0.16, 0.2, L, 10), new T.MeshLambertMaterial({ color: 0x9C6B3C }));
+      const stiel = new T.Mesh(new T.CylinderGeometry(0.16, 0.2, L, 10), el.look ? headMat : new T.MeshLambertMaterial({ color: 0x9C6B3C }));
       stiel.rotation.z = Math.PI / 2; stiel.position.x = -s * L / 2; grp.add(head, stiel); v.scene.add(grp);
+      if (el.look) return { tick() { grp.position.copy(el.body.position); grp.quaternion.copy(el.body.quaternion); } }; // Gehäuse baut das Level
       const post = new T.Mesh(new T.CylinderGeometry(0.25, 0.35, p[1] - el.at[1] + 1.5, 12), v.mats.pole);
       post.position.set(p[0], (p[1] + el.at[1] - 1.5) / 2, p[2]); v.scene.add(post);
       return { tick() { grp.position.copy(el.body.position); grp.quaternion.copy(el.body.quaternion); } };

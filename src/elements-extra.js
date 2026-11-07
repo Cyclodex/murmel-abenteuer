@@ -13,6 +13,35 @@ const bezier = (P, t) => {
 };
 const setBall = (g, p) => { g.ball.position.set(...p); g.ball.velocity.set(0, 0, 0); };
 
+// Kanone: Flugbahn von el.base auf aim (Mitte der Murmel) in T s. Die Mündung hängt von der Richtung ab: zweimal nachrechnen.
+const schuss = (el, g, aim, T) => {
+  let dir = norm(sub(aim, el.base)), v0;
+  for (let i = 0; i < 3; i++) {
+    const muzzle = add(el.base, scale(dir, 1.6));
+    v0 = add(scale(sub(aim, muzzle), 1 / T), [0, 0.5 * g.G * T, 0]);
+    dir = norm(v0);
+  }
+  Object.assign(el, { dir, v0, muzzle: add(el.base, scale(dir, 1.6)) });
+};
+const ZIEL_T = 1.5; // s, bis das Rohr mit voller Eingabe den ganzen Winkel bzw. die ganze Weite durchfährt
+const totzone = a => (Math.abs(a) < 0.05 ? 0 : Math.max(-1, Math.min(1, a)));
+// zielbare Kanone: Flugbahn zur jetzigen Richtung (zYaw relativ zu yaw0) und Weite; Flugzeit aus dem Abschusswinkel steil
+const zielSchuss = (el, g) => {
+  const z = el.zielen, F = fwdOf(el.yaw0 + el.zYaw), y = z.hoehe ?? el.at[1];
+  el.landing = [el.at[0] + F[0] * el.zWeite, y, el.at[2] + F[2] * el.zWeite];
+  const steil = (z.steil ?? 55) * DEG, dy = y + R - el.base[1] - 1.6 * Math.sin(steil);
+  el.T = Math.sqrt(Math.max(0.25, 2 * (el.zWeite * Math.tan(steil) - dy) / g.G));
+  el.G = g.G;
+  schuss(el, g, add(el.landing, [0, R, 0]), el.T);
+};
+// Punkt [x, z] -> [Richtung relativ zu yaw0 (rad), Weite], begrenzt auf den Bereich der Kanone
+const zielVon = (el, [x, z]) => {
+  const dx = x - el.at[0], dz = z - el.at[2], wMax = el.zielen.winkel * DEG, [w0, w1] = el.zielen.weite;
+  let a = Math.atan2(-dx, -dz) - el.yaw0;
+  a = Math.atan2(Math.sin(a), Math.cos(a));
+  return [Math.max(-wMax, Math.min(wMax, a)), Math.max(w0, Math.min(w1, Math.hypot(dx, dz)))];
+};
+
 export const EXTRA = {
   // Spirale = Kurve mit mehreren Runden und Gefälle. {type:'spirale', at, yaw?, turn:720, radius, rise:-8, width, walls}
   spirale: { solids: d => TYPES.kurve.solids({ turn: 720, rise: -8, ...d }) },
@@ -252,20 +281,27 @@ export const EXTRA = {
 
   // Kanone: Murmel rollt hinein, wird geladen und im Bogen genau auf target geschossen.
   // at = Bodenpunkt der Kanone, target = Bodenpunkt, wo die Murmel landet, time = Flugzeit s
-  // {type:'kanone', at, target, time?}
+  // {type:'kanone', at, target, time?, look?} look = Rohr (z. B. Kugelschreiber)
+  // Zielen: {type:'kanone', at, yaw?, zielen: {winkel, weite: [min, max], zeit, hoehe?, steil?, start?}, look?}
+  //   Nach dem Laden zielt der Spieler zeit s lang: lenken links/rechts dreht das Rohr um bis zu ±winkel Grad um yaw
+  //   (Standard: Richtung zu target, sonst 0), vor/zurück ändert die Weite (waagrecht ab at) zwischen min und max.
+  //   Dann feuert sie. Landepunkt = at + Weite in Zielrichtung, auf der Höhe hoehe (Standard at[1]); steil = Abschusswinkel
+  //   in Grad (Standard 55, bestimmt die Flugzeit), start = Weite am Anfang (Standard min). target ist dann nicht nötig.
+  //   el.aimAt = [x, z] (setzt der Autopilot): das Rohr dreht von selbst dorthin, so schnell wie mit voller Eingabe.
   kanone: {
     init(el, g) {
-      const T = el.time ?? 1.4, base = add(el.at, [0, 0.9, 0]), aim = add(el.target, [0, R, 0]);
-      let dir = norm(sub(aim, base)), v0;
-      for (let i = 0; i < 3; i++) { // Mündung hängt von der Richtung ab: zweimal nachrechnen
-        const muzzle = add(base, scale(dir, 1.6));
-        v0 = add(scale(sub(aim, muzzle), 1 / T), [0, 0.5 * g.G * T, 0]);
-        dir = norm(v0);
-      }
-      Object.assign(el, { base, dir, v0, muzzle: add(base, scale(dir, 1.6)) });
+      el.base = add(el.at, [0, 0.9, 0]);
+      if (!el.zielen) { schuss(el, g, add(el.target, [0, R, 0]), el.time ?? 1.4); return; }
+      el.yaw0 = (el.yaw ?? (el.target ? Math.atan2(-(el.target[0] - el.at[0]), -(el.target[2] - el.at[2])) / DEG : 0)) * DEG;
+      EXTRA.kanone.reset(el, g);
     },
-    reset(el) { el.state = 'bereit'; el.t = 0; },
-    pre(el, g) { if (el.state === 'laden') setBall(g, el.base); },
+    reset(el, g) {
+      el.state = 'bereit'; el.t = 0;
+      if (!el.zielen) return;
+      el.aimAt = null; el.zYaw = 0; el.zWeite = el.zielen.start ?? el.zielen.weite[0];
+      zielSchuss(el, g);
+    },
+    pre(el, g) { if (el.state === 'laden' || el.state === 'zielen') setBall(g, el.base); },
     step(el, g, h, ev) {
       const p = g.ball.position;
       el.t += h;
@@ -274,40 +310,84 @@ export const EXTRA = {
       } else if (el.state === 'laden') {
         setBall(g, el.base); g.hitCool = 0.3;
         if (el.t > 0.8) {
+          if (el.zielen) { el.state = 'zielen'; el.t = 0; g.track.yaw = el.yaw0; return; } // Kamera schaut in die Grundrichtung
           g.ball.position.set(...el.muzzle); g.ball.velocity.set(...el.v0);
           el.state = 'flug'; el.t = 0; ev.push('boom');
         }
+      } else if (el.state === 'zielen') {
+        setBall(g, el.base); g.hitCool = 0.3;
+        const z = el.zielen, wMax = z.winkel * DEG, [w0, w1] = z.weite;
+        const ry = 2 * wMax / ZIEL_T * h, rw = (w1 - w0) / ZIEL_T * h; // volle Eingabe: ganzer Bereich in ZIEL_T s
+        if (el.aimAt) {
+          const [ty, tw] = zielVon(el, el.aimAt);
+          el.zYaw += Math.max(-ry, Math.min(ry, ty - el.zYaw)); el.zWeite += Math.max(-rw, Math.min(rw, tw - el.zWeite));
+        } else { // Eingabe in der Grundrichtung lesen (dorthin schaut die Kamera): rechts = Rohr nach rechts, vor = weiter
+          const y = el.yaw0, ix = g.ix || 0, iz = g.iz || 0;
+          el.zYaw -= totzone(ix * Math.cos(y) - iz * Math.sin(y)) * ry;
+          el.zWeite += totzone(-ix * Math.sin(y) - iz * Math.cos(y)) * rw;
+        }
+        el.zYaw = Math.max(-wMax, Math.min(wMax, el.zYaw)); el.zWeite = Math.max(w0, Math.min(w1, el.zWeite));
+        zielSchuss(el, g);
+        if (el.t > z.zeit) {
+          g.ball.position.set(...el.muzzle); g.ball.velocity.set(...el.v0);
+          el.state = 'flug'; el.t = 0; el.aimAt = null; ev.push('boom');
+        }
       } else if (el.state === 'flug') {
-        if ((g.groundBody && el.t > 0.2) || el.t > 5 || !g.lock) {
+        if ((g.groundBody && el.t > 0.2) || el.t > (el.zielen ? el.T + 1 : 5) || !g.lock) {
           g.lock = false; el.state = 'pause'; el.t = 0;
         }
       } else if (el.state === 'pause' && el.t > 1.5) el.state = 'bereit';
     },
     view(el, v) {
       const T = v.THREE, grp = new T.Group();
-      const dark = new T.MeshPhongMaterial({ color: 0x37474F, shininess: 50 });
+      const dark = el.look ? v.mat(el.look).clone() : new T.MeshPhongMaterial({ color: 0x37474F, shininess: 50 });
       const barrel = new T.Mesh(new T.CylinderGeometry(0.75, 0.9, 2.4, 20, 1, true), dark);
       barrel.material.side = T.DoubleSide;
       barrel.position.set(0, 0.4, 0); grp.add(barrel);
       const rim = new T.Mesh(new T.TorusGeometry(0.75, 0.12, 8, 24), new T.MeshPhongMaterial({ color: 0xFFC928 }));
       rim.rotation.x = Math.PI / 2; rim.position.y = 1.6; grp.add(rim);
       grp.position.set(...el.base);
-      grp.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(...el.dir));
+      const up = new T.Vector3(0, 1, 0), dir = new T.Vector3(...el.dir);
+      grp.quaternion.setFromUnitVectors(up, dir);
       v.scene.add(grp);
       const foot = new T.Mesh(new T.CylinderGeometry(1.1, 1.3, 0.5, 20), v.mats.pole);
       foot.position.set(el.at[0], el.at[1] + 0.25, el.at[2]); v.scene.add(foot);
-      // Zielkreis
+      // Zielkreis; beim Zielen wandert er mit, dazu die Flugbahn gestrichelt
       const ring = new T.Mesh(new T.RingGeometry(0.9, 1.2, 32), new T.MeshBasicMaterial({ color: 0xFFC928, side: T.DoubleSide }));
-      ring.rotation.x = -Math.PI / 2; ring.position.set(el.target[0], el.target[1] + 0.03, el.target[2]); v.scene.add(ring);
+      ring.rotation.x = -Math.PI / 2; v.scene.add(ring);
+      const tp = el.zielen ? el.landing : el.target;
+      ring.position.set(tp[0], tp[1] + 0.03, tp[2]);
       let s = 1;
-      return { tick(dt) { const want = el.state === 'laden' ? 1.12 : 1; s += (want - s) * Math.min(1, dt * 10); grp.scale.set(s, 1, s); } };
+      if (!el.zielen) return { tick(dt) { const want = el.state === 'laden' ? 1.12 : 1; s += (want - s) * Math.min(1, dt * 10); grp.scale.set(s, 1, s); } };
+      const N = 48, pos = new Float32Array(N * 3), geo = new T.BufferGeometry();
+      geo.setAttribute('position', new T.BufferAttribute(pos, 3));
+      const arc = new T.Line(geo, new T.LineDashedMaterial({ color: 0xFFC928, dashSize: 0.5, gapSize: 0.35 }));
+      arc.frustumCulled = false; arc.visible = false; v.scene.add(arc);
+      let lastV = null;
+      return {
+        tick(dt) {
+          const want = el.state === 'laden' || el.state === 'zielen' ? 1.12 : 1; s += (want - s) * Math.min(1, dt * 10); grp.scale.set(s, 1, s);
+          if (el.v0 !== lastV) { // neu gezielt: Rohr, Landepunkt und Bogen nachführen
+            lastV = el.v0;
+            grp.quaternion.setFromUnitVectors(up, dir.set(...el.dir));
+            ring.position.set(el.landing[0], el.landing[1] + 0.03, el.landing[2]);
+            for (let i = 0; i < N; i++) {
+              const t = el.T * i / (N - 1);
+              pos[i * 3] = el.muzzle[0] + el.v0[0] * t; pos[i * 3 + 1] = el.muzzle[1] + el.v0[1] * t - 0.5 * el.G * t * t; pos[i * 3 + 2] = el.muzzle[2] + el.v0[2] * t;
+            }
+            geo.attributes.position.needsUpdate = true; arc.computeLineDistances();
+          }
+          arc.visible = el.state === 'zielen';
+          ring.scale.setScalar(el.state === 'zielen' ? 1 + 0.12 * Math.sin(el.t * 10) : 1);
+        }
+      };
     }
   },
 
   // Dominos: weisse Steine mit Punkten, die umfallen. count Reihen von from bis to, bis zu quer (ungerade) Steine
   // nebeneinander (abstand = Mitte zu Mitte), jede zweite Reihe um einen halben Abstand versetzt mit einem Stein weniger:
   // ein fallender Stein trifft zwei der nächsten Reihe. Vorne beginnt es als Dreieck (1, 2, 3 …), damit alle umfallen.
-  // Einzelner Stein: at, yaw. {type:'domino', from, to, count?, quer?, abstand?, size?:[b,h,t]}
+  // Einzelner Stein: at, yaw. {type:'domino', from, to, count?, quer?, abstand?, size?:[b,h,t], look?} look = statt Dominosteinen (z. B. Bauklötze)
   domino: {
     init(el, g) {
       if (el.at) el.from = el.to = el.at;
@@ -349,6 +429,7 @@ export const EXTRA = {
       const geo = new T.BoxGeometry(he.x * 2, he.y * 2, he.z * 2);
       const white = new T.MeshPhongMaterial({ color: 0xF7F4EC, shininess: 60 });
       const meshes = el.bodies.map((b, i) => {
+        if (el.look) { const m = new T.Mesh(geo, v.mat(el.look)); m.castShadow = m.receiveShadow = true; v.scene.add(m); return m; }
         const [o, u] = DOMINO_PAARE[(i * 11 + 5) % DOMINO_PAARE.length];
         const face = new T.MeshPhongMaterial({ map: dominoTex(v, o, u), shininess: 60 });
         const m = new T.Mesh(geo, [white, white, white, white, face, face]);
