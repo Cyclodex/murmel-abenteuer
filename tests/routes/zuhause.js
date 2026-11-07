@@ -6,7 +6,7 @@ export default {
   // unter dem Locher durch, in die Schublade, durch die
   // Bauklötze ins Katapult auf den Stuhl, über die Jacke, Stern an der Stuhlkante, die Rennbahn hinunter in den Becher
   kz1: [
-    { x: 19, z: -64, speed: 5 }, { x: 24, z: -58, speed: 5 }, { x: 28, z: -53, speed: 4, r: 0.6 }, { x: 27.5, z: -47, speed: 4 },
+    { x: 19, z: -64, speed: 3 }, { x: 24, z: -58, speed: 2 }, { x: 28, z: -53, speed: 1.5, r: 0.6 }, { x: 27.5, z: -47, speed: 2 },
     { x: 22.5, z: -43, speed: 5 }, { x: 23.4, z: -36, speed: 5 }, { x: 23.4, z: -31.5, speed: 4 }, { x: 23.4, z: -24.5, speed: 5 },
     { x: 25, z: -19, speed: 5 }, { x: 22, z: -14, speed: 5 }, { x: 24.5, z: -9, speed: 5 }, { x: 19.5, z: -2, speed: 5 },
     { x: 24, z: 8, speed: 3 }, { x: 29, z: 14, speed: 2, r: 0.4 }, { x: 21, z: 9, speed: 2, r: 0.5 },
