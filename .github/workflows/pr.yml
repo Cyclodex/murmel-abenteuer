@@ -31,7 +31,7 @@ jobs:
           path: test-results/
           retention-days: 7
 
-  # Fahrten (geänderte Level × 16 Kombinationen) auf 8 Jobs verteilt, jeder fährt so viele gleichzeitig, wie er Kerne hat
+  # Fahrten (geänderte Level × 16 Kombinationen, Level mit `ort` × 1) auf 8 Jobs verteilt, jeder fährt so viele gleichzeitig, wie er Kerne hat
   level-teil:
     name: level ${{ matrix.teil }}/8
     runs-on: ubuntu-latest

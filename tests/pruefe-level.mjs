@@ -1,7 +1,8 @@
 // Level ohne Browser prüfen (Node): fährt den Autopilot wie die Tests.
 //   node tests/pruefe-level.mjs <id>            -> 3 Stärken (Standard-Murmel) + alle Murmeln (Stärke normal), wie npm test
+//                                               (Level mit `ort`: nur Stärke normal + Standard-Murmel, kombisFuer in tests/kombis.mjs)
 //   node tests/pruefe-level.mjs <id> --voll     -> alle Stärken x alle Murmeln
-//   node tests/pruefe-level.mjs <id> --kombi 0,5 -> nur diese der 16 Kombinationen (Index in tests/kombis.mjs),
+//   node tests/pruefe-level.mjs <id> --kombi 0,5 -> nur diese der 16 Kombinationen (Index in KOMBIS, tests/kombis.mjs),
 //                                               eine Zeile pro Fahrt (für die PR-Tests, tests/verteile-level.mjs)
 //   node tests/pruefe-level.mjs <id> --fahrt [stärke 0-2] [murmel] [startverzögerung]
 //                                               -> eine Fahrt mit Wegpunkten, Ereignissen und Stellen, an denen die Murmel runterfällt
@@ -17,7 +18,7 @@ const { PRUEFSTAND } = await import('../src/levels/pruefstand/index.js');
 const { checkLevel, createPilot, mainRoute, ROUTES } = await import('./autopilot.js');
 const { SKINS } = await import('../src/skins.js');
 const { POWERS } = await import('../src/input.js');
-const { KOMBIS } = await import('./kombis.mjs');
+const { KOMBIS, kombisFuer } = await import('./kombis.mjs');
 
 const [id, mode, ...args] = process.argv.slice(2);
 const L = [...LEVELS, ...PRUEFSTAND].find(l => l.id === id);
@@ -45,7 +46,7 @@ if (mode === '--fahrt') {
 } else {
   const combos = mode === '--voll' ? POWERS.flatMap(P => SKINS.map(S => [P, S]))
     : mode === '--kombi' ? args[0].split(',').map(k => KOMBIS[+k])
-    : KOMBIS;
+    : kombisFuer(L);
   let bad = 0; const times = [];
   for (const [P, S] of combos) {
     const c = checkLevel(mk(P, S), ROUTES[id]);

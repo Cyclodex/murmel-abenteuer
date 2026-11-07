@@ -304,13 +304,11 @@ for (const welt of WELTEN) for (const art of ['normal', 'schwer']) {
       const { createGame } = await import('/src/game.js');
       const { WORLDS } = await import('/src/levels/index.js');
       const { checkLevel, ROUTES } = await import('/tests/autopilot.js');
-      const { POWERS } = await import('/src/input.js');
-      const { SKINS } = await import('/src/skins.js');
+      const { kombisFuer } = await import('/tests/kombis.mjs');
       const w = WORLDS.find(x => x.id === welt), out = [];
       if (!w) return out; // Welt (noch) nicht vorhanden
       for (const L of art === 'normal' ? w.levels : w.hard || []) {
-        const combos = [...POWERS.map(P => [P, SKINS[0]]), ...SKINS.slice(1).map(S => [POWERS[1], S])];
-        for (const [P, S] of combos) {
+        for (const [P, S] of kombisFuer(L)) {
           const r = checkLevel(() => { const g = createGame(CANNON, L, S.ball); g.tilt = P.tilt * Math.PI / 180; return g; }, ROUTES[L.id]);
           out.push({ lv: L.id, id: `${L.id} ${P.emoji} ${S.id}`, ...r });
         }
