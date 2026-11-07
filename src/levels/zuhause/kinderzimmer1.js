@@ -4,8 +4,13 @@
 // Untersetzer mit Erde (Checkpoint davor), an Spielfiguren vorbei bis ans Westende. Dort führt ein Lineal über die Lücke
 // neben dem Tisch auf einen hohen Bücherturm (wer fällt, landet auf dem Zimmerboden). Die Bücher hinunter, über das Lineal,
 // das auf einem Radiergummi wippt, im Gegenwind des Tischventilators (Checkpoint), Slalom zwischen Farbstiften auf dem Heft,
-// am Hufeisenmagneten an der Tischkante vorbei in den Kugelschreiber, der sie auf Lexikon und Atlas schiesst (Checkpoint),
-// unter dem Locher durch (Checkpoint), übers kleine Lineal in die offene Schublade (Checkpoint), durch die Bauklötze in
+// am Hufeisenmagneten an der Tischkante vorbei in den Kugelschreiber. Dort zielt man selbst (Richtung ±30°, Weite 15 bis 44):
+// Nur wer quer über den Tisch genau das Mauspad auf Atlas und Lexikon trifft (41 weit, 8 × 8), bleibt oben liegen (Checkpoint).
+// Zu kurz landet auf dem Tisch: zurück zum Kugelschreiber oder die Rampe (schräges Schulbuch) hinauf auf den Stapel. Zu weit
+// rollt vom Stapel nach Westen in die Ecke beim Stiftebecher (Sackgasse, von dort geht es nur noch auf den Boden); zu weit
+// rechts prallt an den Spieleschachteln ab oder landet auf der Fensterbank. Eine Reihe Farbstifte trennt die Gasse am
+// linken Tischrand vom übrigen Tisch: hinein kommt man nur über die Lineal-Rutsche vom Stapel. In der Gasse unter dem Locher
+// durch (Checkpoint), übers kleine Lineal in die offene Schublade (Checkpoint), durch die Bauklötze in
 // das Eisstiel-Katapult, das sie über die Schubladenwand auf den Stuhl schleudert (Checkpoint). Über die Jacke, am
 // Kuscheltier vorbei, die Autorennbahn hinunter auf die Spielmatte am Boden und in den Becher.
 // Spieleschachteln stehen hochkant an der Fensterbank: von der Bank fällt man nicht auf den Tisch (sonst Abkürzung).
@@ -36,6 +41,9 @@ const SB_Y = -9.375;              // Oberkante Schubladenboden
 const SLALOM = [[1.25, 'stift-gelb', -45], [7.4, 'stift-rot', -47.75], [1.25, 'stift-blau', -50.5], [7.4, 'stift-gruen', -53.25], [1.25, 'stift-gelb', -56]];
 // Spieleschachteln hochkant an der Fensterbank (7 cm dick, 28 bis 35 cm lang, 26 bis 31 cm hoch)
 const SCHACHTELN = [[6.25, 17.5, 17.5, 'schachtel-rot'], [-11.25, 20, 18.75, 'schachtel-gelb'], [-31.25, 18.75, 16.25, 'schachtel-blau'], [-50, 18.75, 19.4, 'schachtel-gruen']];
+// Stapel quer über dem Tisch (Atlas und Lexikon, 21 × 28 cm, zusammen 7 cm), darauf Mauspad und Federmäppchen
+const STAPEL = { x0: -25, x1: -11.87, z0: -32.5, z1: -15 }, STAPEL_Y = 4.38, PAD_Y = STAPEL_Y + 0.19;
+const GASSE_X = -17.3;            // Farbstifte der Reihe nach hingelegt: Gasse x -25..-17.6 vom Stapel bis zur Schublade
 // Stuhl: Sitzkissen (4 cm) auf dem Sitz
 const KISSEN_Y = -18.75 + 2.5;
 const BODEN_Y = -75 / U;          // Zimmerboden
@@ -98,12 +106,22 @@ export default {
     // 5. Hufeisenmagnet an der Tischkante (Ostende) zieht die Murmel zur Kante
     { type: 'magnet', at: [8, 0, -66.8], radius: 7, strength: 4 },
 
-    // 6. Kugelschreiber als Katapult: schiesst auf Lexikon und Atlas (Mauspad fängt sie auf)
-    { type: 'kanone', at: [1, 0, -63], target: [-10, 4.57, -37], time: 2.5, look: 'kugelschreiber' },
-    { type: 'klotz', at: [-11, 1.25, -40], size: [15.63, 2.5, 21.25], look: 'buch-rot', richtung: 0 },  // Atlas 25 × 4 × 34 cm
-    { type: 'klotz', at: [-11, 3.44, -37], size: [13.13, 1.88, 17.5], look: 'buch-blau', richtung: 0 }, // Lexikon 21 × 3 × 28 cm
-    { type: 'klotz', at: [-11, 4.47, -35], size: [11, 0.19, 9], look: 'mauspad', surface: 'handtuch' }, // Mauspad 18 × 14 cm, Neopren
-    { type: 'checkpoint', at: [-11, 4.38, -43.5], size: [8, 3, 3] },
+    // 6. Kugelschreiber als Katapult zum Zielen: Richtung ±30° um Westen, Weite 15 bis 44 (Start 25), 4 s Zeit.
+    //    Gut: Mauspad auf dem Stapel (Mitte -16, -26, 41 weit, 25° links). Das Mäppchen dahinter und ein Stift am
+    //    linken Rand halten die Murmel; über die Lineal-Rutsche geht es in die Gasse am linken Tischrand.
+    { type: 'kanone', at: [1, 0, -63], yaw: 180, zielen: { winkel: 30, weite: [15, 44], zeit: 4, hoehe: PAD_Y, start: 25 }, look: 'kugelschreiber' },
+    { type: 'klotz', at: [(STAPEL.x0 + STAPEL.x1) / 2, 1.25, (STAPEL.z0 + STAPEL.z1) / 2], size: [STAPEL.x1 - STAPEL.x0, 2.5, STAPEL.z1 - STAPEL.z0], look: 'buch-rot', richtung: 0 },  // Atlas
+    { type: 'klotz', at: [(STAPEL.x0 + STAPEL.x1) / 2, 3.44, (STAPEL.z0 + STAPEL.z1) / 2], size: [STAPEL.x1 - STAPEL.x0, 1.88, STAPEL.z1 - STAPEL.z0], look: 'buch-blau', richtung: 0 }, // Lexikon
+    { type: 'klotz', at: [-16, STAPEL_Y + 0.095, -26], size: [8, 0.19, 8], look: 'mauspad', surface: 'handtuch' }, // Mauspad 13 × 13 cm, Neopren
+    { type: 'klotz', at: [-18.4, STAPEL_Y + 1.565, -19.5], size: [12.5, 3.13, 5], look: 'maeppchen' },  // Federmäppchen 20 × 8 × 5 cm, quer
+    { type: 'klotz', at: [-24.6, STAPEL_Y + STIFT[1] / 2, -25.75], size: [STIFT[1], STIFT[1], STIFT[0]], look: 'stift-rot' }, // Stift am linken Rand
+    { type: 'checkpoint', at: [-20, STAPEL_Y, -31], size: [6, 3, 3] },
+    // Rutsche: Lineal 15 cm vom Stapel hinunter in die Gasse
+    { type: 'weg', from: [-21, STAPEL_Y, STAPEL.z0 - 0.05], to: [-21, 0.1, -42], width: 1.875, thick: LINEAL_D, look: 'lineal' },
+    // Rampe zurück auf den Stapel für zu kurze Schüsse: Schulbuch schräg an den Stapel gelehnt
+    { type: 'weg', from: [1.6, 0, -24], to: [STAPEL.x1, STAPEL_Y, -24], width: 4, thick: 0.3, look: 'buch-gruen' },
+    // Farbstifte der Reihe nach: trennen die Gasse vom übrigen Tisch
+    ...[-36.25, -43.5, -50.75, -58, -65].map((z, i) => ({ type: 'klotz', at: [GASSE_X, STIFT[1] / 2, z], size: [STIFT[1], STIFT[1], STIFT[0]], look: ['stift-gelb', 'stift-blau', 'stift-gruen', 'stift-rot', 'stift-gelb'][i] })),
 
     // 7. Schreibtischlampe am Westende neben dem Turm: runder Fuss und Stange (als Klötze), Arm und Schirm nur zum Anschauen
     { type: 'klotz', at: [6.5, 0.6, -8], size: [9.38, 1.2, 9.38], look: 'lampe' },
@@ -111,18 +129,17 @@ export default {
     { type: 'klotz', at: [2, 24, -8], size: [11.7, 1, 1], yaw: 31, look: 'lampe', deko: true },
     { type: 'klotz', at: [-3, 22.5, -5], size: [7, 3, 7], look: 'lampe', deko: true },
 
-    // 8. Locher: der Hebel schlägt auf die Strecke, Gehäuse daneben
-    { type: 'hammer', at: [-11, 0, -55.5], side: 1, length: 4, size: [3.2, 1.4, 1.6], look: 'locher', offset: 1.7 },
-    { type: 'klotz', at: [-6.3, 0.7, -55.5], size: [2.4, 1.4, 4], look: 'locher-dunkel', deko: true },
-    { type: 'checkpoint', at: [-13.5, 0, -62], size: [3, 3, 3], yaw: 90 },
+    // 8. Locher in der Gasse: der Hebel schlägt auf die Strecke, Gehäuse hinter den Stiften
+    { type: 'hammer', at: [-21, 0, -54], side: 1, length: 4, size: [3.2, 1.4, 1.6], look: 'locher', offset: 1.7 },
+    { type: 'klotz', at: [-16.3, 0.7, -54], size: [2.4, 1.4, 4], look: 'locher-dunkel', deko: true },
+    { type: 'checkpoint', at: [-20.5, 0, -59], size: [7, 3, 3] },
 
     // 9. Kleines Lineal (15 cm) auf einem Radiergummi als Sprungschanze über die Tischkante in die Schublade
-    { type: 'weg', from: [-15.4, 0.1, -62], to: [-24.75, 1.35, -62], width: 1.875, look: 'lineal' },
+    { type: 'weg', from: [-19.2, 0.1, -62], to: [-24.75, 1.35, -62], width: 1.875, look: 'lineal' },
     { type: 'klotz', at: [-24, RADIERER[1] / 2, -62], size: [0.63, 1.25, 3.13], look: 'radierer', deko: true },
 
     // Dinge auf dem Tisch neben der Strecke
     { type: 'klotz', at: [-19, 3.125, 0], size: [5, 6.25, 5], look: 'becher' },           // Stiftebecher 8 × 10 cm
-    { type: 'klotz', at: [-18, 1.56, -20], size: [5, 3.13, 12.5], look: 'maeppchen' },    // Federmäppchen 20 × 8 × 5 cm
 
     // 10. Schublade: Boden, Front und Seiten (hinten schliesst die Tischplatte ab), Filz zum Landen, Bauklötze, Katapult
     { type: 'klotz', at: [(SB.x0 + SB.x1) / 2, -9.69, (SB.z0 + SB.z1) / 2], size: [SB.x1 - SB.x0, 0.63, SB.z1 - SB.z0], look: 'schublade' },
